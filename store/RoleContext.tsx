@@ -62,6 +62,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [token, isLoading, pathname, router]);
 
+  // Listen to 401 unauthorized events
+  useEffect(() => {
+    const handleUnauthorized = () => {
+      setToken(null);
+      setUser(null);
+      router.push("/auth");
+    };
+
+    window.addEventListener("clinops_unauthorized", handleUnauthorized);
+    return () => {
+      window.removeEventListener("clinops_unauthorized", handleUnauthorized);
+    };
+  }, [router]);
+
   const login = (newToken: string, newUser: User) => {
     localStorage.setItem("clinops_token", newToken);
     localStorage.setItem("clinops_user", JSON.stringify(newUser));

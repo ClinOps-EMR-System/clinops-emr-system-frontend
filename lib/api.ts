@@ -25,6 +25,15 @@ async function request(endpoint: string, options: RequestOptions = {}) {
     return null;
   }
 
+  // Handle 401 Unauthorized token expirations cleanly
+  if (response.status === 401) {
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("clinops_token");
+      localStorage.removeItem("clinops_user");
+      window.dispatchEvent(new Event("clinops_unauthorized"));
+    }
+  }
+
   const data = await response.json();
 
   if (!response.ok) {
