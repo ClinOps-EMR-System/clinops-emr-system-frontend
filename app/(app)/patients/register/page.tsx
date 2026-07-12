@@ -43,6 +43,10 @@ function PatientRegistrationForm() {
   const [consentTeaching, setConsentTeaching] = useState(false);
   const [consentResearch, setConsentResearch] = useState(false);
 
+  // Emergency fields
+  const [approximateAge, setApproximateAge] = useState("");
+  const [presentingComplaint, setPresentingComplaint] = useState("");
+
   // States
   const [isEmergency, setIsEmergency] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -122,6 +126,8 @@ function PatientRegistrationForm() {
           last_name: lastName,
           gender,
           patient_category: "Emergency",
+          approximate_age: approximateAge ? parseInt(approximateAge) : null,
+          presenting_complaint: presentingComplaint,
           consent_care: consentCare,
         }
       : {
@@ -277,6 +283,23 @@ function PatientRegistrationForm() {
                   onChange={(e) => setDob(e.target.value)}
                 />
                 {errors.date_of_birth && <p className="text-xs text-red-600 mt-1">{errors.date_of_birth.join(" ")}</p>}
+              </div>
+            )}
+
+            {isEmergency && (
+              <div className="space-y-1">
+                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide">Approximate Age (Years) *</label>
+                <input
+                  type="number"
+                  required
+                  min="0"
+                  max="150"
+                  className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary text-sm font-medium text-gray-900 font-mono"
+                  value={approximateAge}
+                  onChange={(e) => setApproximateAge(e.target.value)}
+                  placeholder="e.g. 35"
+                />
+                {errors.approximate_age && <p className="text-xs text-red-600 mt-1">{errors.approximate_age.join(" ")}</p>}
               </div>
             )}
           </div>
@@ -454,6 +477,21 @@ function PatientRegistrationForm() {
               )}
             </div>
           </div>
+
+          {isEmergency && (
+            <div className="space-y-1 pt-4 border-t border-gray-100">
+              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide">Presenting Complaint *</label>
+              <textarea
+                required
+                rows={3}
+                className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary text-sm font-medium text-gray-900"
+                value={presentingComplaint}
+                onChange={(e) => setPresentingComplaint(e.target.value)}
+                placeholder="Describe the initial emergency triage presenting complaint..."
+              ></textarea>
+              {errors.presenting_complaint && <p className="text-xs text-red-600 mt-1">{errors.presenting_complaint.join(" ")}</p>}
+            </div>
+          )}
 
           {/* Action Errors display */}
           {error && (
