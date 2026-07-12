@@ -82,7 +82,7 @@ export default function PatientSearchDirectory() {
       {/* Directory Header */}
       <section className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-[#1b1c1c]">Patient Master Directory</h1>
+          <h1 className="text-3xl font-bold text-[#1b1c1c]">Patient Search</h1>
           <p className="text-sm text-[#5f5e5e] mt-1">
             Lookup, filter, and access clinical logs for patients active in the hospital.
           </p>
@@ -91,7 +91,7 @@ export default function PatientSearchDirectory() {
           href="/patients/register"
           className="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-bold rounded bg-clinical-primary text-white hover:bg-clinical-primary-hover shadow-sm transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-clinical-primary cursor-pointer"
         >
-          Register New Patient
+          Patient Registration
         </Link>
       </section>
 

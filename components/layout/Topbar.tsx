@@ -16,8 +16,8 @@ export default function Topbar() {
     const href = "/" + pathParts.slice(0, index + 1).join("/");
     let label = part.charAt(0).toUpperCase() + part.slice(1);
     if (label.toLowerCase() === "dashboard") label = "Dashboard";
-    if (label.toLowerCase() === "patients") label = "Patients";
-    if (label.toLowerCase() === "register") label = "Register Intake";
+    if (label.toLowerCase() === "patients") label = "Patient Search";
+    if (label.toLowerCase() === "register") label = "Patient Registration";
     if (label.toLowerCase() === "triage") label = "Triage";
     if (label.toLowerCase() === "consultation") label = "Consultation";
     if (/^\d+$/.test(part)) {

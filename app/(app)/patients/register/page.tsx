@@ -203,7 +203,7 @@ function PatientRegistrationForm() {
     <div className="max-w-4xl mx-auto space-y-6 font-sans">
       <div>
         <h1 className="text-3xl font-bold text-[#1b1c1c]">
-          {completeId ? "Complete Emergency Intake" : "Patient Registration Desk"}
+          {completeId ? "Complete Emergency Intake" : "Patient Registration"}
         </h1>
         <p className="text-sm text-[#5f5e5e] mt-1">
           {completeId
@@ -223,7 +223,7 @@ function PatientRegistrationForm() {
                 !isEmergency ? "border-b-2 border-clinical-primary text-clinical-primary" : "text-gray-400"
               }`}
             >
-              Standard Intake
+              Standard Registration
             </button>
             <button
               type="button"
