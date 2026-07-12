@@ -7,6 +7,22 @@ import { api } from "../../../../../lib/api";
 import PatientBanner, { Patient, Allergy } from "../../../../../components/ui/PatientBanner";
 import { calculateNEWS2, AVPU, SpO2Scale, NEWS2Result } from "../../../../../lib/ews";
 
+// ─── Input validation helpers ───────────────────────────────────────────────
+const digitsOnly = (v: string) => v.replace(/\D/g, "");
+const decimalOnly = (v: string) => {
+  // allow one decimal point, digits, optional leading minus
+  const cleaned = v.replace(/[^0-9.]/g, "");
+  const parts = cleaned.split(".");
+  return parts.length > 2 ? `${parts[0]}.${parts.slice(1).join("")}` : cleaned;
+};
+/** Blood Pressure: allow only digits and one slash, e.g. 120/80 */
+const bpOnly = (v: string) => {
+  const cleaned = v.replace(/[^0-9/]/g, "");
+  const parts = cleaned.split("/");
+  return parts.length > 2 ? `${parts[0]}/${parts.slice(1).join("")}` : cleaned;
+};
+// ─────────────────────────────────────────────────────────────────────────────
+
 interface TriageSummary {
   encounter: {
     id: number;
@@ -500,12 +516,13 @@ export default function NurseTriageWorkbench() {
                   <div>
                     <label className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">Temperature (°C)</label>
                     <input
-                      type="number"
-                      step="0.1"
+                      type="text"
+                      inputMode="decimal"
+                      maxLength={5}
                       className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary text-sm font-mono text-gray-900"
                       placeholder="e.g. 36.5"
                       value={temperature}
-                      onChange={(e) => setTemperature(e.target.value)}
+                      onChange={(e) => setTemperature(decimalOnly(e.target.value))}
                     />
                     {formErrors.temperature && <p className="text-xs text-red-600 mt-1">{formErrors.temperature.join(" ")}</p>}
                   </div>
@@ -515,10 +532,12 @@ export default function NurseTriageWorkbench() {
                     <label className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">Blood Pressure (Systolic/Diastolic)</label>
                     <input
                       type="text"
+                      inputMode="numeric"
+                      maxLength={7}
                       className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary text-sm font-mono text-gray-900"
                       placeholder="e.g. 120/80"
                       value={bloodPressure}
-                      onChange={(e) => setBloodPressure(e.target.value)}
+                      onChange={(e) => setBloodPressure(bpOnly(e.target.value))}
                     />
                     {formErrors.blood_pressure && <p className="text-xs text-red-600 mt-1">{formErrors.blood_pressure.join(" ")}</p>}
                   </div>
@@ -527,11 +546,13 @@ export default function NurseTriageWorkbench() {
                   <div>
                     <label className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">Pulse Rate (bpm)</label>
                     <input
-                      type="number"
+                      type="text"
+                      inputMode="numeric"
+                      maxLength={3}
                       className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary text-sm font-mono text-gray-900"
                       placeholder="e.g. 72"
                       value={pulseRate}
-                      onChange={(e) => setPulseRate(e.target.value)}
+                      onChange={(e) => setPulseRate(digitsOnly(e.target.value))}
                     />
                     {formErrors.pulse_rate && <p className="text-xs text-red-600 mt-1">{formErrors.pulse_rate.join(" ")}</p>}
                   </div>
@@ -540,11 +561,13 @@ export default function NurseTriageWorkbench() {
                   <div>
                     <label className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">Respiratory Rate (breaths/min)</label>
                     <input
-                      type="number"
+                      type="text"
+                      inputMode="numeric"
+                      maxLength={2}
                       className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary text-sm font-mono text-gray-900"
                       placeholder="e.g. 16"
                       value={respiratoryRate}
-                      onChange={(e) => setRespiratoryRate(e.target.value)}
+                      onChange={(e) => setRespiratoryRate(digitsOnly(e.target.value))}
                     />
                     {formErrors.respiratory_rate && <p className="text-xs text-red-600 mt-1">{formErrors.respiratory_rate.join(" ")}</p>}
                   </div>
@@ -553,11 +576,13 @@ export default function NurseTriageWorkbench() {
                   <div>
                     <label className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">Oxygen Saturation (SpO2 %)</label>
                     <input
-                      type="number"
+                      type="text"
+                      inputMode="numeric"
+                      maxLength={3}
                       className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary text-sm font-mono text-gray-900"
                       placeholder="e.g. 98"
                       value={oxygenSaturation}
-                      onChange={(e) => setOxygenSaturation(e.target.value)}
+                      onChange={(e) => setOxygenSaturation(digitsOnly(e.target.value))}
                     />
                     {formErrors.oxygen_saturation && <p className="text-xs text-red-600 mt-1">{formErrors.oxygen_saturation.join(" ")}</p>}
                   </div>
@@ -624,12 +649,13 @@ export default function NurseTriageWorkbench() {
                   <div>
                     <label className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">Weight (kg)</label>
                     <input
-                      type="number"
-                      step="0.1"
+                      type="text"
+                      inputMode="decimal"
+                      maxLength={5}
                       className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary text-sm font-mono text-gray-900"
                       placeholder="e.g. 70.0"
                       value={weight}
-                      onChange={(e) => setWeight(e.target.value)}
+                      onChange={(e) => setWeight(decimalOnly(e.target.value))}
                     />
                   </div>
 
@@ -637,12 +663,13 @@ export default function NurseTriageWorkbench() {
                   <div>
                     <label className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">Height (cm)</label>
                     <input
-                      type="number"
-                      step="0.5"
+                      type="text"
+                      inputMode="decimal"
+                      maxLength={5}
                       className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary text-sm font-mono text-gray-900"
                       placeholder="e.g. 175"
                       value={height}
-                      onChange={(e) => setHeight(e.target.value)}
+                      onChange={(e) => setHeight(decimalOnly(e.target.value))}
                     />
                   </div>
 
@@ -658,13 +685,16 @@ export default function NurseTriageWorkbench() {
                   <div>
                     <label className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">Pain Score (0 - 10)</label>
                     <input
-                      type="number"
-                      min="0"
-                      max="10"
+                      type="text"
+                      inputMode="numeric"
+                      maxLength={2}
                       className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary text-sm font-mono text-gray-900"
                       placeholder="0 = No Pain, 10 = Severe"
                       value={painScore}
-                      onChange={(e) => setPainScore(e.target.value)}
+                      onChange={(e) => {
+                        const v = digitsOnly(e.target.value);
+                        if (v === "" || (parseInt(v) >= 0 && parseInt(v) <= 10)) setPainScore(v);
+                      }}
                     />
                   </div>
 
@@ -672,12 +702,13 @@ export default function NurseTriageWorkbench() {
                   <div>
                     <label className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">Blood Glucose (mmol/L)</label>
                     <input
-                      type="number"
-                      step="0.1"
+                      type="text"
+                      inputMode="decimal"
+                      maxLength={5}
                       className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary text-sm font-mono text-gray-900"
                       placeholder="e.g. 5.5"
                       value={bloodGlucose}
-                      onChange={(e) => setBloodGlucose(e.target.value)}
+                      onChange={(e) => setBloodGlucose(decimalOnly(e.target.value))}
                     />
                   </div>
                 </div>
@@ -689,37 +720,46 @@ export default function NurseTriageWorkbench() {
                     <div>
                       <label className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">GCS Eye Response (1-4)</label>
                       <input
-                        type="number"
-                        min="1"
-                        max="4"
+                        type="text"
+                        inputMode="numeric"
+                        maxLength={1}
                         className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary text-sm font-mono text-gray-900"
                         placeholder="1 (None) to 4 (Spontaneous)"
                         value={gcsEye}
-                        onChange={(e) => setGcsEye(e.target.value)}
+                        onChange={(e) => {
+                          const v = digitsOnly(e.target.value);
+                          if (v === "" || (parseInt(v) >= 1 && parseInt(v) <= 4)) setGcsEye(v);
+                        }}
                       />
                     </div>
                     <div>
                       <label className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">GCS Verbal Response (1-5)</label>
                       <input
-                        type="number"
-                        min="1"
-                        max="5"
+                        type="text"
+                        inputMode="numeric"
+                        maxLength={1}
                         className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary text-sm font-mono text-gray-900"
                         placeholder="1 (None) to 5 (Oriented)"
                         value={gcsVerbal}
-                        onChange={(e) => setGcsVerbal(e.target.value)}
+                        onChange={(e) => {
+                          const v = digitsOnly(e.target.value);
+                          if (v === "" || (parseInt(v) >= 1 && parseInt(v) <= 5)) setGcsVerbal(v);
+                        }}
                       />
                     </div>
                     <div>
                       <label className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">GCS Motor Response (1-6)</label>
                       <input
-                        type="number"
-                        min="1"
-                        max="6"
+                        type="text"
+                        inputMode="numeric"
+                        maxLength={1}
                         className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary text-sm font-mono text-gray-900"
                         placeholder="1 (None) to 6 (Obeys commands)"
                         value={gcsMotor}
-                        onChange={(e) => setGcsMotor(e.target.value)}
+                        onChange={(e) => {
+                          const v = digitsOnly(e.target.value);
+                          if (v === "" || (parseInt(v) >= 1 && parseInt(v) <= 6)) setGcsMotor(v);
+                        }}
                       />
                     </div>
                   </div>
@@ -929,13 +969,16 @@ export default function NurseTriageWorkbench() {
                       <div>
                         <label className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">Gestational Age (weeks)</label>
                         <input
-                          type="number"
-                          min="0"
-                          max="45"
+                          type="text"
+                          inputMode="numeric"
+                          maxLength={2}
                           className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary text-sm font-mono text-gray-900"
                           placeholder="e.g. 24"
                           value={gestationalWeeks}
-                          onChange={(e) => setGestationalWeeks(e.target.value)}
+                          onChange={(e) => {
+                            const v = digitsOnly(e.target.value);
+                            if (v === "" || (parseInt(v) >= 0 && parseInt(v) <= 45)) setGestationalWeeks(v);
+                          }}
                         />
                       </div>
                     </div>

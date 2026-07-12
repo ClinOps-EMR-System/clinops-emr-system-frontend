@@ -16,6 +16,18 @@ interface DuplicatePatient {
   district: string;
 }
 
+// ─── Input validation helpers ───────────────────────────────────────────────
+/** Strip all non-digit characters */
+const digitsOnly = (v: string) => v.replace(/\D/g, "");
+/** Strip everything except digits and uppercase letters */
+const alphaNumOnly = (v: string) => v.replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
+/** Format a raw digit string as +265 XXXXXXXXX (max 9 trailing digits) */
+const formatMalawiPhone = (raw: string) => {
+  const digits = digitsOnly(raw).slice(0, 9);
+  return digits;
+};
+// ─────────────────────────────────────────────────────────────────────────────
+
 function PatientRegistrationForm() {
   const { token } = useAuth();
   const router = useRouter();
@@ -144,7 +156,7 @@ function PatientRegistrationForm() {
           last_name: lastName,
           date_of_birth: dob,
           gender,
-          phone,
+          phone: phone ? `+265${phone}` : null,
           national_id: nationalId || null,
           health_passport_number: healthPassport || null,
           address,
@@ -152,7 +164,7 @@ function PatientRegistrationForm() {
           traditional_authority: ta,
           district,
           guardian_name: guardianName || null,
-          guardian_phone: guardianPhone || null,
+          guardian_phone: guardianPhone ? `+265${guardianPhone}` : null,
           patient_category: category,
           consent_care: consentCare,
           consent_teaching: consentTeaching,
@@ -319,22 +331,29 @@ function PatientRegistrationForm() {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 border-t border-gray-100 pt-4">
                 <div className="space-y-1">
                   <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide">Phone Number</label>
-                  <input
-                    type="text"
-                    className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary text-sm font-medium text-gray-900 font-mono"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    placeholder="+265..."
-                  />
+                  <div className="flex">
+                    <span className="inline-flex items-center px-3 border border-r-0 border-gray-300 rounded-l bg-gray-50 text-gray-500 text-sm font-mono select-none">+265</span>
+                    <input
+                      type="tel"
+                      inputMode="numeric"
+                      maxLength={9}
+                      className="flex-1 px-3 py-2 border border-gray-300 rounded-r focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary text-sm font-medium text-gray-900 font-mono"
+                      value={phone}
+                      onChange={(e) => setPhone(formatMalawiPhone(e.target.value))}
+                      placeholder="999 999 999"
+                    />
+                  </div>
+                  <p className="text-[11px] text-gray-400">9 digits after country code (+265)</p>
                 </div>
 
                 <div className="space-y-1">
                   <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide">National ID</label>
                   <input
                     type="text"
+                    maxLength={12}
                     className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary text-sm font-medium text-gray-900 font-mono uppercase"
                     value={nationalId}
-                    onChange={(e) => setNationalId(e.target.value)}
+                    onChange={(e) => setNationalId(alphaNumOnly(e.target.value))}
                     placeholder="E.g. AB12345"
                   />
                   {errors.national_id && <p className="text-xs text-red-600 mt-1">{errors.national_id.join(" ")}</p>}
@@ -344,9 +363,11 @@ function PatientRegistrationForm() {
                   <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide">Health Passport #</label>
                   <input
                     type="text"
-                    className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary text-sm font-medium text-gray-900 font-mono"
+                    maxLength={20}
+                    className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary text-sm font-medium text-gray-900 font-mono uppercase"
                     value={healthPassport}
-                    onChange={(e) => setHealthPassport(e.target.value)}
+                    onChange={(e) => setHealthPassport(alphaNumOnly(e.target.value))}
+                    placeholder="E.g. HP000123"
                   />
                 </div>
               </div>
@@ -434,12 +455,19 @@ function PatientRegistrationForm() {
 
                 <div className="space-y-1">
                   <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide">Next of Kin Contact Phone</label>
-                  <input
-                    type="text"
-                    className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary text-sm font-medium text-gray-900 font-mono"
-                    value={guardianPhone}
-                    onChange={(e) => setGuardianPhone(e.target.value)}
-                  />
+                  <div className="flex">
+                    <span className="inline-flex items-center px-3 border border-r-0 border-gray-300 rounded-l bg-gray-50 text-gray-500 text-sm font-mono select-none">+265</span>
+                    <input
+                      type="tel"
+                      inputMode="numeric"
+                      maxLength={9}
+                      className="flex-1 px-3 py-2 border border-gray-300 rounded-r focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary text-sm font-medium text-gray-900 font-mono"
+                      value={guardianPhone}
+                      onChange={(e) => setGuardianPhone(formatMalawiPhone(e.target.value))}
+                      placeholder="999 999 999"
+                    />
+                  </div>
+                  <p className="text-[11px] text-gray-400">9 digits after country code (+265)</p>
                 </div>
               </div>
             </>
