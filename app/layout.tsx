@@ -27,8 +27,12 @@ export default function RootLayout({
     <html
       lang="en"
       className={`${inter.variable} ${jetbrainsMono.variable} h-full antialiased`}
+      suppressHydrationWarning
     >
-      <body className="min-h-screen flex flex-col bg-[#fcf9f8] text-[#1b1c1c] font-sans">
+      <body
+        className="min-h-screen flex flex-col bg-[#fcf9f8] text-[#1b1c1c] font-sans"
+        suppressHydrationWarning
+      >
         <AuthProvider>
           {children}
         </AuthProvider>
