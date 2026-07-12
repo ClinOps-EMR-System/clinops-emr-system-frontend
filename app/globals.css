@@ -1,26 +1,66 @@
 @import "tailwindcss";
 
+@theme {
+  --color-brand-green: #22c55e;
+  --color-brand-green-dark: #16a34a;
+  --color-brand-dark: #18181b;
+  --color-brand-gray: #f4f4f5;
+  --color-brand-text-dark: #e4e4e7;
+  --color-brand-text-muted: #a1a1aa;
+  
+  /* Clinical Precision Palette */
+  --color-clinical-bg: #fcf9f8;
+  --color-clinical-primary: #006e17;
+  --color-clinical-primary-hover: #00530f;
+  --color-clinical-surface: #ffffff;
+  --color-clinical-outline: #becab7;
+  --color-clinical-text: #1b1c1c;
+  --color-clinical-muted: #5f5e5e;
+  --color-clinical-error: #ba1a1a;
+  
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
+}
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --background: #fcf9f8;
+  --foreground: #1b1c1c;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+}
+
+/* Modern Web Guidance: Form field validation feedback after interaction */
+.validated-input {
+  transition: border-color 0.15s ease-in-out, background-color 0.15s ease-in-out;
+}
+
+.validated-input:user-invalid {
+  border-color: var(--color-clinical-error) !important;
+  background-color: #fff5f5 !important;
+}
+
+.validated-input:user-valid {
+  border-color: var(--color-clinical-primary) !important;
+}
+
+/* Scrollbar styles for modern browser elements */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #becab7;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #a3b29c;
 }
