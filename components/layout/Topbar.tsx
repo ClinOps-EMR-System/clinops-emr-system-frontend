@@ -1,11 +1,30 @@
 "use client";
 
-import { useState } from "react";
+import React, { useState } from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useAuth } from "../../store/RoleContext";
 
 export default function Topbar() {
+  const pathname = usePathname();
   const { user, logout } = useAuth();
   const [dropdownOpen, setDropdownOpen] = useState(false);
+
+  // Construct breadcrumbs hierarchy
+  const pathParts = pathname.split("/").filter(Boolean);
+  const breadcrumbs = pathParts.map((part, index) => {
+    const href = "/" + pathParts.slice(0, index + 1).join("/");
+    let label = part.charAt(0).toUpperCase() + part.slice(1);
+    if (label.toLowerCase() === "dashboard") label = "Dashboard";
+    if (label.toLowerCase() === "patients") label = "Patients";
+    if (label.toLowerCase() === "register") label = "Register Intake";
+    if (label.toLowerCase() === "triage") label = "Triage";
+    if (label.toLowerCase() === "consultation") label = "Consultation";
+    if (/^\d+$/.test(part)) {
+      label = `Patient #${part}`;
+    }
+    return { label, href };
+  });
 
   const getInitials = (name: string) => {
     return name
@@ -23,20 +42,23 @@ export default function Topbar() {
 
   return (
     <header className="h-16 bg-brand-dark flex items-center justify-between px-6 border-b border-gray-800 z-10 font-sans">
-      {/* Quick Search Shortcut */}
-      <div className="flex-1 max-w-xl">
-        <div className="relative">
-          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <svg className="h-5 w-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
-          </div>
-          <input
-            className="block w-full pl-10 pr-3 py-1.5 border border-transparent rounded-md leading-5 bg-gray-800 text-gray-300 placeholder-gray-500 focus:outline-none focus:bg-white focus:text-gray-900 focus:ring-1 focus:ring-brand-green focus:border-brand-green sm:text-sm transition duration-150 ease-in-out font-sans"
-            placeholder="Search patient or record ID..."
-            type="text"
-          />
-        </div>
+      {/* Breadcrumb Tree Locator */}
+      <div className="flex items-center gap-1.5 text-[11px] font-bold text-gray-400 font-mono tracking-wide">
+        <Link href="/dashboard" className="hover:text-white transition-colors uppercase">
+          Home
+        </Link>
+        {breadcrumbs.map((crumb, idx) => (
+          <React.Fragment key={idx}>
+            <span className="text-gray-600 font-sans text-xs">/</span>
+            {idx === breadcrumbs.length - 1 ? (
+              <span className="text-brand-green font-bold uppercase">{crumb.label}</span>
+            ) : (
+              <Link href={crumb.href} className="hover:text-white transition-colors uppercase">
+                {crumb.label}
+              </Link>
+            )}
+          </React.Fragment>
+        ))}
       </div>
 
       {/* Right Side Actions */}

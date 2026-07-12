@@ -64,8 +64,8 @@ function PatientRegistrationForm() {
       try {
         setFetchLoading(true);
         const response = await api.get(`/patients/${completeId}`, token);
-        if (response && response.patient) {
-          const p = response.patient;
+        if (response && response.data && response.data.patient) {
+          const p = response.data.patient;
           setFirstName(p.first_name || "");
           setLastName(p.last_name || "");
           setGender(p.gender || "Female");
@@ -86,6 +86,15 @@ function PatientRegistrationForm() {
 
     loadPatientDetails();
   }, [completeId, token]);
+
+  // Pre-select emergency mode if query param is set
+  useEffect(() => {
+    const isEmergencyParam = searchParams.get("emergency");
+    if (isEmergencyParam === "true") {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setIsEmergency(true);
+    }
+  }, [searchParams]);
 
   // Handle standard patient check for duplicates before saving
   const checkDuplicates = async () => {
