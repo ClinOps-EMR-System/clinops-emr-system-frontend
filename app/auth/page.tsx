@@ -46,7 +46,7 @@ export default function AuthPage() {
         setMessage(data.message || "Unable to sign in.");
       } else {
         setMessage("Signed in successfully. Redirecting...");
-        login(data.token, data.user);
+        login(data.data.token, data.data.user);
       }
     } catch (error) {
       setMessage("Unable to reach authentication service.");
