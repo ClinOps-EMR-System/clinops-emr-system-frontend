@@ -12,10 +12,11 @@ interface NavItem {
 
 export default function Sidebar() {
   const pathname = usePathname();
-  const { user } = useAuth();
+  const { activeRole } = useAuth();
 
-  const role = user?.role || "Staff";
-  // Format role label (e.g. "triage-nurse" -> "Triage Nurse")
+  const role = activeRole || "clerk";
+  
+  // Format role label (e.g. "lab-technician" -> "Lab Technician")
   const roleLabel = role
     .split("-")
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
@@ -125,7 +126,7 @@ export default function Sidebar() {
   const navLinks = [...generalLinks, ...(roleLinksMap[role] || [])];
 
   return (
-    <aside className="w-64 bg-brand-dark flex flex-col justify-between h-full flex-shrink-0 border-r border-gray-800 z-20">
+    <aside className="w-64 bg-brand-dark flex flex-col justify-between h-full flex-shrink-0 border-r border-gray-800 z-20 font-sans">
       <div>
         {/* Sidebar Header */}
         <div className="h-16 flex items-center px-6 border-b border-gray-800">

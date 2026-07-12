@@ -46,7 +46,7 @@ export default function Dashboard() {
   }, [token]);
 
   const role = user?.role || "clerk";
-  const staffName = user?.full_name?.split(" ")[0] || "Staff";
+  const staffName = user?.name?.split(" ")[0] || "Staff";
 
   // Compute stats based on loaded data
   const registeredTodayCount = patients.filter((p) => {
