@@ -24,6 +24,7 @@ export default function PatientSearchDirectory() {
   const { token } = useAuth();
   const [patients, setPatients] = useState<Patient[]>([]);
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [genderFilter, setGenderFilter] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("");
   const [incompleteFilter, setIncompleteFilter] = useState(false);
@@ -32,6 +33,14 @@ export default function PatientSearchDirectory() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Sync debounced search search key
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearch(search);
+    }, 300);
+    return () => clearTimeout(handler);
+  }, [search]);
+
   async function fetchPatients(page = 1) {
     try {
       setLoading(true);
@@ -39,8 +48,8 @@ export default function PatientSearchDirectory() {
       
       let endpoint = `/patients?page=${page}&per_page=10`;
       
-      if (search.trim()) {
-        endpoint += `&search=${encodeURIComponent(search)}`;
+      if (debouncedSearch.trim()) {
+        endpoint += `&search=${encodeURIComponent(debouncedSearch)}`;
       }
       if (genderFilter) {
         endpoint += `&gender=${genderFilter}`;
@@ -70,7 +79,7 @@ export default function PatientSearchDirectory() {
       fetchPatients(1);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token, genderFilter, categoryFilter, incompleteFilter]);
+  }, [token, debouncedSearch, genderFilter, categoryFilter, incompleteFilter]);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -82,7 +91,7 @@ export default function PatientSearchDirectory() {
       {/* Directory Header */}
       <section className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-[#1b1c1c]">Patient Master Directory</h1>
+          <h1 className="text-3xl font-bold text-[#1b1c1c]">Patient Search</h1>
           <p className="text-sm text-[#5f5e5e] mt-1">
             Lookup, filter, and access clinical logs for patients active in the hospital.
           </p>
@@ -91,7 +100,7 @@ export default function PatientSearchDirectory() {
           href="/patients/register"
           className="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-bold rounded bg-clinical-primary text-white hover:bg-clinical-primary-hover shadow-sm transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-clinical-primary cursor-pointer"
         >
-          Register New Patient
+          Patient Registration
         </Link>
       </section>
 
@@ -168,6 +177,25 @@ export default function PatientSearchDirectory() {
                 Incomplete Drafts Only
               </label>
             </div>
+
+            {/* Clear Filters */}
+            {(search || genderFilter || categoryFilter || incompleteFilter) && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSearch("");
+                  setGenderFilter("");
+                  setCategoryFilter("");
+                  setIncompleteFilter(false);
+                }}
+                className="flex items-center gap-1.5 text-xs font-bold text-red-600 hover:text-red-800 self-end h-9 uppercase tracking-wider transition-colors mt-4 sm:mt-0 cursor-pointer"
+              >
+                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+                Clear Filters
+              </button>
+            )}
           </div>
         </form>
       </section>

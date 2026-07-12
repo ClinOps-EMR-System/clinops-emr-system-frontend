@@ -16,6 +16,18 @@ interface DuplicatePatient {
   district: string;
 }
 
+// ─── Input validation helpers ───────────────────────────────────────────────
+/** Strip all non-digit characters */
+const digitsOnly = (v: string) => v.replace(/\D/g, "");
+/** Strip everything except digits and uppercase letters */
+const alphaNumOnly = (v: string) => v.replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
+/** Format a raw digit string as +265 XXXXXXXXX (max 9 trailing digits) */
+const formatMalawiPhone = (raw: string) => {
+  const digits = digitsOnly(raw).slice(0, 9);
+  return digits;
+};
+// ─────────────────────────────────────────────────────────────────────────────
+
 function PatientRegistrationForm() {
   const { token } = useAuth();
   const router = useRouter();
@@ -43,6 +55,10 @@ function PatientRegistrationForm() {
   const [consentTeaching, setConsentTeaching] = useState(false);
   const [consentResearch, setConsentResearch] = useState(false);
 
+  // Emergency fields
+  const [approximateAge, setApproximateAge] = useState("");
+  const [presentingComplaint, setPresentingComplaint] = useState("");
+
   // States
   const [isEmergency, setIsEmergency] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -60,8 +76,8 @@ function PatientRegistrationForm() {
       try {
         setFetchLoading(true);
         const response = await api.get(`/patients/${completeId}`, token);
-        if (response && response.patient) {
-          const p = response.patient;
+        if (response && response.data && response.data.patient) {
+          const p = response.data.patient;
           setFirstName(p.first_name || "");
           setLastName(p.last_name || "");
           setGender(p.gender || "Female");
@@ -82,6 +98,15 @@ function PatientRegistrationForm() {
 
     loadPatientDetails();
   }, [completeId, token]);
+
+  // Pre-select emergency mode if query param is set
+  useEffect(() => {
+    const isEmergencyParam = searchParams.get("emergency");
+    if (isEmergencyParam === "true") {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setIsEmergency(true);
+    }
+  }, [searchParams]);
 
   // Handle standard patient check for duplicates before saving
   const checkDuplicates = async () => {
@@ -122,6 +147,8 @@ function PatientRegistrationForm() {
           last_name: lastName,
           gender,
           patient_category: "Emergency",
+          approximate_age: approximateAge ? parseInt(approximateAge) : null,
+          presenting_complaint: presentingComplaint,
           consent_care: consentCare,
         }
       : {
@@ -129,7 +156,7 @@ function PatientRegistrationForm() {
           last_name: lastName,
           date_of_birth: dob,
           gender,
-          phone,
+          phone: phone ? `+265${phone}` : null,
           national_id: nationalId || null,
           health_passport_number: healthPassport || null,
           address,
@@ -137,7 +164,7 @@ function PatientRegistrationForm() {
           traditional_authority: ta,
           district,
           guardian_name: guardianName || null,
-          guardian_phone: guardianPhone || null,
+          guardian_phone: guardianPhone ? `+265${guardianPhone}` : null,
           patient_category: category,
           consent_care: consentCare,
           consent_teaching: consentTeaching,
@@ -188,7 +215,7 @@ function PatientRegistrationForm() {
     <div className="max-w-4xl mx-auto space-y-6 font-sans">
       <div>
         <h1 className="text-3xl font-bold text-[#1b1c1c]">
-          {completeId ? "Complete Emergency Intake" : "Patient Registration Desk"}
+          {completeId ? "Complete Emergency Intake" : "Patient Registration"}
         </h1>
         <p className="text-sm text-[#5f5e5e] mt-1">
           {completeId
@@ -208,7 +235,7 @@ function PatientRegistrationForm() {
                 !isEmergency ? "border-b-2 border-clinical-primary text-clinical-primary" : "text-gray-400"
               }`}
             >
-              Standard Intake
+              Standard Registration
             </button>
             <button
               type="button"
@@ -279,6 +306,23 @@ function PatientRegistrationForm() {
                 {errors.date_of_birth && <p className="text-xs text-red-600 mt-1">{errors.date_of_birth.join(" ")}</p>}
               </div>
             )}
+
+            {isEmergency && (
+              <div className="space-y-1">
+                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide">Approximate Age (Years) *</label>
+                <input
+                  type="number"
+                  required
+                  min="0"
+                  max="150"
+                  className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary text-sm font-medium text-gray-900 font-mono"
+                  value={approximateAge}
+                  onChange={(e) => setApproximateAge(e.target.value)}
+                  placeholder="e.g. 35"
+                />
+                {errors.approximate_age && <p className="text-xs text-red-600 mt-1">{errors.approximate_age.join(" ")}</p>}
+              </div>
+            )}
           </div>
 
           {!isEmergency && (
@@ -287,22 +331,29 @@ function PatientRegistrationForm() {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 border-t border-gray-100 pt-4">
                 <div className="space-y-1">
                   <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide">Phone Number</label>
-                  <input
-                    type="text"
-                    className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary text-sm font-medium text-gray-900 font-mono"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    placeholder="+265..."
-                  />
+                  <div className="flex">
+                    <span className="inline-flex items-center px-3 border border-r-0 border-gray-300 rounded-l bg-gray-50 text-gray-500 text-sm font-mono select-none">+265</span>
+                    <input
+                      type="tel"
+                      inputMode="numeric"
+                      maxLength={9}
+                      className="flex-1 px-3 py-2 border border-gray-300 rounded-r focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary text-sm font-medium text-gray-900 font-mono"
+                      value={phone}
+                      onChange={(e) => setPhone(formatMalawiPhone(e.target.value))}
+                      placeholder="999 999 999"
+                    />
+                  </div>
+                  <p className="text-[11px] text-gray-400">9 digits after country code (+265)</p>
                 </div>
 
                 <div className="space-y-1">
                   <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide">National ID</label>
                   <input
                     type="text"
+                    maxLength={12}
                     className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary text-sm font-medium text-gray-900 font-mono uppercase"
                     value={nationalId}
-                    onChange={(e) => setNationalId(e.target.value)}
+                    onChange={(e) => setNationalId(alphaNumOnly(e.target.value))}
                     placeholder="E.g. AB12345"
                   />
                   {errors.national_id && <p className="text-xs text-red-600 mt-1">{errors.national_id.join(" ")}</p>}
@@ -312,9 +363,11 @@ function PatientRegistrationForm() {
                   <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide">Health Passport #</label>
                   <input
                     type="text"
-                    className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary text-sm font-medium text-gray-900 font-mono"
+                    maxLength={20}
+                    className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary text-sm font-medium text-gray-900 font-mono uppercase"
                     value={healthPassport}
-                    onChange={(e) => setHealthPassport(e.target.value)}
+                    onChange={(e) => setHealthPassport(alphaNumOnly(e.target.value))}
+                    placeholder="E.g. HP000123"
                   />
                 </div>
               </div>
@@ -402,12 +455,19 @@ function PatientRegistrationForm() {
 
                 <div className="space-y-1">
                   <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide">Next of Kin Contact Phone</label>
-                  <input
-                    type="text"
-                    className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary text-sm font-medium text-gray-900 font-mono"
-                    value={guardianPhone}
-                    onChange={(e) => setGuardianPhone(e.target.value)}
-                  />
+                  <div className="flex">
+                    <span className="inline-flex items-center px-3 border border-r-0 border-gray-300 rounded-l bg-gray-50 text-gray-500 text-sm font-mono select-none">+265</span>
+                    <input
+                      type="tel"
+                      inputMode="numeric"
+                      maxLength={9}
+                      className="flex-1 px-3 py-2 border border-gray-300 rounded-r focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary text-sm font-medium text-gray-900 font-mono"
+                      value={guardianPhone}
+                      onChange={(e) => setGuardianPhone(formatMalawiPhone(e.target.value))}
+                      placeholder="999 999 999"
+                    />
+                  </div>
+                  <p className="text-[11px] text-gray-400">9 digits after country code (+265)</p>
                 </div>
               </div>
             </>
@@ -454,6 +514,21 @@ function PatientRegistrationForm() {
               )}
             </div>
           </div>
+
+          {isEmergency && (
+            <div className="space-y-1 pt-4 border-t border-gray-100">
+              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide">Presenting Complaint *</label>
+              <textarea
+                required
+                rows={3}
+                className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary text-sm font-medium text-gray-900"
+                value={presentingComplaint}
+                onChange={(e) => setPresentingComplaint(e.target.value)}
+                placeholder="Describe the initial emergency triage presenting complaint..."
+              ></textarea>
+              {errors.presenting_complaint && <p className="text-xs text-red-600 mt-1">{errors.presenting_complaint.join(" ")}</p>}
+            </div>
+          )}
 
           {/* Action Errors display */}
           {error && (
