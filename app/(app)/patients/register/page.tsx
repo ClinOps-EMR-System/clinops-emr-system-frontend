@@ -73,7 +73,7 @@ function PatientRegistrationForm() {
           setConsentTeaching(!!p.consent_teaching);
           setConsentResearch(!!p.consent_research);
         }
-      } catch (err: any) {
+      } catch {
         setError("Failed to retrieve emergency patient records.");
       } finally {
         setFetchLoading(false);
@@ -96,7 +96,7 @@ function PatientRegistrationForm() {
         duplicateDialogRef.current?.showModal();
         return true;
       }
-    } catch (e) {
+    } catch {
       // Ignore checks error, save directly as fallback
     }
     return false;
@@ -160,11 +160,12 @@ function PatientRegistrationForm() {
       if (response) {
         router.push("/patients");
       }
-    } catch (err: any) {
-      if (err.errors) {
-        setErrors(err.errors);
+    } catch (err: unknown) {
+      const apiError = err as { message?: string; errors?: Record<string, string[]> };
+      if (apiError.errors) {
+        setErrors(apiError.errors);
       }
-      setError(err.message || "An error occurred while saving the record.");
+      setError(apiError.message || "An error occurred while saving the record.");
     } finally {
       setLoading(false);
     }

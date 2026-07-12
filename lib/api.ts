@@ -4,6 +4,11 @@ interface RequestOptions extends RequestInit {
   token?: string | null;
 }
 
+interface ApiError extends Error {
+  status?: number;
+  errors?: Record<string, string[]>;
+}
+
 async function request(endpoint: string, options: RequestOptions = {}) {
   const { token, ...init } = options;
   const headers = new Headers(init.headers);
@@ -37,9 +42,9 @@ async function request(endpoint: string, options: RequestOptions = {}) {
   const data = await response.json();
 
   if (!response.ok) {
-    const error = new Error(data.message || "An error occurred while fetching the data.");
-    (error as any).status = response.status;
-    (error as any).errors = data.errors || {};
+    const error = new Error(data.message || "An error occurred while fetching the data.") as ApiError;
+    error.status = response.status;
+    error.errors = data.errors || {};
     throw error;
   }
 
@@ -50,14 +55,14 @@ export const api = {
   get: (endpoint: string, token?: string | null) =>
     request(endpoint, { method: "GET", token }),
 
-  post: (endpoint: string, body: any, token?: string | null) =>
+  post: (endpoint: string, body: unknown, token?: string | null) =>
     request(endpoint, {
       method: "POST",
       body: body instanceof FormData ? body : JSON.stringify(body),
       token,
     }),
 
-  put: (endpoint: string, body: any, token?: string | null) =>
+  put: (endpoint: string, body: unknown, token?: string | null) =>
     request(endpoint, {
       method: "PUT",
       body: JSON.stringify(body),

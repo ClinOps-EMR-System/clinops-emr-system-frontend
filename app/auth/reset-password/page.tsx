@@ -52,7 +52,7 @@ function ResetPasswordForm() {
         setErrors({});
         setIsSuccess(true);
       }
-    } catch (error) {
+    } catch {
       setMessage("Unable to reach authentication service.");
     } finally {
       setSubmitLoading(false);

@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 "use client";
 
 import { useEffect, useState } from "react";
@@ -20,7 +21,7 @@ interface Patient {
 }
 
 export default function PatientSearchDirectory() {
-  const { user, token } = useAuth();
+  const { token } = useAuth();
   const [patients, setPatients] = useState<Patient[]>([]);
   const [search, setSearch] = useState("");
   const [genderFilter, setGenderFilter] = useState("");
@@ -57,8 +58,8 @@ export default function PatientSearchDirectory() {
         setCurrentPage(response.current_page || 1);
         setTotalPages(response.last_page || 1);
       }
-    } catch (err: any) {
-      setError(err.message || "Failed to retrieve patients.");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to retrieve patients.");
     } finally {
       setLoading(false);
     }
@@ -68,6 +69,7 @@ export default function PatientSearchDirectory() {
     if (token) {
       fetchPatients(1);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, genderFilter, categoryFilter, incompleteFilter]);
 
   const handleSearchSubmit = (e: React.FormEvent) => {

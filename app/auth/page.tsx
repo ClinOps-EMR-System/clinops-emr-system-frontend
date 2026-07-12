@@ -49,7 +49,7 @@ export default function LoginPage() {
         setMessage("Signed in successfully. Redirecting...");
         login(data.data.token, data.data.user);
       }
-    } catch (error) {
+    } catch {
       setMessage("Unable to reach authentication service.");
     } finally {
       setSubmitLoading(false);

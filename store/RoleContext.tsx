@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 "use client";
 
 import React, { createContext, useContext, useState, useEffect } from "react";
@@ -42,7 +43,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setToken(storedToken);
       try {
         setUser(JSON.parse(storedUser));
-      } catch (e) {
+      } catch {
         localStorage.removeItem("clinops_token");
         localStorage.removeItem("clinops_user");
       }
@@ -65,6 +66,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Listen to 401 unauthorized events
   useEffect(() => {
     const handleUnauthorized = () => {
+      localStorage.removeItem("clinops_token");
+      localStorage.removeItem("clinops_user");
       setToken(null);
       setUser(null);
       router.push("/auth");

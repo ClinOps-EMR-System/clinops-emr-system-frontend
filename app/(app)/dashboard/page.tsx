@@ -33,8 +33,8 @@ export default function Dashboard() {
         if (response && response.data) {
           setPatients(response.data);
         }
-      } catch (err: any) {
-        setError(err.message || "Failed to load dashboard data.");
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : "Failed to load dashboard data.");
       } finally {
         setLoading(false);
       }
