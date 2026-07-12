@@ -45,7 +45,6 @@ export default function Dashboard() {
     }
   }, [token]);
 
-  const role = user?.role || "clerk";
   const staffName = user?.name?.split(" ")[0] || "Staff";
 
   // Compute stats based on loaded data
@@ -63,7 +62,7 @@ export default function Dashboard() {
       <section className="flex flex-col sm:flex-row justify-between sm:items-end gap-4">
         <div>
           <span className="text-xs font-bold text-brand-green tracking-widest uppercase">
-            {role === "clerk" ? "Front Desk" : role === "nurse" ? "Triage Desk" : "Clinical Consultation"}
+            Clinical Workspace
           </span>
           <h1 className="text-3xl font-bold text-[#1b1c1c] mt-1">
             Good morning, {staffName}
@@ -78,17 +77,15 @@ export default function Dashboard() {
           </p>
         </div>
         
-        {role === "clerk" && (
-          <Link
-            href="/patients/register"
-            className="inline-flex items-center justify-center px-4 py-2.5 border border-transparent text-sm font-bold rounded bg-clinical-primary text-white hover:bg-clinical-primary-hover shadow-sm transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-clinical-primary cursor-pointer"
-          >
-            <svg className="mr-2 -ml-1 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-            </svg>
-            Quick Register Patient
-          </Link>
-        )}
+        <Link
+          href="/patients/register"
+          className="inline-flex items-center justify-center px-4 py-2.5 border border-transparent text-sm font-bold rounded bg-clinical-primary text-white hover:bg-clinical-primary-hover shadow-sm transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-clinical-primary cursor-pointer"
+        >
+          <svg className="mr-2 -ml-1 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+          </svg>
+          Quick Register Patient
+        </Link>
       </section>
 
       {/* Metrics Cards Section */}
@@ -122,12 +119,12 @@ export default function Dashboard() {
         </div>
       </section>
 
-      {/* Recent Queue Table Section */}
+      {/* Recent Activity Table Section */}
       <section className="bg-white rounded border border-[#becab7]/50 overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-100 flex items-center">
           <div className="w-1.5 h-6 bg-brand-green rounded-full mr-3"></div>
           <h2 className="text-lg font-bold text-gray-900">
-            {role === "clerk" ? "Recent registration activity" : role === "nurse" ? "Triage Queue" : "Clinician Consultation Queue"}
+            Recent Patient Registrations
           </h2>
         </div>
 
@@ -161,7 +158,7 @@ export default function Dashboard() {
                     Village / District
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-bold text-[#5f5e5e] uppercase tracking-wider">
-                    Status / Action
+                    Status / Actions
                   </th>
                 </tr>
               </thead>
@@ -197,18 +194,32 @@ export default function Dashboard() {
                             </span>
                           )}
 
-                          <Link
-                            href={
-                              role === "clerk"
-                                ? `/patients`
-                                : role === "nurse"
-                                ? `/patients/${patient.id}/triage`
-                                : `/patients/${patient.id}/consultation`
-                            }
-                            className="text-xs font-bold text-sky-600 hover:text-sky-800 uppercase tracking-wider"
-                          >
-                            {role === "clerk" ? "View" : role === "nurse" ? "Triage Vitals" : "Consult"}
-                          </Link>
+                          <div className="flex gap-3">
+                            {hasIncompleteReg ? (
+                              <Link
+                                href={`/patients/register?complete=${patient.id}`}
+                                className="text-xs font-bold text-[#0ea5e9] hover:text-[#0288c4] uppercase tracking-wider"
+                              >
+                                Complete
+                              </Link>
+                            ) : (
+                              <>
+                                <Link
+                                  href={`/patients/${patient.id}/triage`}
+                                  className="text-xs font-bold text-clinical-primary hover:text-clinical-primary-hover uppercase tracking-wider"
+                                >
+                                  Triage
+                                </Link>
+                                <span className="text-gray-300">|</span>
+                                <Link
+                                  href={`/patients/${patient.id}/consultation`}
+                                  className="text-xs font-bold text-teal-600 hover:text-teal-800 uppercase tracking-wider"
+                                >
+                                  Consult
+                                </Link>
+                              </>
+                            )}
+                          </div>
                         </div>
                       </td>
                     </tr>

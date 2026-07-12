@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useAuth } from "../../store/RoleContext";
 
 export default function Topbar() {
-  const { user, logout, activeRole, setActiveRole } = useAuth();
+  const { user, logout } = useAuth();
   const [dropdownOpen, setDropdownOpen] = useState(false);
 
   const getInitials = (name: string) => {
@@ -17,16 +17,9 @@ export default function Topbar() {
   };
 
   const name = user?.name || "Staff Member";
+  const email = user?.email || "staff@clinops.org";
   const initials = getInitials(name);
-  const department = user?.department || "General Ward";
-
-  // Map active role name to readable text
-  const getRoleLabel = (r: string) => {
-    if (r === "clerk") return "Registration Clerk";
-    if (r === "nurse") return "Triage Nurse";
-    if (r === "clinician") return "Clinician / Doctor";
-    return r.replace("-", " ");
-  };
+  const departmentName = user?.department?.name || "Clinical Operations";
 
   return (
     <header className="h-16 bg-brand-dark flex items-center justify-between px-6 border-b border-gray-800 z-10 font-sans">
@@ -48,9 +41,9 @@ export default function Topbar() {
 
       {/* Right Side Actions */}
       <div className="ml-4 flex items-center gap-4">
-        {/* Active Workspace Badge */}
+        {/* Active Department Badge */}
         <span className="hidden sm:inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-gray-800 text-brand-green border border-gray-700 uppercase tracking-wider font-mono">
-          {getRoleLabel(activeRole)}
+          {departmentName}
         </span>
 
         {/* Notifications Icon */}
@@ -85,26 +78,12 @@ export default function Topbar() {
               
               <div className="absolute right-0 mt-2 w-52 rounded-md bg-white shadow-lg py-1 ring-1 ring-black ring-opacity-5 z-20 focus:outline-none">
                 <div className="px-4 py-2 border-b border-gray-100">
-                  <p className="text-xs text-gray-400 uppercase font-bold tracking-wider">Active Desk</p>
-                  <select
-                    value={activeRole}
-                    onChange={(e) => {
-                      setActiveRole(e.target.value);
-                      setDropdownOpen(false);
-                    }}
-                    className="mt-1 w-full text-xs font-bold uppercase border border-gray-200 rounded px-2 py-1.5 bg-gray-50 text-gray-800 focus:outline-none focus:border-brand-green"
-                  >
-                    <option value="clerk">Registration Clerk</option>
-                    <option value="nurse">Triage Nurse</option>
-                    <option value="clinician">Clinician / Doctor</option>
-                    <option value="lab-technician">Lab Technician</option>
-                    <option value="pharmacist">Pharmacist</option>
-                    <option value="billing-officer">Billing Officer</option>
-                  </select>
-                </div>
-                <div className="px-4 py-2 border-b border-gray-100">
                   <p className="text-xs text-gray-400 uppercase font-bold tracking-wide">Staff Name</p>
                   <p className="text-xs text-gray-900 font-bold truncate">{name}</p>
+                </div>
+                <div className="px-4 py-2 border-b border-gray-100">
+                  <p className="text-xs text-gray-400 uppercase font-bold tracking-wide">Email</p>
+                  <p className="text-xs text-gray-900 font-medium truncate">{email}</p>
                 </div>
                 <button
                   onClick={() => {

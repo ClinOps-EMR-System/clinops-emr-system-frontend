@@ -75,8 +75,6 @@ export default function PatientSearchDirectory() {
     fetchPatients(1);
   };
 
-  const role = user?.role || "clerk";
-
   return (
     <div className="max-w-7xl mx-auto space-y-6 font-sans">
       {/* Directory Header */}
@@ -87,14 +85,12 @@ export default function PatientSearchDirectory() {
             Lookup, filter, and access clinical logs for patients active in the hospital.
           </p>
         </div>
-        {role === "clerk" && (
-          <Link
-            href="/patients/register"
-            className="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-bold rounded bg-clinical-primary text-white hover:bg-clinical-primary-hover shadow-sm transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-clinical-primary cursor-pointer"
-          >
-            Register New Patient
-          </Link>
-        )}
+        <Link
+          href="/patients/register"
+          className="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-bold rounded bg-clinical-primary text-white hover:bg-clinical-primary-hover shadow-sm transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-clinical-primary cursor-pointer"
+        >
+          Register New Patient
+        </Link>
       </section>
 
       {/* Filter and Search Bar Card */}
@@ -237,7 +233,7 @@ export default function PatientSearchDirectory() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <div className="flex gap-3">
-                          {isDraft && role === "clerk" ? (
+                          {isDraft ? (
                             <Link
                               href={`/patients/register?complete=${patient.id}`}
                               className="text-xs font-bold text-[#0ea5e9] hover:text-[#0288c4] uppercase tracking-wider"
@@ -246,22 +242,20 @@ export default function PatientSearchDirectory() {
                             </Link>
                           ) : (
                             <>
-                              {role === "nurse" && (
-                                <Link
-                                  href={`/patients/${patient.id}/triage`}
-                                  className="text-xs font-bold text-clinical-primary hover:text-clinical-primary-hover uppercase tracking-wider"
-                                >
-                                  Triage
-                                </Link>
-                              )}
-                              {role === "clinician" && (
-                                <Link
-                                  href={`/patients/${patient.id}/consultation`}
-                                  className="text-xs font-bold text-teal-600 hover:text-teal-800 uppercase tracking-wider"
-                                >
-                                  Consult
-                                </Link>
-                              )}
+                              <Link
+                                href={`/patients/${patient.id}/triage`}
+                                className="text-xs font-bold text-clinical-primary hover:text-clinical-primary-hover uppercase tracking-wider"
+                              >
+                                Triage
+                              </Link>
+                              <span className="text-gray-300">|</span>
+                              <Link
+                                href={`/patients/${patient.id}/consultation`}
+                                className="text-xs font-bold text-teal-600 hover:text-teal-800 uppercase tracking-wider"
+                              >
+                                Consult
+                              </Link>
+                              <span className="text-gray-300">|</span>
                               <Link
                                 href={`/patients/${patient.id}`}
                                 className="text-xs font-bold text-[#5f5e5e] hover:text-gray-900 uppercase tracking-wider"
