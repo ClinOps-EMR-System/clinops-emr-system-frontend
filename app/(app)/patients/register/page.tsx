@@ -33,6 +33,7 @@ function PatientRegistrationForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const completeId = searchParams.get("complete");
+  const editId = searchParams.get("edit");
 
   // Form Fields
   const [firstName, setFirstName] = useState("");
@@ -69,13 +70,14 @@ function PatientRegistrationForm() {
 
   const duplicateDialogRef = useRef<HTMLDialogElement>(null);
 
-  // Load existing data if we are completing an emergency registration
+  // Load existing data if we are completing an emergency registration or editing a patient
   useEffect(() => {
     async function loadPatientDetails() {
-      if (!completeId || !token) return;
+      const targetId = editId || completeId;
+      if (!targetId || !token) return;
       try {
         setFetchLoading(true);
-        const response = await api.get(`/patients/${completeId}`, token);
+        const response = await api.get(`/patients/${targetId}`, token);
         if (response && response.data && response.data.patient) {
           const p = response.data.patient;
           setFirstName(p.first_name || "");
@@ -85,19 +87,29 @@ function PatientRegistrationForm() {
           if (p.date_of_birth) {
             setDob(new Date(p.date_of_birth).toISOString().split("T")[0]);
           }
+          // Prefill remaining details for editing/completion
+          setPhone(p.phone ? p.phone.replace("+265", "") : "");
+          setNationalId(p.national_id || "");
+          setHealthPassport(p.health_passport_number || "");
+          setAddress(p.address || "");
+          setVillage(p.village || "");
+          setTa(p.traditional_authority || "");
+          if (p.district) setDistrict(p.district);
+          setGuardianName(p.guardian_name || "");
+          setGuardianPhone(p.guardian_phone ? p.guardian_phone.replace("+265", "") : "");
           setConsentCare(!!p.consent_care);
           setConsentTeaching(!!p.consent_teaching);
           setConsentResearch(!!p.consent_research);
         }
       } catch {
-        setError("Failed to retrieve emergency patient records.");
+        setError("Failed to retrieve patient records.");
       } finally {
         setFetchLoading(false);
       }
     }
 
     loadPatientDetails();
-  }, [completeId, token]);
+  }, [completeId, editId, token]);
 
   // Pre-select emergency mode if query param is set
   useEffect(() => {
@@ -173,7 +185,10 @@ function PatientRegistrationForm() {
 
     try {
       let response;
-      if (completeId) {
+      if (editId) {
+        // Edit existing patient
+        response = await api.put(`/patients/${editId}`, payload, token);
+      } else if (completeId) {
         // Complete emergency registration
         response = await api.put(`/patients/${completeId}/complete-registration`, payload, token);
       } else if (isEmergency) {
@@ -185,7 +200,11 @@ function PatientRegistrationForm() {
       }
 
       if (response) {
-        router.push("/patients");
+        if (editId) {
+          router.push(`/patients/${editId}`);
+        } else {
+          router.push("/patients");
+        }
       }
     } catch (err: unknown) {
       const apiError = err as { message?: string; errors?: Record<string, string[]> };
@@ -215,10 +234,12 @@ function PatientRegistrationForm() {
     <div className="max-w-4xl mx-auto space-y-6 font-sans">
       <div>
         <h1 className="text-3xl font-bold text-[#1b1c1c]">
-          {completeId ? "Complete Emergency Intake" : "Patient Registration"}
+          {editId ? "Edit Patient Profile" : completeId ? "Complete Emergency Intake" : "Patient Registration"}
         </h1>
         <p className="text-sm text-[#5f5e5e] mt-1">
-          {completeId
+          {editId
+            ? "Update demographic details, contact numbers, and consent gates."
+            : completeId
             ? "Enter full demographic data to finalize emergency registration."
             : "Record patient identities, locate coordinates, and log care consent."}
         </p>
