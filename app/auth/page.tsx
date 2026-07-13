@@ -9,7 +9,7 @@ const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000/
 
 export default function LoginPage() {
   const { login } = useAuth();
-  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [remember, setRemember] = useState(false);
@@ -24,7 +24,7 @@ export default function LoginPage() {
     setErrors({});
 
     const payload = {
-      username,
+      email,
       password,
       remember,
     };
@@ -60,19 +60,19 @@ export default function LoginPage() {
     <AuthShell title="Sign in" subtitle="Enter your staff credentials.">
       <form className="space-y-6" onSubmit={handleSubmit}>
         <div className="space-y-1">
-          <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide" htmlFor="username">
-            Email or username
+          <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide" htmlFor="email">
+            Email
           </label>
           <div className="mt-1">
             <input
-              id="username"
-              name="username"
-              type="text"
-              autoComplete="username"
+              id="email"
+              name="email"
+              type="email"
+              autoComplete="email"
               className="appearance-none block w-full px-3 py-3 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:border-[#00a651] focus:ring-[#00a651] sm:text-sm text-gray-900 font-mono"
-              placeholder="Enter email or username"
-              value={username}
-              onChange={(event) => setUsername(event.target.value)}
+              placeholder="Enter your email address"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
               required
             />
           </div>
