@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "../../../../../store/RoleContext";
 import { api } from "../../../../../lib/api";
 import PatientBanner, { Patient, Allergy } from "../../../../../components/ui/PatientBanner";
+import StatusBadge from "../../../../../components/ui/StatusBadge";
 
 interface TriageSummary {
   encounter: {
@@ -41,14 +42,51 @@ interface Diagnosis {
   diagnosed_at: string;
 }
 
+interface Order {
+  id: number;
+  patient_id: number;
+  encounter_id: number;
+  order_type: string;
+  test_name: string;
+  loinc_code: string | null;
+  clinical_indication: string | null;
+  priority: string;
+  status: string;
+  ordered_at: string;
+}
+
+interface Prescription {
+  id: number;
+  patient_id: number;
+  encounter_id: number;
+  drug_name: string;
+  dosage: string;
+  route: string;
+  frequency: string;
+  duration: string;
+  quantity: number;
+  status: string;
+  notes: string | null;
+  is_controlled: boolean;
+  prescribed_at: string;
+}
+
+interface Drug {
+  id: number;
+  name: string;
+  generic_name: string | null;
+  formulation: string | null;
+  strength: string | null;
+}
+
 export default function ClinicianSOAPConsultation() {
   const params = useParams();
   const router = useRouter();
   const { token } = useAuth();
   const patientId = params.id as string;
 
-  // SOAP Tabs
-  const [activeSubTab, setActiveSubTab] = useState<"subjective" | "objective" | "assessment" | "plan">("subjective");
+  // SOAP Tabs + Orders/Prescriptions
+  const [activeSubTab, setActiveSubTab] = useState<"subjective" | "objective" | "assessment" | "plan" | "orders" | "prescriptions">("subjective");
 
   // Core Data
   const [patient, setPatient] = useState<Patient | null>(null);
@@ -71,6 +109,17 @@ export default function ClinicianSOAPConsultation() {
   const [searchLoading, setSearchLoading] = useState(false);
   const [diagnosisType, setDiagnosisType] = useState<"Primary" | "Differential" | "Admission" | "Discharge" | "Final">("Primary");
   const [certainty, setCertainty] = useState("confirmed");
+
+  // Orders State
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [orderForm, setOrderForm] = useState({ test_name: "", loinc_code: "", clinical_indication: "", priority: "routine" });
+
+  // Prescriptions State
+  const [prescriptions, setPrescriptions] = useState<Prescription[]>([]);
+  const [drugQuery, setDrugQuery] = useState("");
+  const [drugResults, setDrugResults] = useState<Drug[]>([]);
+  const [selectedDrug, setSelectedDrug] = useState<Drug | null>(null);
+  const [rxForm, setRxForm] = useState({ dosage: "", route: "oral", frequency: "BD", duration: "7 days", quantity: "30", notes: "", is_controlled: false });
 
   // Load Patient and Diagnoses logs
   async function fetchConsultationData() {
@@ -102,6 +151,22 @@ export default function ClinicianSOAPConsultation() {
         );
         setDiagnoses(filtered);
       }
+
+      // Fetch patient orders
+      try {
+        const ordersRes = await api.get(`/patients/${patientId}/orders`, token);
+        if (ordersRes && ordersRes.data) {
+          setOrders(Array.isArray(ordersRes.data) ? ordersRes.data : []);
+        }
+      } catch { setOrders([]); }
+
+      // Fetch patient prescriptions
+      try {
+        const rxRes = await api.get(`/patients/${patientId}/prescriptions`, token);
+        if (rxRes && rxRes.data) {
+          setPrescriptions(Array.isArray(rxRes.data) ? rxRes.data : []);
+        }
+      } catch { setPrescriptions([]); }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to load consultation logs.");
     } finally {
@@ -238,6 +303,83 @@ export default function ClinicianSOAPConsultation() {
     setSuccessMsg("Clinical plan saved to draft summary.");
   };
 
+  // Create Lab/Imaging Order
+  const handleCreateOrder = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!summary?.encounter?.id) return;
+    setSubmitLoading(true);
+    setError(null);
+    setSuccessMsg(null);
+    try {
+      await api.post(`/encounters/${summary.encounter.id}/orders`, {
+        patient_id: parseInt(patientId),
+        order_type: "lab",
+        test_name: orderForm.test_name,
+        loinc_code: orderForm.loinc_code || null,
+        clinical_indication: orderForm.clinical_indication || null,
+        priority: orderForm.priority,
+      }, token);
+      setSuccessMsg(`Lab order "${orderForm.test_name}" placed successfully.`);
+      setOrderForm({ test_name: "", loinc_code: "", clinical_indication: "", priority: "routine" });
+      fetchConsultationData();
+    } catch (err: unknown) {
+      const apiError = err as { message?: string };
+      setError(apiError.message || "Failed to place order.");
+    } finally {
+      setSubmitLoading(false);
+    }
+  };
+
+  // Create Prescription
+  const handleCreatePrescription = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!summary?.encounter?.id || !selectedDrug) return;
+    setSubmitLoading(true);
+    setError(null);
+    setSuccessMsg(null);
+    try {
+      await api.post(`/encounters/${summary.encounter.id}/prescriptions`, {
+        patient_id: parseInt(patientId),
+        drug_name: selectedDrug.name,
+        generic_name: selectedDrug.generic_name,
+        dosage: rxForm.dosage,
+        route: rxForm.route,
+        frequency: rxForm.frequency,
+        duration: rxForm.duration,
+        quantity: parseInt(rxForm.quantity) || 30,
+        notes: rxForm.notes || null,
+        is_controlled: rxForm.is_controlled,
+      }, token);
+      setSuccessMsg(`Prescription for ${selectedDrug.name} created successfully.`);
+      setSelectedDrug(null);
+      setDrugQuery("");
+      setRxForm({ dosage: "", route: "oral", frequency: "BD", duration: "7 days", quantity: "30", notes: "", is_controlled: false });
+      fetchConsultationData();
+    } catch (err: unknown) {
+      const apiError = err as { message?: string };
+      setError(apiError.message || "Failed to create prescription.");
+    } finally {
+      setSubmitLoading(false);
+    }
+  };
+
+  // Drug search autocomplete
+  useEffect(() => {
+    const delayDebounceFn = setTimeout(async () => {
+      if (drugQuery.trim().length >= 2) {
+        try {
+          const response = await api.get(`/drugs?search=${encodeURIComponent(drugQuery)}`, token);
+          if (response && response.data) {
+            setDrugResults(Array.isArray(response.data) ? response.data : []);
+          }
+        } catch { setDrugResults([]); }
+      } else {
+        setDrugResults([]);
+      }
+    }, 400);
+    return () => clearTimeout(delayDebounceFn);
+  }, [drugQuery, token]);
+
   if (loading) {
     return <div className="p-8 text-center text-sm font-mono text-gray-500">Loading consultation record...</div>;
   }
@@ -335,6 +477,37 @@ export default function ClinicianSOAPConsultation() {
               }`}
             >
               Plan (P)
+            </button>
+            <div className="border-t border-gray-200 my-1"></div>
+            <button
+              onClick={() => { setActiveSubTab("orders"); setError(null); setSuccessMsg(null); }}
+              className={`w-full text-left px-4 py-2.5 text-sm rounded font-bold transition-all relative ${
+                activeSubTab === "orders"
+                  ? "bg-clinical-primary text-white border-l-4 border-brand-green"
+                  : "text-gray-600 hover:bg-gray-50"
+              }`}
+            >
+              Lab Orders
+              {orders.length > 0 && (
+                <span className={`ml-2 text-[10px] font-mono px-1.5 py-0.5 rounded-full ${activeSubTab === "orders" ? "bg-white/20" : "bg-gray-100 text-gray-500"}`}>
+                  {orders.length}
+                </span>
+              )}
+            </button>
+            <button
+              onClick={() => { setActiveSubTab("prescriptions"); setError(null); setSuccessMsg(null); }}
+              className={`w-full text-left px-4 py-2.5 text-sm rounded font-bold transition-all relative ${
+                activeSubTab === "prescriptions"
+                  ? "bg-clinical-primary text-white border-l-4 border-brand-green"
+                  : "text-gray-600 hover:bg-gray-50"
+              }`}
+            >
+              Prescriptions
+              {prescriptions.length > 0 && (
+                <span className={`ml-2 text-[10px] font-mono px-1.5 py-0.5 rounded-full ${activeSubTab === "prescriptions" ? "bg-white/20" : "bg-gray-100 text-gray-500"}`}>
+                  {prescriptions.length}
+                </span>
+              )}
             </button>
           </div>
 
@@ -632,6 +805,238 @@ export default function ClinicianSOAPConsultation() {
                     </button>
                   </div>
                 </form>
+              )}
+
+              {/* ORDERS: LAB / IMAGING */}
+              {activeSubTab === "orders" && (
+                <div className="space-y-8">
+                  <div>
+                    <h3 className="text-lg font-bold text-gray-900">Lab & Imaging Orders</h3>
+                    <p className="text-xs text-[#5f5e5e] mt-0.5">Place diagnostic orders for laboratory tests and imaging studies.</p>
+                  </div>
+
+                  {/* Existing Orders */}
+                  <div className="bg-[#fcf9f8] p-4 rounded border border-gray-200/50">
+                    <h4 className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-3">Order History</h4>
+                    {orders.length > 0 ? (
+                      <div className="divide-y divide-gray-200 bg-white rounded border border-gray-100 overflow-hidden">
+                        {orders.map((order) => (
+                          <div key={order.id} className="px-4 py-3 flex justify-between items-center">
+                            <div>
+                              <span className="font-semibold text-gray-900 text-sm">{order.test_name}</span>
+                              {order.loinc_code && <span className="ml-2 font-mono text-xs text-gray-400">({order.loinc_code})</span>}
+                              <span className="ml-2 text-xs text-gray-400">— {order.priority}</span>
+                            </div>
+                            <StatusBadge label={order.status} variant={
+                              order.status?.toLowerCase() === "completed" ? "success" :
+                              order.status?.toLowerCase() === "pending" ? "warning" : "info"
+                            } />
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-6 text-sm text-gray-400">No orders placed yet. Use the form below to order tests.</div>
+                    )}
+                  </div>
+
+                  {/* New Order Form */}
+                  <form onSubmit={handleCreateOrder} className="space-y-4 pt-4 border-t border-gray-100">
+                    <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest">Place New Lab Order</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">Test Name *</label>
+                        <input
+                          type="text"
+                          required
+                          className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary text-sm text-gray-900"
+                          placeholder="e.g., Full Blood Count, Malaria RDT"
+                          value={orderForm.test_name}
+                          onChange={(e) => setOrderForm({ ...orderForm, test_name: e.target.value })}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">LOINC Code</label>
+                        <input
+                          type="text"
+                          className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary text-sm text-gray-900 font-mono"
+                          placeholder="e.g., 24331-1"
+                          value={orderForm.loinc_code}
+                          onChange={(e) => setOrderForm({ ...orderForm, loinc_code: e.target.value })}
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">Clinical Indication</label>
+                      <input
+                        type="text"
+                        className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary text-sm text-gray-900"
+                        placeholder="Reason for this investigation"
+                        value={orderForm.clinical_indication}
+                        onChange={(e) => setOrderForm({ ...orderForm, clinical_indication: e.target.value })}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">Priority</label>
+                      <select
+                        className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded bg-white focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary text-sm"
+                        value={orderForm.priority}
+                        onChange={(e) => setOrderForm({ ...orderForm, priority: e.target.value })}
+                      >
+                        <option value="routine">Routine</option>
+                        <option value="urgent">Urgent</option>
+                        <option value="stat">STAT (Immediate)</option>
+                      </select>
+                    </div>
+                    <div className="flex justify-end pt-2">
+                      <button
+                        type="submit"
+                        disabled={submitLoading || !orderForm.test_name.trim()}
+                        className="px-6 py-2 bg-[#00a651] hover:bg-[#048f47] text-white font-bold text-sm rounded shadow-sm transition-all focus:outline-none cursor-pointer disabled:opacity-50"
+                      >
+                        {submitLoading ? "Placing Order..." : "Place Lab Order"}
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              )}
+
+              {/* PRESCRIPTIONS */}
+              {activeSubTab === "prescriptions" && (
+                <div className="space-y-8">
+                  <div>
+                    <h3 className="text-lg font-bold text-gray-900">Prescriptions</h3>
+                    <p className="text-xs text-[#5f5e5e] mt-0.5">Create medication prescriptions for the patient.</p>
+                  </div>
+
+                  {/* Existing Prescriptions */}
+                  <div className="bg-[#fcf9f8] p-4 rounded border border-gray-200/50">
+                    <h4 className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-3">Active Prescriptions</h4>
+                    {prescriptions.length > 0 ? (
+                      <div className="divide-y divide-gray-200 bg-white rounded border border-gray-100 overflow-hidden">
+                        {prescriptions.map((rx) => (
+                          <div key={rx.id} className="px-4 py-3 flex justify-between items-center">
+                            <div>
+                              <span className="font-semibold text-gray-900 text-sm">{rx.drug_name}</span>
+                              <span className="ml-2 font-mono text-xs text-gray-500">{rx.dosage} {rx.route} — {rx.frequency}</span>
+                              {rx.is_controlled && <span className="ml-2"><StatusBadge label="Controlled" variant="error" size="sm" /></span>}
+                            </div>
+                            <StatusBadge label={rx.status} variant={rx.status?.toLowerCase() === "dispensed" ? "success" : "warning"} />
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-6 text-sm text-gray-400">No prescriptions yet. Use the form below to prescribe.</div>
+                    )}
+                  </div>
+
+                  {/* New Prescription Form */}
+                  <form onSubmit={handleCreatePrescription} className="space-y-4 pt-4 border-t border-gray-100">
+                    <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest">New Prescription</h4>
+
+                    {/* Drug Search */}
+                    <div className="relative">
+                      <label className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">Search Drug *</label>
+                      <input
+                        type="text"
+                        required
+                        className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary text-sm text-gray-900"
+                        placeholder="Search drug catalog..."
+                        value={drugQuery}
+                        onChange={(e) => { setDrugQuery(e.target.value); setSelectedDrug(null); }}
+                      />
+                      {drugResults.length > 0 && !selectedDrug && (
+                        <ul className="absolute left-0 right-0 mt-1 bg-white border border-gray-200 rounded shadow-lg max-h-48 overflow-y-auto z-30 divide-y divide-gray-100 text-sm">
+                          {drugResults.map((drug) => (
+                            <li key={drug.id}>
+                              <button
+                                type="button"
+                                onClick={() => { setSelectedDrug(drug); setDrugQuery(drug.name); setDrugResults([]); }}
+                                className="w-full text-left px-4 py-2 hover:bg-[#fcf9f8] flex items-baseline justify-between transition-colors"
+                              >
+                                <div>
+                                  <span className="font-semibold text-gray-900">{drug.name}</span>
+                                  {drug.generic_name && <span className="ml-2 text-xs text-gray-400">({drug.generic_name})</span>}
+                                </div>
+                                <span className="text-xs text-gray-400">{drug.formulation} {drug.strength}</span>
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+
+                    {selectedDrug && (
+                      <div className="bg-emerald-50 border border-emerald-100 rounded p-3 flex justify-between items-center">
+                        <div>
+                          <span className="text-xs text-emerald-800 uppercase font-bold tracking-wider">Selected: </span>
+                          <span className="text-sm font-semibold text-emerald-950">{selectedDrug.name}</span>
+                          {selectedDrug.formulation && <span className="ml-2 text-xs text-emerald-700">{selectedDrug.formulation} {selectedDrug.strength}</span>}
+                        </div>
+                        <button type="button" onClick={() => { setSelectedDrug(null); setDrugQuery(""); }} className="text-xs text-gray-400 hover:text-gray-600 font-bold uppercase cursor-pointer">Clear</button>
+                      </div>
+                    )}
+
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                      <div>
+                        <label className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">Dosage *</label>
+                        <input type="text" required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary" placeholder="e.g., 500mg" value={rxForm.dosage} onChange={(e) => setRxForm({ ...rxForm, dosage: e.target.value })} />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">Route</label>
+                        <select className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded bg-white text-sm focus:outline-none focus:border-clinical-primary" value={rxForm.route} onChange={(e) => setRxForm({ ...rxForm, route: e.target.value })}>
+                          <option value="oral">Oral</option>
+                          <option value="iv">IV</option>
+                          <option value="im">IM</option>
+                          <option value="sc">SC</option>
+                          <option value="topical">Topical</option>
+                          <option value="inhaled">Inhaled</option>
+                          <option value="rectal">Rectal</option>
+                          <option value="sublingual">Sublingual</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">Frequency</label>
+                        <select className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded bg-white text-sm focus:outline-none focus:border-clinical-primary" value={rxForm.frequency} onChange={(e) => setRxForm({ ...rxForm, frequency: e.target.value })}>
+                          <option value="OD">OD (Once daily)</option>
+                          <option value="BD">BD (Twice daily)</option>
+                          <option value="TDS">TDS (Three times daily)</option>
+                          <option value="QDS">QDS (Four times daily)</option>
+                          <option value="PRN">PRN (As needed)</option>
+                          <option value="STAT">STAT (Immediately)</option>
+                          <option value="NOCTE">NOCTE (At night)</option>
+                          <option value="MANE">MANE (In the morning)</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">Duration</label>
+                        <input type="text" className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary" placeholder="e.g., 7 days" value={rxForm.duration} onChange={(e) => setRxForm({ ...rxForm, duration: e.target.value })} />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">Quantity</label>
+                        <input type="number" min="1" className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary font-mono" value={rxForm.quantity} onChange={(e) => setRxForm({ ...rxForm, quantity: e.target.value })} />
+                      </div>
+                      <div className="flex items-end pb-1">
+                        <label className="flex items-center gap-2 text-sm">
+                          <input type="checkbox" checked={rxForm.is_controlled} onChange={(e) => setRxForm({ ...rxForm, is_controlled: e.target.checked })} className="rounded border-gray-300 text-red-600 focus:ring-red-500" />
+                          <span className="font-semibold text-gray-700">Controlled Substance</span>
+                        </label>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">Notes / Special Instructions</label>
+                      <input type="text" className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary" placeholder="e.g., Take after food, avoid alcohol" value={rxForm.notes} onChange={(e) => setRxForm({ ...rxForm, notes: e.target.value })} />
+                    </div>
+                    <div className="flex justify-end pt-2">
+                      <button
+                        type="submit"
+                        disabled={submitLoading || !selectedDrug}
+                        className="px-6 py-2 bg-[#00a651] hover:bg-[#048f47] text-white font-bold text-sm rounded shadow-sm transition-all focus:outline-none cursor-pointer disabled:opacity-50"
+                      >
+                        {submitLoading ? "Creating..." : "Create Prescription"}
+                      </button>
+                    </div>
+                  </form>
+                </div>
               )}
             </div>
           </div>

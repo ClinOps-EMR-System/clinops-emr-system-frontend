@@ -52,7 +52,7 @@ export default function PatientProfilePage() {
   const patientId = params.id as string;
 
   // States
-  const [patient, setPatient] = useState<Patient | any>(null);
+  const [patient, setPatient] = useState<Patient | null>(null);
   const [summary, setSummary] = useState<TriageSummary | null>(null);
   const [diagnoses, setDiagnoses] = useState<Diagnosis[]>([]);
   const [loading, setLoading] = useState(true);
@@ -91,12 +91,14 @@ export default function PatientProfilePage() {
     }
   }
 
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (token && patientId) {
       fetchProfileData();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, patientId]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   if (loading) {
     return (
@@ -121,14 +123,6 @@ export default function PatientProfilePage() {
       </div>
     );
   }
-
-  const triageColorMap: Record<string, string> = {
-    red: "bg-red-500 text-white",
-    orange: "bg-orange-500 text-white",
-    yellow: "bg-yellow-500 text-gray-900",
-    green: "bg-emerald-500 text-white",
-    blue: "bg-sky-500 text-white",
-  };
 
   return (
     <div className="max-w-7xl mx-auto space-y-6 font-sans">

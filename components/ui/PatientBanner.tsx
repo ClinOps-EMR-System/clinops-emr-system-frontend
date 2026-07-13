@@ -16,6 +16,13 @@ export interface Patient {
   village?: string;
   traditional_authority?: string;
   district?: string;
+  guardian_name?: string;
+  guardian_phone?: string;
+  consent_care?: boolean;
+  consent_teaching?: boolean;
+  consent_research?: boolean;
+  created_at?: string;
+  registration_completed_at?: string;
 }
 
 export interface Allergy {
