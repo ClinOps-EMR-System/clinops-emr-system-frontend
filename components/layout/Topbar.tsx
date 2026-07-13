@@ -116,6 +116,12 @@ export default function Topbar() {
     if (label.toLowerCase() === "register") label = "Patient Registration";
     if (label.toLowerCase() === "triage") label = "Triage";
     if (label.toLowerCase() === "consultation") label = "Consultation";
+    if (label.toLowerCase() === "pharmacy") label = "Pharmacy";
+    if (label.toLowerCase() === "lab") label = "Laboratory";
+    if (label.toLowerCase() === "billing") label = "Billing";
+    if (label.toLowerCase() === "referrals") label = "Referrals";
+    if (label.toLowerCase() === "admissions") label = "Admissions";
+    if (label.toLowerCase() === "admin") label = "Administration";
     if (/^\d+$/.test(part)) label = `Patient #${part}`;
     return { label, href };
   });
