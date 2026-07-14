@@ -4,6 +4,8 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000/api";
+
 export interface User {
   id: number;
   username?: string;
@@ -52,6 +54,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     setIsLoading(false);
   }, []);
+
+  // Refresh user data from /api/user if stored user lacks roles/permissions
+  useEffect(() => {
+    async function refreshUser() {
+      if (!token) return;
+      const storedUser = localStorage.getItem("clinops_user");
+      if (!storedUser) return;
+      try {
+        const existing = JSON.parse(storedUser);
+        if (existing?.roles?.length > 0) return;
+      } catch {
+        return;
+      }
+      try {
+        const res = await fetch(`${API_BASE}/user`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) return;
+        const body = await res.json();
+        if (body?.data) {
+          const fresh = body.data;
+          localStorage.setItem("clinops_user", JSON.stringify(fresh));
+          setUser(fresh);
+        }
+      } catch {
+        // silent
+      }
+    }
+    refreshUser();
+  }, [token]);
 
   useEffect(() => {
     if (!isLoading) {
