@@ -10,10 +10,13 @@ export interface User {
   name?: string;
   email: string;
   is_active: boolean;
+  department_id?: number | null;
   department?: {
     id: number;
     name: string;
-  };
+  } | null;
+  roles: string[];
+  permissions: string[];
 }
 
 interface AuthContextType {
@@ -35,7 +38,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
   useEffect(() => {
-    // Load auth from localStorage on mount
     const storedToken = localStorage.getItem("clinops_token");
     const storedUser = localStorage.getItem("clinops_user");
 
@@ -52,7 +54,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    // Protect routes
     if (!isLoading) {
       const isAuthPage = pathname.startsWith("/auth");
       if (!token && !isAuthPage) {
@@ -63,7 +64,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [token, isLoading, pathname, router]);
 
-  // Listen to 401 unauthorized events
   useEffect(() => {
     const handleUnauthorized = () => {
       localStorage.removeItem("clinops_token");
@@ -82,7 +82,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = (newToken: string, newUser: User) => {
     localStorage.setItem("clinops_token", newToken);
     localStorage.setItem("clinops_user", JSON.stringify(newUser));
-    
+
     setToken(newToken);
     setUser(newUser);
     router.push("/dashboard");
