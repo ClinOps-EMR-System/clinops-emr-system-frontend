@@ -86,9 +86,9 @@ export default function PatientBanner({
   }
 
   return (
-    <div className="bg-white rounded border border-[#becab7]/50 overflow-hidden shadow-sm font-sans mb-6">
+    <div className="bg-white rounded border border-[#D6D9DF]/50 overflow-hidden shadow-sm font-sans mb-6">
       {/* Top Accent Line */}
-      <div className="h-1 bg-brand-green"></div>
+      <div className="h-1 bg-brand-teal"></div>
 
       <div className="p-4 sm:p-5 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         {/* Patient Demographics */}
@@ -142,7 +142,7 @@ export default function PatientBanner({
         </div>
 
         {/* Clinical Summary & Alerts (Right side) */}
-        <div className="w-full md:w-auto p-3 bg-[#fcf9f8] rounded border border-gray-100 self-stretch md:self-auto flex flex-col justify-center min-w-[260px]">
+        <div className="w-full md:w-auto p-3 bg-[#F3F3F3] rounded border border-gray-100 self-stretch md:self-auto flex flex-col justify-center min-w-[260px]">
           {allergiesBadge}
         </div>
       </div>

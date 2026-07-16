@@ -115,7 +115,7 @@ export default function AdmissionsPage() {
     <div className="max-w-7xl mx-auto space-y-6 font-sans">
       <section className="flex flex-col sm:flex-row justify-between sm:items-end gap-4">
         <div>
-          <span className="text-xs font-bold text-brand-green tracking-widest uppercase">Inpatient</span>
+          <span className="text-xs font-bold text-brand-teal tracking-widest uppercase">Inpatient</span>
           <h1 className="text-3xl font-bold text-[#1b1c1c] mt-1">Admissions & Wards</h1>
           <p className="text-sm text-[#5f5e5e] mt-1">Manage patient admissions, bed assignments, and discharges</p>
         </div>
@@ -175,7 +175,7 @@ export default function AdmissionsPage() {
       {/* Content */}
       <section className="bg-white rounded border border-[#becab7]/50 overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-100 flex items-center">
-          <div className="w-1.5 h-6 bg-brand-green rounded-full mr-3"></div>
+          <div className="w-1.5 h-6 bg-brand-teal rounded-full mr-3"></div>
           <h2 className="text-lg font-bold text-gray-900">{tab === "active" ? "Active Admissions" : tab === "discharged" ? "Discharged Patients" : "Ward Bed Occupancy"}</h2>
         </div>
 
@@ -194,7 +194,7 @@ export default function AdmissionsPage() {
                     <div className="text-xs text-gray-500 font-mono mb-2">Code: {ward.code}</div>
                     <div className="flex items-center gap-2">
                       <div className="flex-1 bg-gray-200 rounded-full h-2">
-                        <div className="bg-brand-green h-2 rounded-full transition-all" style={{ width: `${ward.total_beds ? ((ward.occupied_beds || 0) / ward.total_beds) * 100 : 0}%` }} />
+                        <div className="bg-brand-teal h-2 rounded-full transition-all" style={{ width: `${ward.total_beds ? ((ward.occupied_beds || 0) / ward.total_beds) * 100 : 0}%` }} />
                       </div>
                       <span className="text-xs font-bold font-mono text-gray-600">{ward.occupied_beds || 0}/{ward.total_beds}</span>
                     </div>
@@ -231,7 +231,7 @@ export default function AdmissionsPage() {
                         <td className="px-6 py-4 text-xs text-gray-500 font-mono">{new Date(adm.admission_date).toLocaleDateString()}</td>
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-3">
-                            <Link href={`/patients/${adm.patient_id}`} className="text-xs font-bold text-teal-600 hover:text-teal-800 uppercase tracking-wider">Profile</Link>
+                            <Link href={`/patients/${adm.patient_id}`} className="text-xs font-bold text-[#368D80] hover:text-[#2A7066] uppercase tracking-wider">Profile</Link>
                             {!adm.discharge_date && (
                               <button onClick={() => handleDischarge(adm.id, "", "")} className="text-xs font-bold text-clinical-primary hover:text-clinical-primary-hover uppercase tracking-wider cursor-pointer">Discharge</button>
                             )}

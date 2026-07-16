@@ -3,9 +3,7 @@
 import AuthShell from "./AuthShell";
 import Link from "next/link";
 import { useState } from "react";
-import { useAuth } from "../../store/RoleContext";
-
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000/api";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function LoginPage() {
   const { login } = useAuth();
@@ -30,27 +28,14 @@ export default function LoginPage() {
     };
 
     try {
-      const res = await fetch(`${API_BASE}/login`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        if (data?.errors) {
-          setErrors(data.errors);
-        }
-        setMessage(data.message || "Unable to sign in.");
-      } else {
-        setMessage("Signed in successfully. Redirecting...");
-        login(data.data.token, data.data.user);
+      await login(payload);
+      setMessage("Signed in successfully. Redirecting...");
+    } catch (error: unknown) {
+      const err = error as { message?: string; errors?: Record<string, string[]> };
+      if (err.errors) {
+        setErrors(err.errors);
       }
-    } catch {
-      setMessage("Unable to reach authentication service.");
+      setMessage(err.message || "Unable to sign in.");
     } finally {
       setSubmitLoading(false);
     }

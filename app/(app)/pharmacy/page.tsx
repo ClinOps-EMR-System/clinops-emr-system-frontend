@@ -101,7 +101,7 @@ export default function PharmacyPage() {
     <div className="max-w-7xl mx-auto space-y-6 font-sans">
       <section className="flex flex-col sm:flex-row justify-between sm:items-end gap-4">
         <div>
-          <span className="text-xs font-bold text-brand-green tracking-widest uppercase">Pharmacy</span>
+          <span className="text-xs font-bold text-brand-teal tracking-widest uppercase">Pharmacy</span>
           <h1 className="text-3xl font-bold text-[#1b1c1c] mt-1">Prescription Queue</h1>
           <p className="text-sm text-[#5f5e5e] mt-1">View, verify, and dispense patient prescriptions</p>
         </div>
@@ -168,7 +168,7 @@ export default function PharmacyPage() {
       {/* Prescriptions Table */}
       <section className="bg-white rounded border border-[#becab7]/50 overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-100 flex items-center">
-          <div className="w-1.5 h-6 bg-brand-green rounded-full mr-3"></div>
+          <div className="w-1.5 h-6 bg-brand-teal rounded-full mr-3"></div>
           <h2 className="text-lg font-bold text-gray-900">Prescriptions</h2>
         </div>
 
@@ -230,7 +230,7 @@ export default function PharmacyPage() {
                         )}
                         <Link
                           href={`/patients/${rx.patient_id}`}
-                          className="text-xs font-bold text-teal-600 hover:text-teal-800 uppercase tracking-wider"
+                          className="text-xs font-bold text-[#368D80] hover:text-[#2A7066] uppercase tracking-wider"
                         >
                           Profile
                         </Link>

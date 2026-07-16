@@ -399,7 +399,7 @@ export default function ClinicianSOAPConsultation() {
       {/* Page Header */}
       <section className="flex items-center gap-4 justify-between">
         <div>
-          <span className="text-xs font-bold text-brand-green tracking-widest uppercase">Clinician Desk</span>
+          <span className="text-xs font-bold text-brand-teal tracking-widest uppercase">Clinician Desk</span>
           <h1 className="text-3xl font-bold text-[#1b1c1c] mt-0.5">Clinical Consultation (SOAP)</h1>
         </div>
         <button
@@ -442,7 +442,7 @@ export default function ClinicianSOAPConsultation() {
               onClick={() => { setActiveSubTab("subjective"); setError(null); setSuccessMsg(null); }}
               className={`w-full text-left px-4 py-2.5 text-sm rounded font-bold transition-all relative ${
                 activeSubTab === "subjective"
-                  ? "bg-clinical-primary text-white border-l-4 border-brand-green"
+                  ? "bg-clinical-primary text-white border-l-4 border-brand-teal"
                   : "text-gray-600 hover:bg-gray-50"
               }`}
             >
@@ -452,7 +452,7 @@ export default function ClinicianSOAPConsultation() {
               onClick={() => { setActiveSubTab("objective"); setError(null); setSuccessMsg(null); }}
               className={`w-full text-left px-4 py-2.5 text-sm rounded font-bold transition-all relative ${
                 activeSubTab === "objective"
-                  ? "bg-clinical-primary text-white border-l-4 border-brand-green"
+                  ? "bg-clinical-primary text-white border-l-4 border-brand-teal"
                   : "text-gray-600 hover:bg-gray-50"
               }`}
             >
@@ -462,7 +462,7 @@ export default function ClinicianSOAPConsultation() {
               onClick={() => { setActiveSubTab("assessment"); setError(null); setSuccessMsg(null); }}
               className={`w-full text-left px-4 py-2.5 text-sm rounded font-bold transition-all relative ${
                 activeSubTab === "assessment"
-                  ? "bg-clinical-primary text-white border-l-4 border-brand-green"
+                  ? "bg-clinical-primary text-white border-l-4 border-brand-teal"
                   : "text-gray-600 hover:bg-gray-50"
               }`}
             >
@@ -472,7 +472,7 @@ export default function ClinicianSOAPConsultation() {
               onClick={() => { setActiveSubTab("plan"); setError(null); setSuccessMsg(null); }}
               className={`w-full text-left px-4 py-2.5 text-sm rounded font-bold transition-all relative ${
                 activeSubTab === "plan"
-                  ? "bg-clinical-primary text-white border-l-4 border-brand-green"
+                  ? "bg-clinical-primary text-white border-l-4 border-brand-teal"
                   : "text-gray-600 hover:bg-gray-50"
               }`}
             >
@@ -483,7 +483,7 @@ export default function ClinicianSOAPConsultation() {
               onClick={() => { setActiveSubTab("orders"); setError(null); setSuccessMsg(null); }}
               className={`w-full text-left px-4 py-2.5 text-sm rounded font-bold transition-all relative ${
                 activeSubTab === "orders"
-                  ? "bg-clinical-primary text-white border-l-4 border-brand-green"
+                  ? "bg-clinical-primary text-white border-l-4 border-brand-teal"
                   : "text-gray-600 hover:bg-gray-50"
               }`}
             >
@@ -498,7 +498,7 @@ export default function ClinicianSOAPConsultation() {
               onClick={() => { setActiveSubTab("prescriptions"); setError(null); setSuccessMsg(null); }}
               className={`w-full text-left px-4 py-2.5 text-sm rounded font-bold transition-all relative ${
                 activeSubTab === "prescriptions"
-                  ? "bg-clinical-primary text-white border-l-4 border-brand-green"
+                  ? "bg-clinical-primary text-white border-l-4 border-brand-teal"
                   : "text-gray-600 hover:bg-gray-50"
               }`}
             >
@@ -578,7 +578,7 @@ export default function ClinicianSOAPConsultation() {
                   </div>
 
                   {/* Summary of recent vitals */}
-                  <div className="bg-[#fcf9f8] p-4 rounded border border-gray-200/50">
+                  <div className="bg-[#F3F3F3] p-4 rounded border border-gray-200/50">
                     <h4 className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-4">Latest Vitals Measurements</h4>
                     {summary?.vital_signs && summary.vital_signs.length > 0 ? (
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -637,7 +637,7 @@ export default function ClinicianSOAPConsultation() {
                   </div>
 
                   {/* Active Diagnoses List */}
-                  <div className="bg-[#fcf9f8] p-4 rounded border border-gray-200/50">
+                  <div className="bg-[#F3F3F3] p-4 rounded border border-gray-200/50">
                     <h4 className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-3">Logged Diagnoses</h4>
                     {diagnoses.length > 0 ? (
                       <div className="divide-y divide-gray-200 bg-white rounded border border-gray-100 overflow-hidden">
@@ -694,7 +694,7 @@ export default function ClinicianSOAPConsultation() {
                                   setSelectedIcd(result);
                                   setIcdResults([]);
                                 }}
-                                className="w-full text-left px-4 py-2 hover:bg-[#fcf9f8] flex items-baseline justify-between transition-colors"
+                                className="w-full text-left px-4 py-2 hover:bg-[#F3F3F3] flex items-baseline justify-between transition-colors"
                               >
                                 <div>
                                   <span className="font-semibold text-gray-900">{result.title}</span>
@@ -816,7 +816,7 @@ export default function ClinicianSOAPConsultation() {
                   </div>
 
                   {/* Existing Orders */}
-                  <div className="bg-[#fcf9f8] p-4 rounded border border-gray-200/50">
+                  <div className="bg-[#F3F3F3] p-4 rounded border border-gray-200/50">
                     <h4 className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-3">Order History</h4>
                     {orders.length > 0 ? (
                       <div className="divide-y divide-gray-200 bg-white rounded border border-gray-100 overflow-hidden">
@@ -909,7 +909,7 @@ export default function ClinicianSOAPConsultation() {
                   </div>
 
                   {/* Existing Prescriptions */}
-                  <div className="bg-[#fcf9f8] p-4 rounded border border-gray-200/50">
+                  <div className="bg-[#F3F3F3] p-4 rounded border border-gray-200/50">
                     <h4 className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-3">Active Prescriptions</h4>
                     {prescriptions.length > 0 ? (
                       <div className="divide-y divide-gray-200 bg-white rounded border border-gray-100 overflow-hidden">
@@ -951,7 +951,7 @@ export default function ClinicianSOAPConsultation() {
                               <button
                                 type="button"
                                 onClick={() => { setSelectedDrug(drug); setDrugQuery(drug.name); setDrugResults([]); }}
-                                className="w-full text-left px-4 py-2 hover:bg-[#fcf9f8] flex items-baseline justify-between transition-colors"
+                                className="w-full text-left px-4 py-2 hover:bg-[#F3F3F3] flex items-baseline justify-between transition-colors"
                               >
                                 <div>
                                   <span className="font-semibold text-gray-900">{drug.name}</span>

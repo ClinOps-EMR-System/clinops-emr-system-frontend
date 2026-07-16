@@ -4,10 +4,10 @@ import { useState, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import AuthShell from "../AuthShell";
-
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000/api";
+import { useAuth } from "@/hooks/useAuth";
 
 function ResetPasswordForm() {
+  const { resetPassword } = useAuth();
   const searchParams = useSearchParams();
   const tokenFromQuery = searchParams.get("token") ?? "";
   const emailFromQuery = searchParams.get("email") ?? "";
@@ -29,31 +29,19 @@ function ResetPasswordForm() {
     setIsSuccess(false);
 
     try {
-      const res = await fetch(`${API_BASE}/reset-password`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          token,
-          email,
-          password,
-          password_confirmation: confirmPassword,
-        }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        setMessage(data.message || "Unable to reset password.");
-        setErrors(data.errors || {});
-      } else {
-        setMessage(data.message || "Password reset successfully.");
-        setErrors({});
-        setIsSuccess(true);
-      }
-    } catch {
-      setMessage("Unable to reach authentication service.");
+      const data = await resetPassword({
+        token,
+        email,
+        password,
+        password_confirmation: confirmPassword,
+      }) as { message?: string };
+      setMessage(data.message || "Password reset successfully.");
+      setErrors({});
+      setIsSuccess(true);
+    } catch (error: unknown) {
+      const err = error as { message?: string; errors?: Record<string, string[]> };
+      setMessage(err.message || "Unable to reset password.");
+      setErrors(err.errors || {});
     } finally {
       setSubmitLoading(false);
     }

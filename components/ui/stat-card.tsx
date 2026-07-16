@@ -1,15 +1,14 @@
 import { Skeleton } from "@/components/ui/skeleton";
-import { cx } from "@/lib/primitive";
+import { Card, CardHeader, CardAction, CardContent } from "@/components/ui/card";
 import { tv, type VariantProps } from "tailwind-variants";
 
 const statCardStyles = tv({
   slots: {
-    root: "bg-white rounded border border-[#D6D9DF]/50 p-5 relative overflow-hidden",
     stripe: "absolute left-0 top-0 bottom-0 w-[3px]",
-    label: "text-xs font-bold uppercase tracking-wider mb-2",
-    value: "font-mono font-extrabold text-3xl",
+    label: "text-xs font-bold uppercase tracking-wider m-0",
+    value: "font-mono font-extrabold text-3xl m-0",
     iconBadge:
-      "absolute top-4 right-4 h-10 w-10 rounded flex items-center justify-center",
+      "h-10 w-10 rounded flex items-center justify-center",
     trend: "inline-flex items-center gap-1 text-xs font-bold mt-1",
     trendArrow: "h-3 w-3",
   },
@@ -53,7 +52,7 @@ const statCardStyles = tv({
 });
 
 export interface StatCardProps
-  extends Omit<React.HTMLAttributes<HTMLDivElement>, "color">,
+  extends Omit<React.ComponentProps<typeof Card>, "color">,
     VariantProps<typeof statCardStyles> {
   label: string;
   value: number | string;
@@ -76,74 +75,76 @@ export function StatCard({
 
   if (loading) {
     return (
-      <div className={cx(styles.root(), className) as string} {...props}>
-        <div className={cx(styles.stripe()) as string} />
+      <Card className={`relative overflow-hidden ${className ?? ""}`} {...props}>
+        <div className={styles.stripe()} />
         <Skeleton className="h-3 w-24 mb-4" />
         <Skeleton className="h-8 w-16" />
-      </div>
+      </Card>
     );
   }
 
   return (
-    <div className={cx(styles.root(), className) as string} {...props}>
-      <div className={cx(styles.stripe()) as string} />
-      <dt className={cx(styles.label()) as string}>{label}</dt>
-      <dd
-        className={
-          cx(
-            styles.value(),
-            typeof value === "number" && value > 0 ? "" : "text-[#1b1c1c]"
-          ) as string
-        }
-      >
-        {typeof value === "number" ? value.toLocaleString() : value}
-      </dd>
-      {Icon && (
-        <div className={cx(styles.iconBadge()) as string}>
-          <Icon className="h-5 w-5" />
-        </div>
-      )}
-      {trend && (
-        <div
+    <Card className={`relative overflow-hidden ${className ?? ""}`} {...props}>
+      <div className={styles.stripe()} />
+      <CardHeader>
+        <dt className={styles.label()}>{label}</dt>
+        {Icon && (
+          <CardAction>
+            <div className={styles.iconBadge()}>
+              <Icon className="h-5 w-5" />
+            </div>
+          </CardAction>
+        )}
+      </CardHeader>
+      <CardContent>
+        <dd
           className={
-            cx(
-              styles.trend(),
-              trend.direction === "up" ? "text-emerald-600" : "text-red-600"
-            ) as string
+            typeof value === "number" && value > 0
+              ? styles.value()
+              : `${styles.value()} text-[#1b1c1c]`
           }
         >
-          {trend.direction === "up" ? (
-            <svg
-              className={cx(styles.trendArrow()) as string}
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={2}
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M7 17l9.2-9.2M17 17V7.8H7.8"
-              />
-            </svg>
-          ) : (
-            <svg
-              className={cx(styles.trendArrow()) as string}
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={2}
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M17 7l-9.2 9.2M7 7v9.2h9.2"
-              />
-            </svg>
-          )}
-          <span>{trend.value}%</span>
-        </div>
-      )}
-    </div>
+          {typeof value === "number" ? value.toLocaleString() : value}
+        </dd>
+        {trend && (
+          <div
+            className={`${styles.trend()} ${
+              trend.direction === "up" ? "text-emerald-600" : "text-red-600"
+            }`}
+          >
+            {trend.direction === "up" ? (
+              <svg
+                className={styles.trendArrow()}
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M7 17l9.2-9.2M17 17V7.8H7.8"
+                />
+              </svg>
+            ) : (
+              <svg
+                className={styles.trendArrow()}
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M17 7l-9.2 9.2M7 7v9.2h9.2"
+                />
+              </svg>
+            )}
+            <span>{trend.value}%</span>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }

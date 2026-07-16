@@ -380,7 +380,7 @@ export default function NurseTriageWorkbench() {
       {/* Detail Header */}
       <section className="flex items-center gap-4 justify-between">
         <div>
-          <span className="text-xs font-bold text-brand-green tracking-widest uppercase">Nurse Desk</span>
+          <span className="text-xs font-bold text-brand-teal tracking-widest uppercase">Nurse Desk</span>
           <h1 className="text-3xl font-bold text-[#1b1c1c] mt-0.5">Triage Clinical Workbench</h1>
         </div>
         <button
@@ -407,7 +407,7 @@ export default function NurseTriageWorkbench() {
             onClick={() => { setActiveTab("vitals"); setError(null); setSuccessMsg(null); }}
             className={`w-full text-left px-4 py-2.5 text-sm rounded font-bold transition-all relative ${
               activeTab === "vitals"
-                ? "bg-clinical-primary text-white border-l-4 border-brand-green"
+                ? "bg-clinical-primary text-white border-l-4 border-brand-teal"
                 : "text-gray-600 hover:bg-gray-50"
             }`}
           >
@@ -417,7 +417,7 @@ export default function NurseTriageWorkbench() {
             onClick={() => { setActiveTab("allergies"); setError(null); setSuccessMsg(null); }}
             className={`w-full text-left px-4 py-2.5 text-sm rounded font-bold transition-all relative ${
               activeTab === "allergies"
-                ? "bg-clinical-primary text-white border-l-4 border-brand-green"
+                ? "bg-clinical-primary text-white border-l-4 border-brand-teal"
                 : "text-gray-600 hover:bg-gray-50"
             }`}
           >
@@ -427,7 +427,7 @@ export default function NurseTriageWorkbench() {
             onClick={() => { setActiveTab("complaint"); setError(null); setSuccessMsg(null); }}
             className={`w-full text-left px-4 py-2.5 text-sm rounded font-bold transition-all relative ${
               activeTab === "complaint"
-                ? "bg-clinical-primary text-white border-l-4 border-brand-green"
+                ? "bg-clinical-primary text-white border-l-4 border-brand-teal"
                 : "text-gray-600 hover:bg-gray-50"
             }`}
           >
@@ -438,7 +438,7 @@ export default function NurseTriageWorkbench() {
               onClick={() => { setActiveTab("pregnancy"); setError(null); setSuccessMsg(null); }}
               className={`w-full text-left px-4 py-2.5 text-sm rounded font-bold transition-all relative ${
                 activeTab === "pregnancy"
-                  ? "bg-clinical-primary text-white border-l-4 border-brand-green"
+                  ? "bg-clinical-primary text-white border-l-4 border-brand-teal"
                   : "text-gray-600 hover:bg-gray-50"
               }`}
             >
@@ -449,7 +449,7 @@ export default function NurseTriageWorkbench() {
             onClick={() => { setActiveTab("infection"); setError(null); setSuccessMsg(null); }}
             className={`w-full text-left px-4 py-2.5 text-sm rounded font-bold transition-all relative ${
               activeTab === "infection"
-                ? "bg-clinical-primary text-white border-l-4 border-brand-green"
+                ? "bg-clinical-primary text-white border-l-4 border-brand-teal"
                 : "text-gray-600 hover:bg-gray-50"
             }`}
           >
@@ -459,7 +459,7 @@ export default function NurseTriageWorkbench() {
             onClick={() => { setActiveTab("trends"); setError(null); setSuccessMsg(null); }}
             className={`w-full text-left px-4 py-2.5 text-sm rounded font-bold transition-all relative ${
               activeTab === "trends"
-                ? "bg-clinical-primary text-white border-l-4 border-brand-green"
+                ? "bg-clinical-primary text-white border-l-4 border-brand-teal"
                 : "text-gray-600 hover:bg-gray-50"
             }`}
           >
@@ -786,7 +786,7 @@ export default function NurseTriageWorkbench() {
                 </div>
 
                 {/* List of current allergies */}
-                <div className="bg-[#fcf9f8] p-4 rounded border border-gray-200/50">
+                <div className="bg-[#F3F3F3] p-4 rounded border border-gray-200/50">
                   <h4 className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-3">Noted Allergies</h4>
                   {summary?.allergies && summary.allergies.length > 0 ? (
                     <div className="divide-y divide-gray-200 bg-white rounded border border-gray-100 overflow-hidden">
@@ -1006,7 +1006,7 @@ export default function NurseTriageWorkbench() {
                 </div>
 
                 <div className="space-y-4">
-                  <div className="bg-[#fcf9f8] p-4 rounded border border-gray-200/50 space-y-3.5">
+                  <div className="bg-[#F3F3F3] p-4 rounded border border-gray-200/50 space-y-3.5">
                     <h4 className="text-xs font-bold text-gray-500 uppercase tracking-widest">Infectious Risk Checklist</h4>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <label className="flex items-center gap-2 text-sm text-gray-800 cursor-pointer">
@@ -1161,7 +1161,7 @@ export default function NurseTriageWorkbench() {
                             return (
                               <div
                                 key={index}
-                                className="flex-1 bg-teal-600/70 hover:bg-teal-600 transition-colors group relative rounded-t"
+                                className="flex-1 bg-[#368D80]/70 hover:bg-[#368D80] transition-colors group relative rounded-t"
                                 style={{ height: `${pct}%` }}
                               >
                                 <span className="absolute -top-6 left-1/2 -translate-x-1/2 hidden group-hover:block px-1.5 py-0.5 bg-brand-dark text-white text-[10px] font-mono rounded shadow">

@@ -3,10 +3,10 @@
 import { useState } from "react";
 import Link from "next/link";
 import AuthShell from "../AuthShell";
-
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000/api";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function ForgotPasswordPage() {
+  const { forgotPassword } = useAuth();
   const [email, setEmail] = useState("");
   const [submitLoading, setSubmitLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -21,26 +21,14 @@ export default function ForgotPasswordPage() {
     setIsSuccess(false);
 
     try {
-      const res = await fetch(`${API_BASE}/forgot-password`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ email }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        setMessage(data.message || "Unable to send reset email.");
-        setErrors(data.errors || {});
-      } else {
-        setMessage(data.message || "Password reset link sent to your email.");
-        setErrors({});
-        setIsSuccess(true);
-      }
-    } catch {
-      setMessage("Unable to reach authentication service.");
+      const data = await forgotPassword(email) as { message?: string };
+      setMessage(data.message || "Password reset link sent to your email.");
+      setErrors({});
+      setIsSuccess(true);
+    } catch (error: unknown) {
+      const err = error as { message?: string; errors?: Record<string, string[]> };
+      setMessage(err.message || "Unable to send reset email.");
+      setErrors(err.errors || {});
     } finally {
       setSubmitLoading(false);
     }

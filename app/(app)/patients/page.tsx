@@ -236,7 +236,7 @@ export default function PatientSearchDirectory() {
                   return (
                     <tr
                       key={patient.id}
-                      className="hover:bg-[#fcf9f8]/40 hover:border-l-4 hover:border-brand-green/80 transition-all divide-x divide-gray-100"
+                      className="hover:bg-[#fcf9f8]/40 hover:border-l-4 hover:border-brand-teal/80 transition-all divide-x divide-gray-100"
                     >
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
                         {patient.first_name} {patient.last_name}
@@ -281,7 +281,7 @@ export default function PatientSearchDirectory() {
                               <span className="text-gray-300">|</span>
                               <Link
                                 href={`/patients/${patient.id}/consultation`}
-                                className="text-xs font-bold text-teal-600 hover:text-teal-800 uppercase tracking-wider"
+                                className="text-xs font-bold text-[#368D80] hover:text-[#2A7066] uppercase tracking-wider"
                               >
                                 Consult
                               </Link>

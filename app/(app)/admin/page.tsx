@@ -115,7 +115,7 @@ export default function AdminPage() {
     <div className="max-w-7xl mx-auto space-y-6 font-sans">
       <section className="flex flex-col sm:flex-row justify-between sm:items-end gap-4">
         <div>
-          <span className="text-xs font-bold text-brand-green tracking-widest uppercase">Administration</span>
+          <span className="text-xs font-bold text-brand-teal tracking-widest uppercase">Administration</span>
           <h1 className="text-3xl font-bold text-[#1b1c1c] mt-1">User & Role Management</h1>
           <p className="text-sm text-[#5f5e5e] mt-1">Manage system users, roles, and permission assignments</p>
         </div>
@@ -148,7 +148,7 @@ export default function AdminPage() {
 
           <section className="bg-white rounded border border-[#becab7]/50 overflow-hidden">
             <div className="px-6 py-4 border-b border-gray-100 flex items-center">
-              <div className="w-1.5 h-6 bg-brand-green rounded-full mr-3"></div>
+              <div className="w-1.5 h-6 bg-brand-teal rounded-full mr-3"></div>
               <h2 className="text-lg font-bold text-gray-900">System Users</h2>
             </div>
             {loading ? <LoadingState message="Loading users..." /> : error ? <div className="p-8 text-center text-sm text-red-600">{error}</div> : filteredUsers.length === 0 ? (
