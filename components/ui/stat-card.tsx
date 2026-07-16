@@ -84,20 +84,11 @@ export function StatCard({
     );
   }
 
-  const showTrendColor = typeof value === "number" && value > 0;
-
   return (
     <div className={cx(styles.root(), className) as string} {...props}>
       <div className={cx(styles.stripe()) as string} />
       <dt className={cx(styles.label()) as string}>{label}</dt>
-      <dd
-        className={
-          cx(
-            styles.value(),
-            showTrendColor && color ? styles.value() : "text-[#1b1c1c]"
-          ) as string
-        }
-      >
+      <dd className={cx(styles.value(), className) as string}>
         {typeof value === "number" ? value.toLocaleString() : value}
       </dd>
       {Icon && (
