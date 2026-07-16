@@ -88,7 +88,14 @@ export function StatCard({
     <div className={cx(styles.root(), className) as string} {...props}>
       <div className={cx(styles.stripe()) as string} />
       <dt className={cx(styles.label()) as string}>{label}</dt>
-      <dd className={cx(styles.value(), className) as string}>
+      <dd
+        className={
+          cx(
+            styles.value(),
+            typeof value === "number" && value > 0 ? "" : "text-[#1b1c1c]"
+          ) as string
+        }
+      >
         {typeof value === "number" ? value.toLocaleString() : value}
       </dd>
       {Icon && (
