@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useAuth } from "../../../store/RoleContext";
 import { api } from "../../../lib/api";
 import StatusBadge from "../../../components/ui/StatusBadge";
+import { StatCard } from "../../../components/ui/stat-card";
+import { BeakerIcon, CreditCardIcon } from "@heroicons/react/20/solid";
 
 interface Patient {
   id: number;
@@ -150,80 +152,71 @@ export default function Dashboard() {
 
       {/* Primary Metrics */}
       <section className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-white rounded border border-[#becab7]/50 p-5 flex flex-col justify-between">
-          <dt className="text-xs font-bold text-[#5f5e5e] uppercase tracking-wider mb-2">Total Patients</dt>
-          <dd className="text-3xl font-extrabold text-[#1b1c1c] font-mono">
-            {loading ? "..." : stats.totalPatients}
-          </dd>
-        </div>
-        <div className="bg-white rounded border border-[#becab7]/50 p-5 flex flex-col justify-between">
-          <dt className="text-xs font-bold text-[#5f5e5e] uppercase tracking-wider mb-2">Registered Today</dt>
-          <dd className="text-3xl font-extrabold text-[#1b1c1c] font-mono">
-            {loading ? "..." : stats.registeredToday}
-          </dd>
-        </div>
-        <div className="bg-white rounded border border-[#becab7]/50 p-5 flex flex-col justify-between">
-          <dt className="text-xs font-bold text-[#5f5e5e] uppercase tracking-wider mb-2">Incomplete Drafts</dt>
-          <dd className={`text-3xl font-extrabold font-mono ${stats.incompleteDrafts > 0 ? "text-amber-600" : "text-[#1b1c1c]"}`}>
-            {loading ? "..." : stats.incompleteDrafts}
-          </dd>
-        </div>
-        <div className="bg-white rounded border border-[#becab7]/50 p-5 flex flex-col justify-between">
-          <dt className="text-xs font-bold text-[#5f5e5e] uppercase tracking-wider mb-2">Active Admissions</dt>
-          <dd className="text-3xl font-extrabold text-[#1b1c1c] font-mono">
-            {loading ? "..." : stats.activeAdmissions}
-          </dd>
-        </div>
+        <StatCard
+          label="Total Patients"
+          value={stats.totalPatients}
+          color="default"
+          loading={loading}
+        />
+        <StatCard
+          label="Registered Today"
+          value={stats.registeredToday}
+          color="default"
+          loading={loading}
+        />
+        <StatCard
+          label="Incomplete Drafts"
+          value={stats.incompleteDrafts}
+          color="warning"
+          loading={loading}
+        />
+        <StatCard
+          label="Active Admissions"
+          value={stats.activeAdmissions}
+          color="default"
+          loading={loading}
+        />
       </section>
 
       {/* Operational Metrics */}
       <section className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Link href="/pharmacy" className="bg-white rounded border border-[#becab7]/50 p-5 hover:border-brand-green hover:shadow-sm transition-all group">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-bold text-[#5f5e5e] uppercase tracking-wider">Pending Prescriptions</p>
-              <p className={`text-2xl font-extrabold font-mono mt-1 ${stats.pendingPrescriptions > 0 ? "text-amber-600" : "text-[#1b1c1c]"}`}>
-                {loading ? "..." : stats.pendingPrescriptions}
-              </p>
-            </div>
-            <div className="h-10 w-10 rounded bg-amber-100 flex items-center justify-center group-hover:bg-amber-200 transition-colors">
-              <svg className="h-5 w-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
-              </svg>
-            </div>
-          </div>
+        <Link
+          href="/pharmacy"
+          className="hover:border-brand-green hover:shadow-sm transition-all group"
+        >
+          <StatCard
+            label="Pending Prescriptions"
+            value={stats.pendingPrescriptions}
+            color="warning"
+            icon={BeakerIcon}
+            loading={loading}
+          />
         </Link>
 
-        <Link href="/lab" className="bg-white rounded border border-[#becab7]/50 p-5 hover:border-brand-green hover:shadow-sm transition-all group">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-bold text-[#5f5e5e] uppercase tracking-wider">Pending Lab Orders</p>
-              <p className={`text-2xl font-extrabold font-mono mt-1 ${stats.pendingOrders > 0 ? "text-sky-600" : "text-[#1b1c1c]"}`}>
-                {loading ? "..." : stats.pendingOrders}
-              </p>
-            </div>
-            <div className="h-10 w-10 rounded bg-sky-100 flex items-center justify-center group-hover:bg-sky-200 transition-colors">
-              <svg className="h-5 w-5 text-sky-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
-              </svg>
-            </div>
-          </div>
+        <Link
+          href="/lab"
+          className="hover:border-brand-green hover:shadow-sm transition-all group"
+        >
+          <StatCard
+            label="Pending Lab Orders"
+            value={stats.pendingOrders}
+            color="info"
+            icon={BeakerIcon}
+            loading={loading}
+          />
         </Link>
 
-        <Link href="/billing" className="bg-white rounded border border-[#becab7]/50 p-5 hover:border-brand-green hover:shadow-sm transition-all group">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-bold text-[#5f5e5e] uppercase tracking-wider">Unpaid Bills</p>
-              <p className={`text-2xl font-extrabold font-mono mt-1 ${stats.unpaidBills > 0 ? "text-red-600" : "text-[#1b1c1c]"}`}>
-                {loading ? "..." : stats.unpaidBills}
-              </p>
-            </div>
-            <div className="h-10 w-10 rounded bg-red-100 flex items-center justify-center group-hover:bg-red-200 transition-colors">
-              <svg className="h-5 w-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
-              </svg>
-            </div>
-          </div>
+        <Link
+          href="/billing"
+          className="hover:border-brand-green hover:shadow-sm transition-all group"
+        >
+          <StatCard
+            label="Unpaid Bills"
+            value={stats.unpaidBills}
+            color="danger"
+            icon={CreditCardIcon}
+            loading={loading}
+          />
         </Link>
       </section>
 
