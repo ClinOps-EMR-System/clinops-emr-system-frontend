@@ -13,8 +13,11 @@ export function useAuth() {
     const data = await api.post("/login", credentials) as {
       data: { token: string; user: User };
     };
-    ctxLogin(data.data.token, data.data.user);
-    return data.data.token;
+    const token = data.data.token;
+
+    const me = await api.get("/user", token) as { data: User };
+    ctxLogin(token, me.data);
+    return token;
   };
 
   const signup = async (payload: {

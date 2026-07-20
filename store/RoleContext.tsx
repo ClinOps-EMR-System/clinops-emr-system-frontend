@@ -1,8 +1,9 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 "use client";
 
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { useRouter, usePathname } from "next/navigation";
+import { api } from "@/lib/api";
 
 export interface User {
   id: number;
@@ -14,6 +15,8 @@ export interface User {
     id: number;
     name: string;
   };
+  roles: string[];
+  permissions: string[];
 }
 
 interface AuthContextType {
@@ -35,20 +38,39 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
   useEffect(() => {
-    // Load auth from localStorage on mount
+    // Load auth from localStorage on mount, then refresh user from API
     const storedToken = localStorage.getItem("clinops_token");
     const storedUser = localStorage.getItem("clinops_user");
 
     if (storedToken && storedUser) {
       setToken(storedToken);
       try {
-        setUser(JSON.parse(storedUser));
+        const parsed = JSON.parse(storedUser);
+        setUser(parsed);
+
+        // Re-fetch full user profile to get fresh roles/permissions
+        api.get("/user", storedToken)
+          .then((res: any) => {
+            const fresh = res.data;
+            setUser(fresh);
+            localStorage.setItem("clinops_user", JSON.stringify(fresh));
+          })
+          .catch(() => {
+            // Token expired or invalid — clear auth
+            localStorage.removeItem("clinops_token");
+            localStorage.removeItem("clinops_user");
+            setToken(null);
+            setUser(null);
+          })
+          .finally(() => setIsLoading(false));
       } catch {
         localStorage.removeItem("clinops_token");
         localStorage.removeItem("clinops_user");
+        setIsLoading(false);
       }
+    } else {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   }, []);
 
   useEffect(() => {
@@ -82,7 +104,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = (newToken: string, newUser: User) => {
     localStorage.setItem("clinops_token", newToken);
     localStorage.setItem("clinops_user", JSON.stringify(newUser));
-    
+
     setToken(newToken);
     setUser(newUser);
     router.push("/dashboard");

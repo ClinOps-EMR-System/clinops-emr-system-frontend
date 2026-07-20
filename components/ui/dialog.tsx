@@ -1,7 +1,7 @@
 'use client'
 
 import { XMarkIcon } from '@heroicons/react/24/solid'
-import { Button as PrimitiveButton } from 'react-aria-components/Button'
+import { Button as PrimitiveButton, type ButtonProps as PrimitiveButtonProps } from 'react-aria-components/Button'
 import { Dialog as PrimitiveDialog } from 'react-aria-components/Dialog'
 import { Heading, type HeadingProps } from 'react-aria-components/Heading'
 import type { TextProps } from 'react-aria-components/Text'
@@ -27,7 +27,7 @@ const Dialog = ({
   )
 }
 
-const DialogTrigger = ({ className, ...props }: ButtonProps) => (
+const DialogTrigger = ({ className, ...props }: PrimitiveButtonProps) => (
   <PrimitiveButton className={cx('cursor-pointer', className)} {...props} />
 )
 
@@ -110,8 +110,8 @@ const DialogFooter = ({ className, ...props }: DialogFooterProps) => {
   )
 }
 
-const DialogClose = ({ intent = 'plain', ref, ...props }: ButtonProps) => {
-  return <Button slot="close" ref={ref} intent={intent} {...props} />
+const DialogClose = ({ ref, ...props }: ButtonProps) => {
+  return <Button slot="close" ref={ref} variant="ghost" {...props} />
 }
 
 interface CloseButtonIndicatorProps extends Omit<ButtonProps, 'children'> {

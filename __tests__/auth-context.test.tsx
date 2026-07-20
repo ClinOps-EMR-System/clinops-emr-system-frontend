@@ -32,6 +32,8 @@ function TestComponent() {
             name: "Dickson D",
             email: "test@example.com",
             is_active: true,
+            roles: ["Admin"],
+            permissions: ["dashboard.view"],
           })
         }
       >
@@ -85,7 +87,7 @@ describe("AuthContext Session Store", () => {
     localStorage.setItem("clinops_token", "saved-token");
     localStorage.setItem(
       "clinops_user",
-      JSON.stringify({ id: 1, name: "Saved User", email: "saved@test.com", is_active: true })
+      JSON.stringify({ id: 1, name: "Saved User", email: "saved@test.com", is_active: true, roles: ["Nurse"], permissions: ["dashboard.view"] })
     );
 
     render(
@@ -117,7 +119,7 @@ describe("AuthContext Session Store", () => {
     localStorage.setItem("clinops_token", "valid-token");
     localStorage.setItem(
       "clinops_user",
-      JSON.stringify({ id: 1, name: "User", email: "test@test.com", is_active: true })
+      JSON.stringify({ id: 1, name: "User", email: "test@test.com", is_active: true, roles: ["Doctor"], permissions: ["dashboard.view"] })
     );
 
     render(

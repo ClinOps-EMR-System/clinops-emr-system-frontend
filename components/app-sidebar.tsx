@@ -43,9 +43,11 @@ import {
   SidebarSectionGroup,
 } from '@/components/ui/sidebar'
 import { useAuth } from '@/store/RoleContext'
+import { usePermission } from '@/hooks/usePermission'
 
 export default function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
-  const { user } = useAuth()
+  const { user, logout } = useAuth()
+  const { can } = usePermission()
   const departmentName = user?.department?.name || 'Clinical Operations'
   const name = user?.name || 'Staff Member'
   const email = user?.email || 'staff@clinops.org'
@@ -65,33 +67,36 @@ export default function AppSidebar(props: React.ComponentProps<typeof Sidebar>) 
       </SidebarHeader>
       <SidebarContent>
         <SidebarSectionGroup>
-          <SidebarSection label="Clinical">
-            <SidebarNavItem href="/dashboard" label="Dashboard" icon={HomeIcon} />
-            <SidebarNavItem href="/patients" label="Patient Search" icon={UsersIcon} />
-            <SidebarNavItem href="/pharmacy" label="Pharmacy" icon={BeakerIcon} />
-            <SidebarNavItem href="/lab" label="Laboratory" icon={BeakerIcon} />
-          </SidebarSection>
+          {(can('dashboard.view') || can('patient.view') || can('prescription.view') || can('lab.view_results') || can('triage.create') || can('consultation.view')) && (
+            <SidebarSection label="Clinical">
+              <SidebarNavItem href="/dashboard" label="Dashboard" icon={HomeIcon} permission="dashboard.view" />
+              <SidebarNavItem href="/patients" label="Patient Search" icon={UsersIcon} permission="patient.view" />
+              <SidebarNavItem href="/pharmacy" label="Pharmacy" icon={BeakerIcon} permission="prescription.view" />
+              <SidebarNavItem href="/lab" label="Laboratory" icon={BeakerIcon} permission="lab.view_results" />
+            </SidebarSection>
+          )}
 
-          <SidebarSection label="Operations">
-            <SidebarNavItem href="/billing" label="Billing" icon={CreditCardIcon} />
-            <SidebarNavItem href="/referrals" label="Referrals" icon={ArrowUpTrayIcon} />
-            <SidebarNavItem href="/admissions" label="Admissions" icon={BuildingOffice2Icon} />
-          </SidebarSection>
+          {(can('billing.view') || can('referral.view') || can('ward.view')) && (
+            <SidebarSection label="Operations">
+              <SidebarNavItem href="/billing" label="Billing" icon={CreditCardIcon} permission="billing.view" />
+              <SidebarNavItem href="/referrals" label="Referrals" icon={ArrowUpTrayIcon} permission="referral.view" />
+              <SidebarNavItem href="/admissions" label="Admissions" icon={BuildingOffice2Icon} permission="ward.view" />
+            </SidebarSection>
+          )}
 
-          <SidebarDisclosureGroup defaultExpandedKeys={[1]}>
-            <SidebarDisclosure id={1}>
-              <SidebarDisclosureTrigger>
-                <Cog6ToothIcon />
-                <SidebarLabel>System</SidebarLabel>
-              </SidebarDisclosureTrigger>
-              <SidebarDisclosurePanel>
-                <SidebarItem href="/admin" tooltip="Administration">
+          {can('user.manage') && (
+            <SidebarDisclosureGroup defaultExpandedKeys={[1]}>
+              <SidebarDisclosure id={1}>
+                <SidebarDisclosureTrigger>
                   <Cog6ToothIcon />
-                  <SidebarLabel>Administration</SidebarLabel>
-                </SidebarItem>
-              </SidebarDisclosurePanel>
-            </SidebarDisclosure>
-          </SidebarDisclosureGroup>
+                  <SidebarLabel>System</SidebarLabel>
+                </SidebarDisclosureTrigger>
+                <SidebarDisclosurePanel>
+                  <SidebarNavItem href="/admin" label="Administration" icon={Cog6ToothIcon} permission="user.manage" />
+                </SidebarDisclosurePanel>
+              </SidebarDisclosure>
+            </SidebarDisclosureGroup>
+          )}
         </SidebarSectionGroup>
       </SidebarContent>
 
@@ -100,13 +105,10 @@ export default function AppSidebar(props: React.ComponentProps<typeof Sidebar>) 
           <MenuTrigger className="flex w-full items-center justify-between" aria-label="Profile">
             <div className="flex items-center gap-x-2">
               <Avatar
-                className="size-8 *:size-8 group-data-[state=collapsed]:size-6 group-data-[state=collapsed]:*:size-6"
+                initials={initials}
+                className="size-8 *:size-8 bg-[#368D80] text-white group-data-[state=collapsed]:size-6 group-data-[state=collapsed]:*:size-6"
                 isSquare
-              >
-                <span className="flex size-full items-center justify-center bg-[#368D80] text-white text-xs font-bold">
-                  {initials}
-                </span>
-              </Avatar>
+              />
               <div className="in-data-[collapsible=dock]:hidden text-sm">
                 <SidebarLabel>{name}</SidebarLabel>
                 <span className="-mt-0.5 block text-muted-fg">{departmentName}</span>
@@ -138,7 +140,7 @@ export default function AppSidebar(props: React.ComponentProps<typeof Sidebar>) 
               Support
             </MenuItem>
             <MenuSeparator />
-            <MenuItem href="#logout">
+            <MenuItem onAction={logout}>
               <ArrowRightStartOnRectangleIcon />
               Sign Out
             </MenuItem>
@@ -154,13 +156,18 @@ function SidebarNavItem({
   href,
   label,
   icon: Icon,
+  permission,
 }: {
   href: string
   label: string
   icon: React.ComponentType<{ className?: string }>
+  permission?: string
 }) {
   const pathname = usePathname()
+  const { can } = usePermission()
   const isActive = pathname === href || pathname.startsWith(href + '/')
+
+  if (permission && !can(permission)) return null
 
   return (
     <SidebarItem tooltip={label} isCurrent={isActive} href={href}>

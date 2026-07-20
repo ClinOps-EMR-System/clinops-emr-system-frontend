@@ -1,34 +1,35 @@
+import { useAuth } from "@/store/RoleContext";
+import { useEffect } from "react";
+
 export const usePermission = () => {
+  const { user } = useAuth();
+
+  useEffect(() => {
+    console.log(user)
+  }, [user])
+
+  const permissions = user?.permissions ?? [];
 
   const hasPermission = (permission: string) => {
-
+    return permissions.includes(permission);
   };
 
   const can = (permission: string) => {
     return hasPermission(permission);
   };
 
-  const hasAllPermissions = (permissions: string[]) => {
-    return permissions.every(permission => hasPermission(permission));
+  const hasAllPermissions = (perms: string[]) => {
+    return perms.every((p) => hasPermission(p));
   };
 
-  const hasAnyPermission = (permissions: string[]) => {
-    return permissions.some(permission => hasPermission(permission));
+  const hasAnyPermission = (perms: string[]) => {
+    return perms.some((p) => hasPermission(p));
   };
-
-  const hasAnyOfPermissions = (permissions: string[]) => {
-    return hasAnyPermission(permissions);
-  };
-
-  const hasAllOfPermissions = (permissions: string[]) => {
-    return hasAllPermissions(permissions);
-  };
-
 
   return {
     hasPermission,
     can,
-    hasAnyOfPermissions,
-    hasAllOfPermissions,
+    hasAllPermissions,
+    hasAnyPermission,
   };
 };

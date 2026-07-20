@@ -22,6 +22,7 @@ import { SheetContent } from '@/components/ui/sheet'
 import { TreeIndicator } from '@/components/ui/tree'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { cx } from '@/lib/primitive'
+import { cn } from '@/lib/utils'
 import { Button } from './button'
 import { Link } from './link'
 import { Tooltip, TooltipContent } from './tooltip'
@@ -652,7 +653,6 @@ const SidebarSeparator = ({ className, ...props }: SidebarSeparatorProps) => {
 }
 
 const SidebarTrigger = ({
-  onPress,
   className,
   children,
   ...props
@@ -662,11 +662,10 @@ const SidebarTrigger = ({
     <Button
       aria-label={props['aria-label'] || 'Toggle Sidebar'}
       data-slot="sidebar-trigger"
-      intent={props.intent || 'plain'}
-      size={props.size || 'sq-sm'}
-      className={cx('shrink-0', className)}
-      onPress={(event) => {
-        onPress?.(event)
+      size={props.size || 'icon-xs'}
+      className={cn('shrink-0', className)}
+      onClick={(event) => {
+        props.onClick?.(event)
         toggleSidebar()
       }}
       {...props}

@@ -32,8 +32,28 @@ interface TriageSummary {
   } | null;
   allergies_confirmed: boolean;
   allergies: Allergy[];
+  vital_signs: VitalSign[];
   pregnancy_status: boolean;
   current_medications: unknown[];
+}
+
+interface VitalSign {
+  id: number;
+  temperature: number | null;
+  blood_pressure: string | null;
+  pulse_rate: number | null;
+  respiratory_rate: number | null;
+  oxygen_saturation: number | null;
+  weight: number | null;
+  height: number | null;
+  pain_score: number | null;
+  gcs_eye: number | null;
+  gcs_verbal: number | null;
+  gcs_motor: number | null;
+  blood_glucose: number | null;
+  consciousness: string | null;
+  ews_score: number | null;
+  recorded_at: string;
 }
 
 interface TrendPoint {
@@ -84,7 +104,6 @@ export default function NurseTriageWorkbench() {
   const [gcsMotor, setGcsMotor] = useState("");
   const [bloodGlucose, setBloodGlucose] = useState("");
   const [consciousness, setConsciousness] = useState<AVPU>("A");
-  const [triageCategory, setTriageCategory] = useState("3");
 
   // 2. Allergy Form States
   const [allergen, setAllergen] = useState("");
@@ -108,6 +127,16 @@ export default function NurseTriageWorkbench() {
   const [hasTravelHistory, setHasTravelHistory] = useState(false);
   const [suspectedInfectionType, setSuspectedInfectionType] = useState("");
 
+  // Backend EWS response (after saving vitals)
+  const [backendEWS, setBackendEWS] = useState<{
+    total: number;
+    breakdown: Record<string, number>;
+  } | null>(null);
+  const [backendEscalation, setBackendEscalation] = useState<{
+    severity: string;
+    message: string;
+  } | null>(null);
+
   // Fetch core patient data
   async function fetchSummaryData() {
     try {
@@ -128,6 +157,29 @@ export default function NurseTriageWorkbench() {
         if (s.encounter) {
           setChiefComplaint(s.encounter.chief_complaint || "");
           setHpi(s.encounter.history_of_present_illness || "");
+        }
+
+        // Prefill vitals form with latest vital signs
+        if (s.vital_signs && s.vital_signs.length > 0) {
+          const latest = s.vital_signs[0];
+          if (latest.temperature !== null) setTemperature(String(latest.temperature));
+          if (latest.blood_pressure) setBloodPressure(latest.blood_pressure);
+          if (latest.pulse_rate !== null) setPulseRate(String(latest.pulse_rate));
+          if (latest.respiratory_rate !== null) setRespiratoryRate(String(latest.respiratory_rate));
+          if (latest.oxygen_saturation !== null) setOxygenSaturation(String(latest.oxygen_saturation));
+          if (latest.weight !== null) setWeight(String(latest.weight));
+          if (latest.height !== null) setHeight(String(latest.height));
+          if (latest.pain_score !== null) setPainScore(String(latest.pain_score));
+          if (latest.gcs_eye !== null) setGcsEye(String(latest.gcs_eye));
+          if (latest.gcs_verbal !== null) setGcsVerbal(String(latest.gcs_verbal));
+          if (latest.gcs_motor !== null) setGcsMotor(String(latest.gcs_motor));
+          if (latest.blood_glucose !== null) setBloodGlucose(String(latest.blood_glucose));
+          if (latest.consciousness) setConsciousness(latest.consciousness as AVPU);
+        }
+
+        // Set backend EWS from latest vital sign
+        if (s.vital_signs && s.vital_signs.length > 0 && s.vital_signs[0].ews_score !== null) {
+          setBackendEWS({ total: s.vital_signs[0].ews_score, breakdown: {} });
         }
       }
 
@@ -164,6 +216,10 @@ export default function NurseTriageWorkbench() {
     consciousness: consciousness,
   };
   const news2: NEWS2Result = calculateNEWS2(currentVitalsPayload);
+
+  // Triage category derived from EWS score
+  // 1 = High (EWS >= 7), 2 = Medium (EWS >= 5), 3 = Low (EWS < 5)
+  const triageCategory = news2.score >= 7 ? "1" : news2.score >= 5 ? "2" : "3";
 
   // Compute BMI dynamically
   const parsedWeight = parseFloat(weight);
@@ -207,8 +263,18 @@ export default function NurseTriageWorkbench() {
     };
 
     try {
-      await api.post(`/patients/${patientId}/triage/vital-signs`, payload, token);
+      const res = await api.post(`/patients/${patientId}/triage/vital-signs`, payload, token);
       setSuccessMsg("Vital signs and clinical NEWS2 score logged successfully.");
+      
+      // Capture backend EWS response
+      if (res && res.data) {
+        if (res.data.ews) {
+          setBackendEWS(res.data.ews);
+        }
+        if (res.data.escalation) {
+          setBackendEscalation(res.data.escalation);
+        }
+      }
       
       // Reset forms and reload
       setTemperature("");
@@ -491,26 +557,94 @@ export default function NurseTriageWorkbench() {
                 </div>
 
                 {/* Real-time EWS Score Panel */}
-                <div className={`p-4 rounded border flex flex-col sm:flex-row items-center justify-between gap-4 transition-all ${
-                  news2.score >= 7
+                {(() => {
+                  // Use backend EWS if available, otherwise use frontend calculation
+                  const displayScore = backendEWS?.total ?? news2.score;
+                  const displaySeverity = backendEscalation?.severity ?? news2.riskLevel.toLowerCase();
+                  const displayBreakdown = backendEWS?.breakdown ?? null;
+                  
+                  // Color mapping: high=red, medium=yellow, low=green
+                  const colorClasses = displayScore >= 7 || displaySeverity === 'high'
                     ? "bg-red-50 border-red-200 text-red-900"
-                    : news2.score >= 5 || news2.riskLevel === "Medium"
+                    : displayScore >= 5 || displaySeverity === 'medium'
                       ? "bg-yellow-50 border-yellow-200 text-yellow-900"
-                      : news2.score >= 1
+                      : displayScore >= 1
                         ? "bg-emerald-50 border-emerald-100 text-emerald-950"
-                        : "bg-gray-50 border-gray-200 text-gray-900"
-                }`}>
-                  <div>
-                    <h4 className="text-sm font-bold uppercase tracking-wider">Automated NEWS2 Score</h4>
-                    <p className="text-xs mt-1 text-gray-600 leading-normal">{news2.frequencyText}</p>
-                  </div>
-                  <div className="flex items-baseline gap-2.5">
-                    <span className="text-sm font-semibold uppercase tracking-widest">{news2.riskLevel} RISK</span>
-                    <span className="text-5xl font-black font-mono tracking-tighter">{news2.score}</span>
-                  </div>
-                </div>
+                        : "bg-gray-50 border-gray-200 text-gray-900";
+                  
+                  const riskLabel = displayScore >= 7 || displaySeverity === 'high'
+                    ? "HIGH"
+                    : displayScore >= 5 || displaySeverity === 'medium'
+                      ? "MEDIUM"
+                      : displayScore >= 1
+                        ? "LOW"
+                        : "NORMAL";
+                  
+                  return (
+                    <div className={`p-4 rounded border transition-all ${colorClasses}`}>
+                      <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                        <div>
+                          <h4 className="text-sm font-bold uppercase tracking-wider">NEWS2 Clinical Score</h4>
+                          <p className="text-xs mt-1 text-gray-600 leading-normal">
+                            {backendEscalation?.message ?? news2.frequencyText}
+                          </p>
+                        </div>
+                        <div className="flex items-baseline gap-2.5">
+                          <span className="text-sm font-semibold uppercase tracking-widest">{riskLabel} RISK</span>
+                          <span className="text-5xl font-black font-mono tracking-tighter">{displayScore}</span>
+                        </div>
+                      </div>
+                      
+                      {/* Score Breakdown */}
+                      {displayBreakdown && Object.keys(displayBreakdown).length > 0 && (
+                        <div className="mt-4 pt-3 border-t border-current/10">
+                          <h5 className="text-[10px] font-bold uppercase tracking-widest mb-2 opacity-70">Parameter Breakdown</h5>
+                          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
+                            {Object.entries(displayBreakdown).map(([param, score]) => {
+                              const scoreNum = score as number;
+                              const paramLabel = param.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+                              const dotColor = scoreNum >= 3 ? 'bg-red-500' : scoreNum >= 2 ? 'bg-orange-500' : scoreNum >= 1 ? 'bg-yellow-500' : 'bg-emerald-500';
+                              return (
+                                <div key={param} className="flex items-center gap-1.5 text-[11px]">
+                                  <span className={`w-2 h-2 rounded-full shrink-0 ${dotColor}`} />
+                                  <span className="truncate opacity-80">{paramLabel}</span>
+                                  <span className="font-bold ml-auto">{scoreNum}</span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                  })()}
 
-                {/* Form Fields Grid */}
+                  {/* Triage Priority - Auto-determined from EWS */}
+                  <div className={`p-3 rounded border ${
+                    triageCategory === "1"
+                      ? "bg-red-50 border-red-200"
+                      : triageCategory === "2"
+                        ? "bg-orange-50 border-orange-200"
+                        : "bg-yellow-50 border-yellow-200"
+                  }`}>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className={`text-xs font-bold uppercase tracking-wider ${
+                          triageCategory === "1" ? "text-red-700" : triageCategory === "2" ? "text-orange-700" : "text-yellow-700"
+                        }`}>Triage Priority</span>
+                        <span className={`px-2 py-0.5 rounded text-xs font-bold ${
+                          triageCategory === "1" ? "bg-red-200 text-red-900" : triageCategory === "2" ? "bg-orange-200 text-orange-900" : "bg-yellow-200 text-yellow-900"
+                        }`}>
+                          {triageCategory === "1" && "Level 1 - Resuscitation"}
+                          {triageCategory === "2" && "Level 2 - Emergent"}
+                          {triageCategory === "3" && "Level 3 - Urgent"}
+                        </span>
+                      </div>
+                      <span className="text-[10px] text-gray-500 italic">Auto-determined by NEWS2</span>
+                    </div>
+                  </div>
+
+                  {/* Form Fields Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   {/* Temp */}
                   <div>
@@ -626,22 +760,6 @@ export default function NurseTriageWorkbench() {
                       <option value="V">Voice response (V)</option>
                       <option value="P">Pain response (P)</option>
                       <option value="U">Unresponsive (U)</option>
-                    </select>
-                  </div>
-
-                  {/* Triage Level (ESI) */}
-                  <div>
-                    <label className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">Triage Priority Category</label>
-                    <select
-                      className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded bg-white focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary text-sm"
-                      value={triageCategory}
-                      onChange={(e) => setTriageCategory(e.target.value)}
-                    >
-                      <option value="1">Level 1 - Resuscitation (Red)</option>
-                      <option value="2">Level 2 - Emergent (Orange)</option>
-                      <option value="3">Level 3 - Urgent (Yellow)</option>
-                      <option value="4">Level 4 - Less Urgent (Green)</option>
-                      <option value="5">Level 5 - Non-Urgent (Blue)</option>
                     </select>
                   </div>
 

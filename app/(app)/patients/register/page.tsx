@@ -5,6 +5,18 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "../../../../store/RoleContext";
 import { api } from "../../../../lib/api";
+import { MALAWI_DISTRICTS, PATIENT_CATEGORIES } from "../../../../lib/constants";
+import {
+  Combobox,
+  ComboboxInput,
+  ComboboxContent,
+  ComboboxList,
+  ComboboxItem,
+  ComboboxEmpty,
+} from "../../../../components/ui/combobox";
+
+const districtItems = MALAWI_DISTRICTS.map((d) => ({ value: d, label: d }))
+const categoryItems = PATIENT_CATEGORIES.map((c) => ({ value: c, label: c }))
 
 interface DuplicatePatient {
   id: number;
@@ -432,32 +444,50 @@ function PatientRegistrationForm() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-1">
                     <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide">District</label>
-                    <select
-                      className="w-full px-3 py-2 border border-gray-300 rounded bg-white focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary text-sm font-medium text-gray-900"
+                    <Combobox
                       value={district}
-                      onChange={(e) => setDistrict(e.target.value)}
+                      onValueChange={(val) => setDistrict(val as string)}
+                      items={districtItems}
                     >
-                      <option value="Zomba">Zomba</option>
-                      <option value="Blantyre">Blantyre</option>
-                      <option value="Lilongwe">Lilongwe</option>
-                      <option value="Mzuzu">Mzuzu</option>
-                      <option value="Thyolo">Thyolo</option>
-                      <option value="Neno">Neno</option>
-                    </select>
+                      <ComboboxInput
+                        placeholder="Search district..."
+                        className="w-full h-auto min-h-[38px] rounded border border-gray-300 focus-within:border-clinical-primary focus-within:ring-1 focus-within:ring-clinical-primary"
+                      />
+                      <ComboboxContent>
+                        <ComboboxList>
+                          {(item: { value: string; label: string }) => (
+                            <ComboboxItem key={item.value} value={item.value}>
+                              {item.label}
+                            </ComboboxItem>
+                          )}
+                        </ComboboxList>
+                        <ComboboxEmpty>No district found.</ComboboxEmpty>
+                      </ComboboxContent>
+                    </Combobox>
                   </div>
 
                   <div className="space-y-1">
                     <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide">Patient Payer Category</label>
-                    <select
-                      className="w-full px-3 py-2 border border-gray-300 rounded bg-white focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary text-sm font-medium text-gray-900"
+                    <Combobox
                       value={category}
-                      onChange={(e) => setCategory(e.target.value)}
+                      onValueChange={(val) => setCategory(val as string)}
+                      items={categoryItems}
                     >
-                      <option value="Outpatient">Outpatient</option>
-                      <option value="Inpatient">Inpatient</option>
-                      <option value="Student">Student (MUST)</option>
-                      <option value="Staff">Staff</option>
-                    </select>
+                      <ComboboxInput
+                        placeholder="Search category..."
+                        className="w-full h-auto min-h-[38px] rounded border border-gray-300 focus-within:border-clinical-primary focus-within:ring-1 focus-within:ring-clinical-primary"
+                      />
+                      <ComboboxContent>
+                        <ComboboxList>
+                          {(item: { value: string; label: string }) => (
+                            <ComboboxItem key={item.value} value={item.value}>
+                              {item.label}
+                            </ComboboxItem>
+                          )}
+                        </ComboboxList>
+                        <ComboboxEmpty>No category found.</ComboboxEmpty>
+                      </ComboboxContent>
+                    </Combobox>
                   </div>
                 </div>
               </div>
