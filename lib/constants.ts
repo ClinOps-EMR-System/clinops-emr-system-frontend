@@ -1,0 +1,33 @@
+export const MALAWI_DISTRICTS = [
+  "Balaka",
+  "Blantyre",
+  "Chikwawa",
+  "Chiradzulu",
+  "Chitipa",
+  "Dedza",
+  "Dowa",
+  "Karonga",
+  "Kasungu",
+  "Likoma",
+  "Lilongwe",
+  "Mangochi",
+  "Mchinji",
+  "Mwanza",
+  "Mzimba",
+  "Ncheu",
+  "Nkhotakota",
+  "Nsanje",
+  "Ntcheu",
+  "Ntchisi",
+  "Phalombe",
+  "Thyolo",
+  "Zomba",
+] as const
+
+export const PATIENT_CATEGORIES = [
+  "Outpatient",
+  "Inpatient",
+  "Student (MUST)",
+  "Staff",
+  "Emergency",
+] as const
