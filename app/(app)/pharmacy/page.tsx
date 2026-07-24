@@ -91,7 +91,7 @@ export default function PharmacyPage() {
     if (!selectedPrescription) return;
     setDispensing(true);
     try {
-      await api.put(`/prescriptions/${selectedPrescription.id}/dispense`, {}, token);
+      await api.post(`/prescriptions/${selectedPrescription.id}/dispense`, {}, token);
       setDispenseModalOpen(false);
       setSelectedPrescription(null);
       fetchPrescriptions();
@@ -156,6 +156,7 @@ export default function PharmacyPage() {
             <input
               type="text"
               placeholder="Search by drug name, patient name, or hospital #..."
+              aria-label="Search prescriptions"
               className="w-full pl-9 pr-4 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
