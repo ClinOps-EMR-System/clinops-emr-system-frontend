@@ -152,13 +152,13 @@ export default function AdmissionsPage() {
       </section>
 
       {/* Tabs */}
-      <section className="flex gap-1 bg-white rounded border border-[#becab7]/50 p-1">
+      <section className="flex gap-1 bg-white rounded border border-[#becab7]/50 p-1" role="tablist" aria-label="Admissions views">
         {[
           { key: "active" as const, label: "Active Admissions" },
           { key: "discharged" as const, label: "Discharged" },
           { key: "wards" as const, label: "Ward Overview" },
         ].map((t) => (
-          <button key={t.key} onClick={() => setTab(t.key)} className={`flex-1 px-4 py-2.5 text-sm font-bold rounded transition-all ${tab === t.key ? "bg-clinical-primary text-white" : "text-gray-600 hover:bg-gray-50"}`}>
+          <button key={t.key} role="tab" aria-selected={tab === t.key} onClick={() => setTab(t.key)} className={`flex-1 px-4 py-2.5 text-sm font-bold rounded transition-all ${tab === t.key ? "bg-clinical-primary text-white" : "text-gray-600 hover:bg-gray-50"}`}>
             {t.label}
           </button>
         ))}
@@ -169,7 +169,7 @@ export default function AdmissionsPage() {
         <section className="bg-white rounded border border-[#becab7]/50 p-4">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <input type="text" placeholder="Search by patient name or hospital #..." className="w-full pl-9 pr-4 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+            <input type="text" placeholder="Search by patient name or hospital #..." aria-label="Search admissions" className="w-full pl-9 pr-4 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
           </div>
         </section>
       )}
