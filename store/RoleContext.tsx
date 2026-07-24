@@ -14,6 +14,7 @@ export interface User {
     id: number;
     name: string;
   };
+  roles?: string[];
 }
 
 interface AuthContextType {
@@ -58,10 +59,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!token && !isAuthPage) {
         router.push("/auth");
       } else if (token && isAuthPage) {
-        router.push("/dashboard");
+        const roles = user?.roles || [];
+        const dept = user?.department?.name?.toLowerCase() || "";
+        const isReceptionist = roles.includes("Receptionist") || dept.includes("registration") || dept.includes("reception");
+        router.push(isReceptionist ? "/receptionist" : "/dashboard");
       }
     }
-  }, [token, isLoading, pathname, router]);
+  }, [token, isLoading, pathname, router, user]);
 
   // Listen to 401 unauthorized events
   useEffect(() => {
@@ -79,13 +83,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, [router]);
 
-  const login = (newToken: string, newUser: User) => {
+  const login = async (newToken: string, newUser: User) => {
     localStorage.setItem("clinops_token", newToken);
-    localStorage.setItem("clinops_user", JSON.stringify(newUser));
-    
     setToken(newToken);
-    setUser(newUser);
-    router.push("/dashboard");
+
+    let finalUser: User = newUser;
+
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000/api"}/user`, {
+        headers: { Authorization: `Bearer ${newToken}` },
+      });
+      if (res.ok) {
+        const { data } = await res.json();
+        finalUser = data;
+        localStorage.setItem("clinops_user", JSON.stringify(data));
+        setUser(data);
+      } else {
+        throw new Error("me endpoint returned non-ok");
+      }
+    } catch {
+      localStorage.setItem("clinops_user", JSON.stringify(newUser));
+      setUser(newUser);
+    }
+
+    // Determine redirect: check roles OR department name
+    const roles = finalUser.roles || [];
+    const dept = finalUser.department?.name?.toLowerCase() || "";
+    const isReceptionist = roles.includes("Receptionist") || dept.includes("registration") || dept.includes("reception");
+    router.push(isReceptionist ? "/receptionist" : "/dashboard");
   };
 
   const logout = () => {
