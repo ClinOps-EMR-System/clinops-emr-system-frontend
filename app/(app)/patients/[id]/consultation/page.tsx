@@ -112,7 +112,7 @@ export default function ClinicianSOAPConsultation() {
 
   // Orders State
   const [orders, setOrders] = useState<Order[]>([]);
-  const [orderForm, setOrderForm] = useState({ test_name: "", loinc_code: "", clinical_indication: "", priority: "routine" });
+  const [orderForm, setOrderForm] = useState({ clinical_indication: "", priority: "Routine" });
 
   // Prescriptions State
   const [prescriptions, setPrescriptions] = useState<Prescription[]>([]);
@@ -152,21 +152,18 @@ export default function ClinicianSOAPConsultation() {
         setDiagnoses(filtered);
       }
 
-      // Fetch patient orders
+      // Fetch patient orders (backend: GET /orders returns paginated data)
       try {
-        const ordersRes = await api.get(`/patients/${patientId}/orders`, token);
+        const ordersRes = await api.get(`/orders?patient_id=${patientId}`, token);
         if (ordersRes && ordersRes.data) {
-          setOrders(Array.isArray(ordersRes.data) ? ordersRes.data : []);
+          const items = Array.isArray(ordersRes.data) ? ordersRes.data : ordersRes.data.data || [];
+          setOrders(items);
         }
       } catch { setOrders([]); }
 
-      // Fetch patient prescriptions
-      try {
-        const rxRes = await api.get(`/patients/${patientId}/prescriptions`, token);
-        if (rxRes && rxRes.data) {
-          setPrescriptions(Array.isArray(rxRes.data) ? rxRes.data : []);
-        }
-      } catch { setPrescriptions([]); }
+      // Prescriptions are only created via POST /encounters/{id}/prescriptions
+      // No standalone list endpoint exists in the backend
+      setPrescriptions([]);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to load consultation logs.");
     } finally {
@@ -313,14 +310,12 @@ export default function ClinicianSOAPConsultation() {
     try {
       await api.post(`/encounters/${summary.encounter.id}/orders`, {
         patient_id: parseInt(patientId),
-        order_type: "lab",
-        test_name: orderForm.test_name,
-        loinc_code: orderForm.loinc_code || null,
+        order_type: "Lab",
         clinical_indication: orderForm.clinical_indication || null,
         priority: orderForm.priority,
       }, token);
-      setSuccessMsg(`Lab order "${orderForm.test_name}" placed successfully.`);
-      setOrderForm({ test_name: "", loinc_code: "", clinical_indication: "", priority: "routine" });
+      setSuccessMsg("Lab order placed successfully.");
+      setOrderForm({ clinical_indication: "", priority: "Routine" });
       fetchConsultationData();
     } catch (err: unknown) {
       const apiError = err as { message?: string };
@@ -823,13 +818,12 @@ export default function ClinicianSOAPConsultation() {
                         {orders.map((order) => (
                           <div key={order.id} className="px-4 py-3 flex justify-between items-center">
                             <div>
-                              <span className="font-semibold text-gray-900 text-sm">{order.test_name}</span>
-                              {order.loinc_code && <span className="ml-2 font-mono text-xs text-gray-400">({order.loinc_code})</span>}
-                              <span className="ml-2 text-xs text-gray-400">— {order.priority}</span>
+                              <span className="font-semibold text-gray-900 text-sm">{order.order_type}</span>
+                              {order.clinical_indication && <span className="ml-2 text-xs text-gray-400">— {order.clinical_indication}</span>}
                             </div>
                             <StatusBadge label={order.status} variant={
                               order.status?.toLowerCase() === "completed" ? "success" :
-                              order.status?.toLowerCase() === "pending" ? "warning" : "info"
+                              order.status?.toLowerCase() === "ordered" ? "warning" : "info"
                             } />
                           </div>
                         ))}
@@ -842,33 +836,11 @@ export default function ClinicianSOAPConsultation() {
                   {/* New Order Form */}
                   <form onSubmit={handleCreateOrder} className="space-y-4 pt-4 border-t border-gray-100">
                     <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest">Place New Lab Order</h4>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">Test Name *</label>
-                        <input
-                          type="text"
-                          required
-                          className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary text-sm text-gray-900"
-                          placeholder="e.g., Full Blood Count, Malaria RDT"
-                          value={orderForm.test_name}
-                          onChange={(e) => setOrderForm({ ...orderForm, test_name: e.target.value })}
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">LOINC Code</label>
-                        <input
-                          type="text"
-                          className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary text-sm text-gray-900 font-mono"
-                          placeholder="e.g., 24331-1"
-                          value={orderForm.loinc_code}
-                          onChange={(e) => setOrderForm({ ...orderForm, loinc_code: e.target.value })}
-                        />
-                      </div>
-                    </div>
                     <div>
-                      <label className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">Clinical Indication</label>
+                      <label className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">Clinical Indication *</label>
                       <input
                         type="text"
+                        required
                         className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary text-sm text-gray-900"
                         placeholder="Reason for this investigation"
                         value={orderForm.clinical_indication}
@@ -882,15 +854,15 @@ export default function ClinicianSOAPConsultation() {
                         value={orderForm.priority}
                         onChange={(e) => setOrderForm({ ...orderForm, priority: e.target.value })}
                       >
-                        <option value="routine">Routine</option>
-                        <option value="urgent">Urgent</option>
-                        <option value="stat">STAT (Immediate)</option>
+                        <option value="Routine">Routine</option>
+                        <option value="Urgent">Urgent</option>
+                        <option value="Stat">STAT (Immediate)</option>
                       </select>
                     </div>
                     <div className="flex justify-end pt-2">
                       <button
                         type="submit"
-                        disabled={submitLoading || !orderForm.test_name.trim()}
+                        disabled={submitLoading || !orderForm.clinical_indication.trim()}
                         className="px-6 py-2 bg-[#00a651] hover:bg-[#048f47] text-white font-bold text-sm rounded shadow-sm transition-all focus:outline-none cursor-pointer disabled:opacity-50"
                       >
                         {submitLoading ? "Placing Order..." : "Place Lab Order"}

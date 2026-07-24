@@ -4,8 +4,9 @@ import { useState, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import AuthShell from "../AuthShell";
+import { getApiBaseUrl } from "../../../lib/config";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000/api";
+const API_BASE = getApiBaseUrl();
 
 function ResetPasswordForm() {
   const searchParams = useSearchParams();

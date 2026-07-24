@@ -62,12 +62,16 @@ export default function ReferralsPage() {
     try {
       setLoading(true);
       setError(null);
-      const [referralsRes, deptsRes] = await Promise.all([
+      const [referralsRes, deptsRes] = await Promise.allSettled([
         api.get("/referrals", token),
         api.get("/departments", token),
       ]);
-      if (referralsRes && referralsRes.data) setReferrals(referralsRes.data);
-      if (deptsRes && deptsRes.data) setDepartments(deptsRes.data);
+      if (referralsRes.status === "fulfilled" && referralsRes.value?.data) {
+        setReferrals(Array.isArray(referralsRes.value.data) ? referralsRes.value.data : referralsRes.value.data.data || []);
+      }
+      if (deptsRes.status === "fulfilled" && deptsRes.value?.data) {
+        setDepartments(Array.isArray(deptsRes.value.data) ? deptsRes.value.data : deptsRes.value.data.data || []);
+      }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to load referrals");
     } finally {

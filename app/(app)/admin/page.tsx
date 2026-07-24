@@ -45,12 +45,18 @@ export default function AdminPage() {
     try {
       setLoading(true);
       setError(null);
-      const [usersRes, rolesRes] = await Promise.all([
+      const [usersRes, rolesRes] = await Promise.allSettled([
         api.get("/users", token),
         api.get("/roles", token),
       ]);
-      if (usersRes && usersRes.data) setUsers(Array.isArray(usersRes.data) ? usersRes.data : usersRes.data.data || []);
-      if (rolesRes && rolesRes.data) setRoles(Array.isArray(rolesRes.data) ? rolesRes.data : rolesRes.data.data || []);
+      if (usersRes.status === "fulfilled" && usersRes.value?.data) {
+        const userData = usersRes.value.data;
+        setUsers(Array.isArray(userData) ? userData : userData.data || []);
+      }
+      if (rolesRes.status === "fulfilled" && rolesRes.value?.data) {
+        const rolesData = rolesRes.value.data;
+        setRoles(Array.isArray(rolesData) ? rolesData : rolesData.data || []);
+      }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to load admin data");
     } finally {
@@ -96,7 +102,12 @@ export default function AdminPage() {
       setRoleForm({ name: "", description: "" });
       fetchData();
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to create role");
+      const apiError = err as { status?: number; message?: string };
+      if (apiError.status === 404) {
+        setError("Role management is not yet configured on the backend.");
+      } else {
+        setError(apiError.message || "Failed to create role");
+      }
     } finally {
       setSubmitting(false);
     }

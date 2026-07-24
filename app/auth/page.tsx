@@ -4,8 +4,9 @@ import AuthShell from "./AuthShell";
 import Link from "next/link";
 import { useState } from "react";
 import { useAuth } from "../../store/RoleContext";
+import { getApiBaseUrl } from "../../lib/config";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000/api";
+const API_BASE = getApiBaseUrl();
 
 export default function LoginPage() {
   const { login } = useAuth();

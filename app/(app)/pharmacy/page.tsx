@@ -53,10 +53,15 @@ export default function PharmacyPage() {
       setError(null);
       const res = await api.get("/prescriptions", token);
       if (res && res.data) {
-        setPrescriptions(res.data);
+        setPrescriptions(Array.isArray(res.data) ? res.data : res.data.data || []);
       }
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to load prescriptions");
+      const apiError = err as { status?: number; message?: string };
+      if (apiError.status === 404) {
+        setError("Prescription management is not yet configured on the backend. The pharmacy module will be available once the backend is updated.");
+      } else {
+        setError(apiError.message || "Failed to load prescriptions");
+      }
     } finally {
       setLoading(false);
     }
@@ -91,7 +96,12 @@ export default function PharmacyPage() {
       setSelectedPrescription(null);
       fetchPrescriptions();
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to dispense");
+      const apiError = err as { status?: number; message?: string };
+      if (apiError.status === 404) {
+        setError("Dispensing endpoint is not yet configured on the backend.");
+      } else {
+        setError(apiError.message || "Failed to dispense");
+      }
     } finally {
       setDispensing(false);
     }

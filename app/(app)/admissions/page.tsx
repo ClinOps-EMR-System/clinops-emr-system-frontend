@@ -47,7 +47,7 @@ export default function AdmissionsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [tab, setTab] = useState<"active" | "discharged" | "wards">("active");
   const [admitModalOpen, setAdmitModalOpen] = useState(false);
-  const [form, setForm] = useState({ patient_id: "", ward_id: "", admission_diagnosis: "", acuity_level: "standard", isolation_required: false });
+  const [form, setForm] = useState({ patient_id: "", ward_id: "", bed_id: "", admission_diagnosis: "", acuity_level: "standard", isolation_required: false });
   const [submitting, setSubmitting] = useState(false);
 
   async function fetchData() {
@@ -85,12 +85,13 @@ export default function AdmissionsPage() {
       await api.post("/admissions", {
         patient_id: parseInt(form.patient_id),
         ward_id: form.ward_id ? parseInt(form.ward_id) : null,
+        bed_id: form.bed_id ? parseInt(form.bed_id) : null,
         admission_diagnosis: form.admission_diagnosis || null,
         acuity_level: form.acuity_level,
         isolation_required: form.isolation_required,
       }, token);
       setAdmitModalOpen(false);
-      setForm({ patient_id: "", ward_id: "", admission_diagnosis: "", acuity_level: "standard", isolation_required: false });
+      setForm({ patient_id: "", ward_id: "", bed_id: "", admission_diagnosis: "", acuity_level: "standard", isolation_required: false });
       fetchData();
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to admit patient");
@@ -101,7 +102,8 @@ export default function AdmissionsPage() {
 
   const handleDischarge = async (admissionId: number, diagnosis: string, summary: string) => {
     try {
-      await api.put(`/admissions/${admissionId}/discharge`, {
+      await api.put(`/admissions/${admissionId}`, {
+        discharge_date: new Date().toISOString(),
         discharge_diagnosis: diagnosis || null,
         discharge_summary: summary || null,
       }, token);
@@ -259,12 +261,18 @@ export default function AdmissionsPage() {
             <label className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">Patient ID *</label>
             <input type="number" required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary" value={form.patient_id} onChange={(e) => setForm({ ...form, patient_id: e.target.value })} />
           </div>
-          <div>
-            <label className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">Ward</label>
-            <select className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded bg-white text-sm focus:outline-none focus:border-clinical-primary" value={form.ward_id} onChange={(e) => setForm({ ...form, ward_id: e.target.value })}>
-              <option value="">Select ward</option>
-              {wards.map((w) => <option key={w.id} value={w.id}>{w.name} ({w.code})</option>)}
-            </select>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">Ward</label>
+              <select className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded bg-white text-sm focus:outline-none focus:border-clinical-primary" value={form.ward_id} onChange={(e) => setForm({ ...form, ward_id: e.target.value })}>
+                <option value="">Select ward</option>
+                {wards.map((w) => <option key={w.id} value={w.id}>{w.name} ({w.code})</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">Bed ID</label>
+              <input type="number" className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary" value={form.bed_id} onChange={(e) => setForm({ ...form, bed_id: e.target.value })} placeholder="Optional" />
+            </div>
           </div>
           <div>
             <label className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">Admission Diagnosis</label>

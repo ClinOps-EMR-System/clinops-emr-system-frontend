@@ -65,12 +65,16 @@ export default function BillingPage() {
     try {
       setLoading(true);
       setError(null);
-      const [billsRes, servicesRes] = await Promise.all([
+      const [billsRes, servicesRes] = await Promise.allSettled([
         api.get("/bills", token),
         api.get("/services", token),
       ]);
-      if (billsRes && billsRes.data) setBills(billsRes.data);
-      if (servicesRes && servicesRes.data) setServices(servicesRes.data);
+      if (billsRes.status === "fulfilled" && billsRes.value?.data) {
+        setBills(billsRes.value.data);
+      }
+      if (servicesRes.status === "fulfilled" && servicesRes.value?.data) {
+        setServices(servicesRes.value.data);
+      }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to load billing data");
     } finally {
@@ -115,7 +119,12 @@ export default function BillingPage() {
       setPaymentForm({ amount: "", payment_method: "cash", reference: "" });
       fetchData();
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to record payment");
+      const apiError = err as { status?: number; message?: string };
+      if (apiError.status === 404) {
+        setError("Billing module is not yet configured on the backend. Payments cannot be recorded at this time.");
+      } else {
+        setError(apiError.message || "Failed to record payment");
+      }
     } finally {
       setProcessing(false);
     }

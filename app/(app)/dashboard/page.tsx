@@ -51,37 +51,43 @@ export default function Dashboard() {
     async function fetchDashboardData() {
       try {
         setLoading(true);
-        // Fetch recent patients
+
+        // Use the backend's aggregated dashboard endpoint
+        const dashRes = await api.get("/dashboard", token);
+        const dash = dashRes?.data;
+
+        // Fetch recent patients for the table
         const response = await api.get("/patients?per_page=10", token);
         if (response && response.data) {
           setPatients(response.data);
         }
 
-        // Fetch stats from various endpoints
-        const [ordersRes, rxRes, admRes, refRes, billsRes] = await Promise.allSettled([
+        // Also fetch stats for additional metrics
+        const [ordersRes, admRes, refRes] = await Promise.allSettled([
           api.get("/orders", token),
-          api.get("/prescriptions", token),
           api.get("/admissions", token),
           api.get("/referrals", token),
-          api.get("/bills", token),
         ]);
 
-        const allPatientsRes = await api.get("/patients?per_page=1", token);
-        const totalCount = allPatientsRes?.meta?.total || allPatientsRes?.data?.length || 0;
-
-        const today = new Date().toISOString().split("T")[0];
-        const registeredToday = patients.filter((p) => new Date(p.created_at).toISOString().startsWith(today)).length;
-        const incompleteDrafts = patients.filter((p) => !p.registration_completed_at).length;
+        const incompleteDrafts = (response?.data || []).filter(
+          (p: Patient) => !p.registration_completed_at
+        ).length;
 
         setStats({
-          totalPatients: totalCount,
-          registeredToday,
+          totalPatients: dash?.patients?.total ?? 0,
+          registeredToday: dash?.patients?.today_registrations ?? 0,
           incompleteDrafts,
-          pendingOrders: ordersRes.status === "fulfilled" ? (ordersRes.value?.data?.filter((o: { status: string }) => o.status === "pending" || o.status === "ordered").length || 0) : 0,
-          pendingPrescriptions: rxRes.status === "fulfilled" ? (rxRes.value?.data?.filter((r: { status: string }) => r.status === "prescribed" || r.status === "active").length || 0) : 0,
-          activeAdmissions: admRes.status === "fulfilled" ? (admRes.value?.data?.filter((a: { discharge_date: string | null }) => !a.discharge_date).length || 0) : 0,
-          pendingReferrals: refRes.status === "fulfilled" ? (refRes.value?.data?.filter((r: { status: string }) => r.status === "pending").length || 0) : 0,
-          unpaidBills: billsRes.status === "fulfilled" ? (billsRes.value?.data?.filter((b: { payment_status: string }) => b.payment_status === "unpaid" || b.payment_status === "partially_paid").length || 0) : 0,
+          pendingOrders: ordersRes.status === "fulfilled"
+            ? (ordersRes.value?.data?.filter((o: { status: string }) => o.status === "Ordered" || o.status === "pending").length || 0)
+            : 0,
+          pendingPrescriptions: 0,
+          activeAdmissions: dash?.encounters?.in_consultation ?? (admRes.status === "fulfilled"
+            ? (admRes.value?.data?.filter((a: { discharge_date: string | null }) => !a.discharge_date).length || 0)
+            : 0),
+          pendingReferrals: refRes.status === "fulfilled"
+            ? (refRes.value?.data?.filter((r: { status: string }) => r.status === "pending").length || 0)
+            : 0,
+          unpaidBills: 0,
         });
       } catch (err: unknown) {
         setError(err instanceof Error ? err.message : "Failed to load dashboard data.");
