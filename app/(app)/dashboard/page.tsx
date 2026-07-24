@@ -1,115 +1,59 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "../../../store/RoleContext";
-import { api } from "../../../lib/api";
+import { useFetch } from "../../../lib/useFetch";
 import StatusBadge from "../../../components/ui/StatusBadge";
 
-interface Patient {
-  id: number;
-  hospital_number: string;
-  first_name: string;
-  last_name: string;
-  gender: string;
-  patient_category: string;
-  village: string;
-  district: string;
-  created_at: string;
-  registration_completed_at: string | null;
-}
-
-interface DashboardStats {
-  totalPatients: number;
-  registeredToday: number;
-  incompleteDrafts: number;
-  pendingOrders: number;
-  pendingPrescriptions: number;
-  activeAdmissions: number;
-  pendingReferrals: number;
-  unpaidBills: number;
+interface DashboardData {
+  total_patients?: number;
+  pending_triage?: number;
+  in_consultation?: number;
+  emergency?: number;
+  discharged_today?: number;
+  registered_today?: number;
+  recent_patients?: Array<{
+    id: number;
+    hospital_number: string;
+    first_name: string;
+    last_name: string;
+    gender: string;
+    patient_category: string;
+    village: string;
+    district: string;
+    created_at: string;
+    registration_completed_at: string | null;
+  }>;
+  pending_orders?: number;
+  pending_prescriptions?: number;
+  active_admissions?: number;
+  pending_referrals?: number;
+  unpaid_bills?: number;
 }
 
 export default function Dashboard() {
-  const { user, token } = useAuth();
-  const [patients, setPatients] = useState<Patient[]>([]);
-  const [stats, setStats] = useState<DashboardStats>({
-    totalPatients: 0,
-    registeredToday: 0,
-    incompleteDrafts: 0,
-    pendingOrders: 0,
-    pendingPrescriptions: 0,
-    activeAdmissions: 0,
-    pendingReferrals: 0,
-    unpaidBills: 0,
-  });
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  /* eslint-disable react-hooks/exhaustive-deps */
-  useEffect(() => {
-    async function fetchDashboardData() {
-      try {
-        setLoading(true);
-
-        // Use the backend's aggregated dashboard endpoint
-        const dashRes = await api.get("/dashboard", token);
-        const dash = dashRes?.data;
-
-        // Fetch recent patients for the table
-        const response = await api.get("/patients?per_page=10", token);
-        if (response && response.data) {
-          setPatients(response.data);
-        }
-
-        // Also fetch stats for additional metrics
-        const [ordersRes, admRes, refRes] = await Promise.allSettled([
-          api.get("/orders", token),
-          api.get("/admissions", token),
-          api.get("/referrals", token),
-        ]);
-
-        const incompleteDrafts = (response?.data || []).filter(
-          (p: Patient) => !p.registration_completed_at
-        ).length;
-
-        setStats({
-          totalPatients: dash?.patients?.total ?? 0,
-          registeredToday: dash?.patients?.today_registrations ?? 0,
-          incompleteDrafts,
-          pendingOrders: ordersRes.status === "fulfilled"
-            ? (ordersRes.value?.data?.filter((o: { status: string }) => o.status === "Ordered" || o.status === "pending").length || 0)
-            : 0,
-          pendingPrescriptions: 0,
-          activeAdmissions: dash?.encounters?.in_consultation ?? (admRes.status === "fulfilled"
-            ? (admRes.value?.data?.filter((a: { discharge_date: string | null }) => !a.discharge_date).length || 0)
-            : 0),
-          pendingReferrals: refRes.status === "fulfilled"
-            ? (refRes.value?.data?.filter((r: { status: string }) => r.status === "pending").length || 0)
-            : 0,
-          unpaidBills: 0,
-        });
-      } catch (err: unknown) {
-        setError(err instanceof Error ? err.message : "Failed to load dashboard data.");
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    if (token) {
-      fetchDashboardData();
-    }
-  }, [token]);
-  /* eslint-enable react-hooks/exhaustive-deps */
+  const { user } = useAuth();
+  const { data: dashboard, loading, error } = useFetch<DashboardData>("/dashboard");
 
   const staffName = user?.name?.split(" ")[0] || "Staff";
+  const userRoles = (user?.roles || []).map((r) => r.toLowerCase());
+  const isAdmin = userRoles.includes("admin");
 
-  // Determine which quick actions to show based on user role
-  const userRole = user?.department?.name?.toLowerCase() || "";
-  const showPharmacy = userRole.includes("pharm") || userRole.includes("clinical") || userRole.includes("admin");
-  const showLab = userRole.includes("lab") || userRole.includes("clinical") || userRole.includes("admin");
-  const showBilling = userRole.includes("bill") || userRole.includes("finance") || userRole.includes("admin");
-  const showAdmin = userRole.includes("admin") || userRole.includes("management");
+  const stats = {
+    totalPatients: dashboard?.total_patients ?? 0,
+    pendingTriage: dashboard?.pending_triage ?? 0,
+    inConsultation: dashboard?.in_consultation ?? 0,
+    emergency: dashboard?.emergency ?? 0,
+    dischargedToday: dashboard?.discharged_today ?? 0,
+    registeredToday: dashboard?.registered_today ?? 0,
+    pendingOrders: dashboard?.pending_orders ?? 0,
+    pendingPrescriptions: dashboard?.pending_prescriptions ?? 0,
+    activeAdmissions: dashboard?.active_admissions ?? 0,
+    pendingReferrals: dashboard?.pending_referrals ?? 0,
+    unpaidBills: dashboard?.unpaid_bills ?? 0,
+  };
+
+  const recentPatients = dashboard?.recent_patients ?? [];
 
   return (
     <div className="max-w-7xl mx-auto space-y-8 font-sans">
@@ -169,9 +113,9 @@ export default function Dashboard() {
           </dd>
         </div>
         <div className="bg-white rounded border border-[#becab7]/50 p-5 flex flex-col justify-between">
-          <dt className="text-xs font-bold text-[#5f5e5e] uppercase tracking-wider mb-2">Incomplete Drafts</dt>
-          <dd className={`text-3xl font-extrabold font-mono ${stats.incompleteDrafts > 0 ? "text-amber-600" : "text-[#1b1c1c]"}`}>
-            {loading ? "..." : stats.incompleteDrafts}
+          <dt className="text-xs font-bold text-[#5f5e5e] uppercase tracking-wider mb-2">Pending Triage</dt>
+          <dd className={`text-3xl font-extrabold font-mono ${stats.pendingTriage > 0 ? "text-amber-600" : "text-[#1b1c1c]"}`}>
+            {loading ? "..." : stats.pendingTriage}
           </dd>
         </div>
         <div className="bg-white rounded border border-[#becab7]/50 p-5 flex flex-col justify-between">
@@ -234,34 +178,26 @@ export default function Dashboard() {
       </section>
 
       {/* Quick Actions - Role Based */}
-      {(showPharmacy || showLab || showBilling || showAdmin) && (
+      {isAdmin && (
         <section className="bg-white rounded border border-[#becab7]/50 p-6">
           <h2 className="text-sm font-bold text-[#5f5e5e] uppercase tracking-wider mb-4">Quick Actions</h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            {showPharmacy && (
-              <Link href="/pharmacy" className="flex items-center gap-3 p-3 rounded border border-gray-200 hover:border-brand-green hover:bg-[#fcf9f8] transition-all">
-                <div className="h-8 w-8 rounded bg-amber-100 flex items-center justify-center"><span className="text-amber-600 text-sm">Rx</span></div>
-                <span className="text-sm font-bold text-gray-700">Pharmacy Queue</span>
-              </Link>
-            )}
-            {showLab && (
-              <Link href="/lab" className="flex items-center gap-3 p-3 rounded border border-gray-200 hover:border-brand-green hover:bg-[#fcf9f8] transition-all">
-                <div className="h-8 w-8 rounded bg-sky-100 flex items-center justify-center"><span className="text-sky-600 text-sm font-bold">Lab</span></div>
-                <span className="text-sm font-bold text-gray-700">Lab Orders</span>
-              </Link>
-            )}
-            {showBilling && (
-              <Link href="/billing" className="flex items-center gap-3 p-3 rounded border border-gray-200 hover:border-brand-green hover:bg-[#fcf9f8] transition-all">
-                <div className="h-8 w-8 rounded bg-emerald-100 flex items-center justify-center"><span className="text-emerald-600 text-sm font-bold">$</span></div>
-                <span className="text-sm font-bold text-gray-700">Billing</span>
-              </Link>
-            )}
-            {showAdmin && (
-              <Link href="/admin" className="flex items-center gap-3 p-3 rounded border border-gray-200 hover:border-brand-green hover:bg-[#fcf9f8] transition-all">
-                <div className="h-8 w-8 rounded bg-purple-100 flex items-center justify-center"><span className="text-purple-600 text-sm font-bold">Ad</span></div>
-                <span className="text-sm font-bold text-gray-700">Administration</span>
-              </Link>
-            )}
+            <Link href="/pharmacy" className="flex items-center gap-3 p-3 rounded border border-gray-200 hover:border-brand-green hover:bg-[#fcf9f8] transition-all">
+              <div className="h-8 w-8 rounded bg-amber-100 flex items-center justify-center"><span className="text-amber-600 text-sm">Rx</span></div>
+              <span className="text-sm font-bold text-gray-700">Pharmacy Queue</span>
+            </Link>
+            <Link href="/lab" className="flex items-center gap-3 p-3 rounded border border-gray-200 hover:border-brand-green hover:bg-[#fcf9f8] transition-all">
+              <div className="h-8 w-8 rounded bg-sky-100 flex items-center justify-center"><span className="text-sky-600 text-sm font-bold">Lab</span></div>
+              <span className="text-sm font-bold text-gray-700">Lab Orders</span>
+            </Link>
+            <Link href="/billing" className="flex items-center gap-3 p-3 rounded border border-gray-200 hover:border-brand-green hover:bg-[#fcf9f8] transition-all">
+              <div className="h-8 w-8 rounded bg-emerald-100 flex items-center justify-center"><span className="text-emerald-600 text-sm font-bold">$</span></div>
+              <span className="text-sm font-bold text-gray-700">Billing</span>
+            </Link>
+            <Link href="/admin" className="flex items-center gap-3 p-3 rounded border border-gray-200 hover:border-brand-green hover:bg-[#fcf9f8] transition-all">
+              <div className="h-8 w-8 rounded bg-purple-100 flex items-center justify-center"><span className="text-purple-600 text-sm font-bold">Ad</span></div>
+              <span className="text-sm font-bold text-gray-700">Administration</span>
+            </Link>
           </div>
         </section>
       )}
@@ -283,7 +219,7 @@ export default function Dashboard() {
           <div className="p-8 text-center text-sm text-red-600">
             Error: {error}
           </div>
-        ) : patients.length === 0 ? (
+        ) : recentPatients.length === 0 ? (
           <div className="p-12 text-center text-sm text-gray-400">
             No patient registrations recorded.
           </div>
@@ -310,7 +246,7 @@ export default function Dashboard() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-100">
-                {patients.map((patient) => {
+                {recentPatients.map((patient) => {
                   const hasIncompleteReg = !patient.registration_completed_at;
                   return (
                     <tr

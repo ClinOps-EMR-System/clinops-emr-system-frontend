@@ -16,6 +16,22 @@ vi.mock("next/navigation", () => ({
   },
 }));
 
+// Mock fetch for /me endpoint
+const mockFetch = vi.fn().mockResolvedValue({
+  ok: true,
+  json: () => Promise.resolve({
+    data: {
+      id: 1,
+      username: "Dizzy",
+      name: "Dickson D",
+      email: "test@example.com",
+      is_active: true,
+      roles: ["Receptionist"],
+    },
+  }),
+});
+vi.stubGlobal("fetch", mockFetch);
+
 // Test helper component
 function TestComponent() {
   const { token, user, login, logout, isAuthenticated } = useAuth();
@@ -78,7 +94,7 @@ describe("AuthContext Session Store", () => {
 
     expect(localStorage.getItem("clinops_token")).toBe("mock-token");
     expect(JSON.parse(localStorage.getItem("clinops_user") || "{}").name).toBe("Dickson D");
-    expect(mockPush).toHaveBeenCalledWith("/dashboard");
+    expect(mockPush).toHaveBeenCalledWith("/receptionist");
   });
 
   it("should handle logout and clear state and localStorage", async () => {

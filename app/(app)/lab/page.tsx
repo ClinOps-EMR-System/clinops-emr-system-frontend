@@ -70,7 +70,7 @@ export default function LabPage() {
       setError(null);
       const [ordersRes, resultsRes] = await Promise.all([
         api.get("/orders", token),
-        api.get("/lab-requests", token),
+        api.get("/lab-results", token),
       ]);
       if (ordersRes && ordersRes.data) {
         const labOrders = ordersRes.data.filter((o: LabOrder) => o.order_type === "lab");
@@ -108,7 +108,7 @@ export default function LabPage() {
     if (!selectedOrder) return;
     setSubmitting(true);
     try {
-      await api.post(`/lab-requests`, {
+      await api.post(`/lab-results`, {
         lab_request_id: selectedOrder.id,
         ...resultForm,
       }, token);
@@ -167,7 +167,7 @@ export default function LabPage() {
       </section>
 
       {/* Tab Navigation */}
-      <section className="flex gap-1 bg-white rounded border border-[#becab7]/50 p-1">
+      <section className="flex gap-1 bg-white rounded border border-[#becab7]/50 p-1" role="tablist" aria-label="Lab orders views">
         {[
           { key: "pending" as const, label: "Pending Orders", count: pendingOrders.length },
           { key: "results" as const, label: "Results Entry", count: inProgressOrders.length },
@@ -175,6 +175,8 @@ export default function LabPage() {
         ].map((tab) => (
           <button
             key={tab.key}
+            role="tab"
+            aria-selected={activeTab === tab.key}
             onClick={() => setActiveTab(tab.key)}
             className={`flex-1 px-4 py-2.5 text-sm font-bold rounded transition-all ${
               activeTab === tab.key
@@ -194,6 +196,7 @@ export default function LabPage() {
           <input
             type="text"
             placeholder="Search by test name, patient name, or hospital #..."
+            aria-label="Search lab orders"
             className="w-full pl-9 pr-4 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}

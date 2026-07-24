@@ -179,6 +179,7 @@ export default function BillingPage() {
             <input
               type="text"
               placeholder="Search by bill #, patient name, or hospital #..."
+              aria-label="Search bills"
               className="w-full pl-9 pr-4 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
