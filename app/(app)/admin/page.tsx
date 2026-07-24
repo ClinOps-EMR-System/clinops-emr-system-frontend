@@ -133,12 +133,12 @@ export default function AdminPage() {
       </section>
 
       {/* Tabs */}
-      <section className="flex gap-1 bg-white rounded border border-[#becab7]/50 p-1">
+      <section className="flex gap-1 bg-white rounded border border-[#becab7]/50 p-1" role="tablist" aria-label="Admin views">
         {[
           { key: "users" as const, label: "Users", icon: <Users className="h-4 w-4" /> },
           { key: "roles" as const, label: "Roles & Permissions", icon: <Shield className="h-4 w-4" /> },
         ].map((t) => (
-          <button key={t.key} onClick={() => setActiveTab(t.key)} className={`flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-bold rounded transition-all ${activeTab === t.key ? "bg-clinical-primary text-white" : "text-gray-600 hover:bg-gray-50"}`}>
+          <button key={t.key} role="tab" aria-selected={activeTab === t.key} onClick={() => setActiveTab(t.key)} className={`flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-bold rounded transition-all ${activeTab === t.key ? "bg-clinical-primary text-white" : "text-gray-600 hover:bg-gray-50"}`}>
             {t.icon} {t.label}
           </button>
         ))}
@@ -150,7 +150,7 @@ export default function AdminPage() {
           <section className="flex flex-col sm:flex-row justify-between gap-3">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-              <input type="text" placeholder="Search users by name or email..." className="w-full pl-9 pr-4 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+              <input type="text" placeholder="Search users by name or email..." aria-label="Search users" className="w-full pl-9 pr-4 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
             </div>
             <button onClick={() => setCreateUserModal(true)} className="inline-flex items-center justify-center px-4 py-2 text-sm font-bold rounded bg-clinical-primary text-white hover:bg-clinical-primary-hover transition-all">
               <Plus className="h-4 w-4 mr-2" /> Add User

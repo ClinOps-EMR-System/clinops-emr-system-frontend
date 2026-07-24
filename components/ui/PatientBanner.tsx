@@ -1,36 +1,9 @@
 "use client";
 
 import React from "react";
+import { Patient, Allergy } from "../../types/patient";
 
-export interface Patient {
-  id: number;
-  hospital_number: string;
-  first_name: string;
-  last_name: string;
-  date_of_birth: string;
-  gender: string;
-  phone: string;
-  patient_category: string;
-  national_id?: string;
-  health_passport_number?: string;
-  village?: string;
-  traditional_authority?: string;
-  district?: string;
-  guardian_name?: string;
-  guardian_phone?: string;
-  consent_care?: boolean;
-  consent_teaching?: boolean;
-  consent_research?: boolean;
-  created_at?: string;
-  registration_completed_at?: string;
-}
-
-export interface Allergy {
-  id: number;
-  allergen: string;
-  severity: string;
-  reaction?: string;
-}
+export type { Patient, Allergy };
 
 interface PatientBannerProps {
   patient: Patient;
@@ -48,7 +21,6 @@ export default function PatientBanner({
   const birthDate = new Date(patient.date_of_birth);
   const age = new Date().getFullYear() - birthDate.getFullYear();
 
-  // Allergies banner message logic
   let allergiesBadge;
   if (allergies.length > 0) {
     allergiesBadge = (
@@ -87,13 +59,10 @@ export default function PatientBanner({
 
   return (
     <div className="bg-white rounded border border-[#becab7]/50 overflow-hidden shadow-sm font-sans mb-6">
-      {/* Top Accent Line */}
       <div className="h-1 bg-brand-green"></div>
 
       <div className="p-4 sm:p-5 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        {/* Patient Demographics */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-          {/* Avatar / Gender Symbol Representation */}
           <div className={`w-12 h-12 rounded flex items-center justify-center text-white font-extrabold text-lg flex-shrink-0 ${
             patient.gender === "Male" ? "bg-sky-600" : patient.gender === "Female" ? "bg-rose-500" : "bg-gray-500"
           }`}>
@@ -141,7 +110,6 @@ export default function PatientBanner({
           </div>
         </div>
 
-        {/* Clinical Summary & Alerts (Right side) */}
         <div className="w-full md:w-auto p-3 bg-[#fcf9f8] rounded border border-gray-100 self-stretch md:self-auto flex flex-col justify-center min-w-[260px]">
           {allergiesBadge}
         </div>
