@@ -1,90 +1,101 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useAuth } from "../../../store/RoleContext";
+import { useFetch } from "../../../lib/useFetch";
 import { api } from "../../../lib/api";
-import StatusBadge from "../../../components/ui/StatusBadge";
 import EmptyState from "../../../components/ui/EmptyState";
 import LoadingState from "../../../components/ui/LoadingState";
 
-interface TriageEntry {
+interface QueueEntry {
   id: number;
-  patient: {
-    id: number;
-    first_name: string;
-    last_name: string;
-    hospital_number: string;
-    gender: string;
-  };
+  patient_id: number;
   encounter_id: number;
-  ews_score: number;
-  triage_color: string;
+  priority: string;
+  position: number;
+  patient: {
+    hospital_number: string;
+    full_name: string;
+  };
+  entered_queue_at: string;
   chief_complaint: string;
-  recorded_at: string;
-  minutes_since_registration: number;
+}
+
+interface QueueData {
+  entries: QueueEntry[];
+  meta: {
+    waiting_count: number;
+    by_priority: Record<string, number>;
+    oldest_wait_time: number;
+  };
 }
 
 type CategoryFilter = "all" | "high" | "medium" | "low";
 
-function getEwsBadgeStyle(score: number): string {
-  if (score >= 7) return "bg-red-100 text-red-800 border-red-200";
-  if (score >= 5) return "bg-amber-100 text-amber-800 border-amber-200";
+function getWaitMinutes(enteredAt: string): number {
+  return Math.round((Date.now() - new Date(enteredAt).getTime()) / 60000);
+}
+
+function getWaitColor(minutes: number): string {
+  if (minutes >= 30) return "text-red-600 font-bold";
+  if (minutes >= 15) return "text-amber-600 font-semibold";
+  return "text-emerald-600";
+}
+
+function getEwsBadgeStyle(priority: string): string {
+  const p = priority?.toLowerCase();
+  if (p === "high" || p === "urgent" || p === "1") return "bg-red-100 text-red-800 border-red-200";
+  if (p === "medium" || p === "2") return "bg-amber-100 text-amber-800 border-amber-200";
   return "bg-emerald-100 text-emerald-800 border-emerald-200";
 }
 
-function getTriageColorVariant(color: string): "error" | "warning" | "success" {
-  const c = color?.toLowerCase();
-  if (c === "red" || c === "high" || c === "1") return "error";
-  if (c === "amber" || c === "yellow" || c === "medium" || c === "2") return "warning";
-  return "success";
-}
-
-function formatMinutesAgo(minutes: number): string {
-  if (minutes < 1) return "just now";
-  if (minutes < 60) return `${Math.round(minutes)}m ago`;
-  const hours = Math.floor(minutes / 60);
-  const mins = Math.round(minutes % 60);
-  return mins > 0 ? `${hours}h ${mins}m ago` : `${hours}h ago`;
+function getRowBorder(priority: string): string {
+  const p = priority?.toLowerCase();
+  if (p === "high" || p === "urgent" || p === "1") return "border-l-4 border-l-red-500";
+  if (p === "medium" || p === "2") return "border-l-4 border-l-amber-400";
+  return "border-l-4 border-l-emerald-400";
 }
 
 export default function TriageQueuePage() {
+  const router = useRouter();
   const { token } = useAuth();
-  const [entries, setEntries] = useState<TriageEntry[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { data: queueData, loading, error } = useFetch<QueueData>("/queue", { interval: 20000 });
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>("all");
+  const [startingId, setStartingId] = useState<number | null>(null);
 
-  useEffect(() => {
-    async function fetchQueue() {
-      try {
-        setLoading(true);
-        setError(null);
-        const res = await api.get("/queue", token);
-        if (res && res.data) {
-          setEntries(res.data);
-        }
-      } catch (err: unknown) {
-        setError(err instanceof Error ? err.message : "Failed to load triage queue");
-      } finally {
-        setLoading(false);
-      }
+  const entries = queueData?.entries || [];
+  const stats = queueData?.meta || null;
+
+  const handleStartTriage = async (entry: QueueEntry) => {
+    if (!token || startingId) return;
+    setStartingId(entry.id);
+    try {
+      await api.post(`/queue/${entry.id}/start`, {}, token);
+      router.push(`/patients/${entry.patient_id}/triage`);
+    } catch {
+      setStartingId(null);
     }
+  };
 
-    if (token) fetchQueue();
-  }, [token]);
-
-  const filteredEntries = useMemo(() => {
-    const sorted = [...entries].sort((a, b) => b.ews_score - a.ews_score);
+  const filteredEntries = (() => {
+    const sorted = [...entries].sort((a, b) => {
+      const priorityOrder: Record<string, number> = { high: 0, urgent: 0, medium: 1, low: 2 };
+      const aVal = priorityOrder[a.priority?.toLowerCase()] ?? 2;
+      const bVal = priorityOrder[b.priority?.toLowerCase()] ?? 2;
+      if (aVal !== bVal) return aVal - bVal;
+      return getWaitMinutes(b.entered_queue_at) - getWaitMinutes(a.entered_queue_at);
+    });
     if (categoryFilter === "all") return sorted;
-    if (categoryFilter === "high") return sorted.filter((e) => e.ews_score >= 7);
-    if (categoryFilter === "medium") return sorted.filter((e) => e.ews_score >= 5 && e.ews_score < 7);
-    return sorted.filter((e) => e.ews_score < 5);
-  }, [entries, categoryFilter]);
+    if (categoryFilter === "high") return sorted.filter((e) => ["high", "urgent"].includes(e.priority?.toLowerCase()));
+    if (categoryFilter === "medium") return sorted.filter((e) => e.priority?.toLowerCase() === "medium");
+    return sorted.filter((e) => e.priority?.toLowerCase() === "low");
+  })();
 
-  const highCount = entries.filter((e) => e.ews_score >= 7).length;
-  const medCount = entries.filter((e) => e.ews_score >= 5 && e.ews_score < 7).length;
-  const lowCount = entries.filter((e) => e.ews_score < 5).length;
+  const highCount = entries.filter((e) => ["high", "urgent"].includes(e.priority?.toLowerCase())).length;
+  const medCount = entries.filter((e) => e.priority?.toLowerCase() === "medium").length;
+  const lowCount = entries.filter((e) => e.priority?.toLowerCase() === "low").length;
 
   return (
     <div className="max-w-7xl mx-auto space-y-6 font-sans">
@@ -124,7 +135,7 @@ export default function TriageQueuePage() {
       </section>
 
       {/* Summary Line */}
-      <section className="flex items-center gap-4 text-sm font-mono">
+      <section className="flex items-center gap-4 text-sm font-mono flex-wrap">
         <span className="text-gray-500">
           {filteredEntries.length} patient{filteredEntries.length !== 1 ? "s" : ""} in queue
         </span>
@@ -134,6 +145,12 @@ export default function TriageQueuePage() {
         <span className="text-amber-600 font-semibold">{medCount} medium</span>
         <span className="text-gray-300">·</span>
         <span className="text-emerald-600 font-semibold">{lowCount} low</span>
+        {stats?.oldest_wait_time ? (
+          <>
+            <span className="text-gray-300">·</span>
+            <span className="text-gray-500">Longest wait: <strong>{stats.oldest_wait_time}m</strong></span>
+          </>
+        ) : null}
       </section>
 
       {/* Queue Table */}
@@ -159,8 +176,7 @@ export default function TriageQueuePage() {
                 <tr className="divide-x divide-gray-200/50">
                   <th className="px-6 py-3 text-left text-xs font-bold text-[#5f5e5e] uppercase tracking-wider">Patient Name</th>
                   <th className="px-6 py-3 text-left text-xs font-bold text-[#5f5e5e] uppercase tracking-wider">Hospital #</th>
-                  <th className="px-6 py-3 text-left text-xs font-bold text-[#5f5e5e] uppercase tracking-wider">EWS Score</th>
-                  <th className="px-6 py-3 text-left text-xs font-bold text-[#5f5e5e] uppercase tracking-wider">Triage Category</th>
+                  <th className="px-6 py-3 text-left text-xs font-bold text-[#5f5e5e] uppercase tracking-wider">Priority</th>
                   <th className="px-6 py-3 text-left text-xs font-bold text-[#5f5e5e] uppercase tracking-wider">Chief Complaint</th>
                   <th className="px-6 py-3 text-left text-xs font-bold text-[#5f5e5e] uppercase tracking-wider">Time Waiting</th>
                   <th className="px-6 py-3 text-left text-xs font-bold text-[#5f5e5e] uppercase tracking-wider">Action</th>
@@ -170,14 +186,14 @@ export default function TriageQueuePage() {
                 {filteredEntries.map((entry) => (
                   <tr
                     key={entry.id}
-                    className="hover:bg-[#fcf9f8]/40 hover:border-l-4 hover:border-brand-green/80 transition-all divide-x divide-gray-100"
+                    className={`${getRowBorder(entry.priority)} hover:bg-[#fcf9f8]/40 transition-all divide-x divide-gray-100`}
                   >
                     <td className="px-6 py-4 whitespace-nowrap">
                       <Link
-                        href={`/patients/${entry.patient.id}`}
+                        href={`/patients/${entry.patient_id}`}
                         className="text-sm font-semibold text-gray-900 hover:text-clinical-primary hover:underline"
                       >
-                        {entry.patient.first_name} {entry.patient.last_name}
+                        {entry.patient.full_name}
                       </Link>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-xs font-mono text-gray-500">
@@ -185,30 +201,25 @@ export default function TriageQueuePage() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span
-                        className={`inline-flex items-center px-2.5 py-0.5 rounded border text-sm font-extrabold font-mono ${getEwsBadgeStyle(entry.ews_score)}`}
+                        className={`inline-flex items-center px-2.5 py-0.5 rounded border text-sm font-extrabold font-mono ${getEwsBadgeStyle(entry.priority)}`}
                       >
-                        {entry.ews_score}
+                        {entry.priority?.toUpperCase()}
                       </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <StatusBadge
-                        label={entry.triage_color?.toUpperCase() || "UNKNOWN"}
-                        variant={getTriageColorVariant(entry.triage_color)}
-                      />
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-600 max-w-xs truncate">
                       {entry.chief_complaint || "—"}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-xs font-mono text-gray-500">
-                      {formatMinutesAgo(entry.minutes_since_registration)}
+                    <td className={`px-6 py-4 whitespace-nowrap text-xs font-mono ${getWaitColor(getWaitMinutes(entry.entered_queue_at))}`}>
+                      {getWaitMinutes(entry.entered_queue_at)}m
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <Link
-                        href={`/patients/${entry.patient.id}/triage`}
-                        className="text-xs font-bold text-clinical-primary hover:text-clinical-primary-hover uppercase tracking-wider"
+                      <button
+                        onClick={() => handleStartTriage(entry)}
+                        disabled={startingId === entry.id}
+                        className="text-xs font-bold text-clinical-primary hover:text-clinical-primary-hover uppercase tracking-wider disabled:opacity-50"
                       >
-                        Triage
-                      </Link>
+                        {startingId === entry.id ? "Starting..." : "Start Triage"}
+                      </button>
                     </td>
                   </tr>
                 ))}
