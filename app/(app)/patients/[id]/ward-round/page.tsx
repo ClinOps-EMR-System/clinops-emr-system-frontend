@@ -26,6 +26,18 @@ interface Encounter {
   status: string;
 }
 
+interface Admission {
+  id: number;
+  ward_id: number | null;
+  ward?: { name: string };
+  bed_id: number | null;
+  status: string;
+  admission_date: string;
+  discharge_date: string | null;
+  discharge_diagnosis: string | null;
+  discharge_summary: string | null;
+}
+
 export default function WardRoundPage() {
   const params = useParams();
   const router = useRouter();
@@ -34,10 +46,16 @@ export default function WardRoundPage() {
 
   const [patient, setPatient] = useState<Patient | null>(null);
   const [encounter, setEncounter] = useState<Encounter | null>(null);
+  const [admission, setAdmission] = useState<Admission | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState("");
+
+  const [dischargeMode, setDischargeMode] = useState(false);
+  const [dischargeDiagnosis, setDischargeDiagnosis] = useState("");
+  const [dischargeSummary, setDischargeSummary] = useState("");
+  const [discharging, setDischarging] = useState(false);
 
   const [reviewOfSystems, setReviewOfSystems] = useState("");
   const [subjective, setSubjective] = useState("");
@@ -59,6 +77,15 @@ export default function WardRoundPage() {
         if (patientRes) setPatient(patientRes.data || patientRes);
         if (encounterRes?.data?.length > 0) {
           setEncounter(encounterRes.data[0]);
+          // Fetch admission for this encounter
+          try {
+            const admissionRes = await api.get(`/encounters/${encounterRes.data[0].id}/admission`, token);
+            if (admissionRes?.data) {
+              setAdmission(admissionRes.data);
+            }
+          } catch {
+            // No admission found — patient is outpatient
+          }
         }
       } catch (err: unknown) {
         setError(err instanceof Error ? err.message : "Failed to load patient data");
@@ -112,6 +139,24 @@ export default function WardRoundPage() {
       setError(err instanceof Error ? err.message : "Failed to save ward round note");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleDischarge = async () => {
+    if (!admission?.id) return;
+    setDischarging(true);
+    setError(null);
+    try {
+      await api.put(`/admissions/${admission.id}`, {
+        status: "Discharged",
+        discharge_diagnosis: dischargeDiagnosis || undefined,
+        discharge_summary: dischargeSummary || undefined,
+      }, token);
+      setSuccessMsg("Patient discharged. Discharge summary saved.");
+      setTimeout(() => router.push(`/patients/${patientId}`), 2000);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to discharge patient.");
+      setDischarging(false);
     }
   };
 
@@ -275,6 +320,75 @@ export default function WardRoundPage() {
           />
         </div>
       </section>
+
+      {/* Discharge Decision — only for admitted patients */}
+      {admission && admission.status === "Admitted" && (
+        <section className="bg-white rounded border border-[#becab7]/50 p-6 space-y-4">
+          <div className="flex items-center gap-2">
+            <span className="h-2 w-2 rounded-full bg-amber-500"></span>
+            <h3 className="text-lg font-bold text-gray-900">Inpatient Decision</h3>
+          </div>
+          <p className="text-sm text-[#5f5e5e]">
+            Based on today&apos;s ward round assessment, decide the next step for this patient.
+          </p>
+
+          {!dischargeMode ? (
+            <div className="flex flex-wrap gap-3 pt-2">
+              <button
+                disabled
+                className="px-5 py-2.5 bg-gray-100 text-gray-400 text-sm font-bold rounded cursor-not-allowed"
+              >
+                Continue Inpatient Care
+              </button>
+              <button
+                onClick={() => setDischargeMode(true)}
+                className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold rounded shadow-sm transition-all cursor-pointer"
+              >
+                Ready for Discharge
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-4 pt-4 border-t border-gray-200">
+              <h4 className="text-sm font-bold text-emerald-800 uppercase tracking-wider">Discharge Summary</h4>
+              <div className="flex flex-col">
+                <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Discharge Diagnosis</label>
+                <textarea
+                  rows={2}
+                  placeholder="Final diagnosis at discharge..."
+                  value={dischargeDiagnosis}
+                  onChange={(e) => setDischargeDiagnosis(e.target.value)}
+                  className="rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary resize-none"
+                />
+              </div>
+              <div className="flex flex-col">
+                <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Discharge Summary</label>
+                <textarea
+                  rows={4}
+                  placeholder="Summary of hospital course, treatment given, and follow-up plan..."
+                  value={dischargeSummary}
+                  onChange={(e) => setDischargeSummary(e.target.value)}
+                  className="rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary resize-none"
+                />
+              </div>
+              <div className="flex gap-3 justify-end pt-2">
+                <button
+                  onClick={() => setDischargeMode(false)}
+                  className="px-4 py-2 border border-gray-300 text-gray-600 text-sm font-bold rounded hover:bg-gray-50 transition-all cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleDischarge}
+                  disabled={discharging}
+                  className="px-6 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold rounded shadow-sm transition-all cursor-pointer disabled:opacity-50"
+                >
+                  {discharging ? "Discharging..." : "Confirm Discharge"}
+                </button>
+              </div>
+            </div>
+          )}
+        </section>
+      )}
     </div>
   );
 }

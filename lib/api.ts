@@ -28,6 +28,25 @@ async function request(endpoint: string, options: RequestOptions = {}) {
     headers,
   });
 
+  // Handle network errors — queue for retry when offline
+  if (!response && !navigator.onLine) {
+    const method = init.method || "GET";
+    if (method !== "GET") {
+      try {
+        const pending = JSON.parse(localStorage.getItem("clinops_pending") || "[]");
+        pending.push({
+          endpoint,
+          method,
+          body: init.body,
+          queued_at: Date.now(),
+        });
+        localStorage.setItem("clinops_pending", JSON.stringify(pending));
+        window.dispatchEvent(new Event("clinops_pending_change"));
+      } catch { /* quota exceeded */ }
+    }
+    throw new Error("You are offline. The action has been queued and will sync when you reconnect.");
+  }
+
   if (response.status === 204) {
     return null;
   }

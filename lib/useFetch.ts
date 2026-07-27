@@ -34,10 +34,29 @@ export function useFetch<T>(endpoint: string, options: UseFetchOptions = {}): Us
       const res = await api.get(endpoint, token);
       if (!signal?.aborted && res) {
         setData(res.data ?? res);
+        // Cache successful responses in localStorage
+        try {
+          localStorage.setItem(`clinops_cache_${endpoint}`, JSON.stringify({
+            data: res.data ?? res,
+            timestamp: Date.now(),
+          }));
+        } catch { /* quota exceeded — ignore */ }
       }
     } catch (err: unknown) {
       if (!signal?.aborted) {
-        setError(err instanceof Error ? err.message : "Failed to load data.");
+        // Try to serve from cache when offline
+        try {
+          const cached = localStorage.getItem(`clinops_cache_${endpoint}`);
+          if (cached) {
+            const parsed = JSON.parse(cached);
+            setData(parsed.data);
+            setError(null);
+          } else {
+            setError(err instanceof Error ? err.message : "Failed to load data.");
+          }
+        } catch {
+          setError(err instanceof Error ? err.message : "Failed to load data.");
+        }
       }
     } finally {
       if (!signal?.aborted) {
