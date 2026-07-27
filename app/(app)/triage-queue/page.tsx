@@ -167,12 +167,17 @@ export default function TriageQueuePage() {
         ) : filteredEntries.length === 0 ? (
           <EmptyState
             title="No patients in queue"
-            description="All patients have been triaged or none match the selected filter"
+            description="Register a new patient or check if patients are waiting at reception"
+            action={
+              <Link href="/patients/register" className="inline-flex items-center px-4 py-2 bg-clinical-primary text-white text-sm font-bold rounded hover:bg-clinical-primary-hover transition-colors">
+                Register Patient
+              </Link>
+            }
           />
         ) : (
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-[#fcf9f8]">
+              <thead className="bg-[#fcf9f8] sticky top-0 z-10">
                 <tr className="divide-x divide-gray-200/50">
                   <th className="px-6 py-3 text-left text-xs font-bold text-[#5f5e5e] uppercase tracking-wider">Patient Name</th>
                   <th className="px-6 py-3 text-left text-xs font-bold text-[#5f5e5e] uppercase tracking-wider">Hospital #</th>

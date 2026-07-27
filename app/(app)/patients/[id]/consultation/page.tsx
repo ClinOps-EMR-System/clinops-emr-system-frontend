@@ -1,11 +1,13 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "../../../../../store/RoleContext";
 import { api } from "../../../../../lib/api";
 import PatientBanner, { Patient, Allergy } from "../../../../../components/ui/PatientBanner";
 import StatusBadge from "../../../../../components/ui/StatusBadge";
+import { friendlyError } from "../../../../../lib/errors";
 
 interface TriageSummary {
   encounter: {
@@ -101,6 +103,7 @@ export default function ClinicianSOAPConsultation() {
   const [chiefComplaint, setChiefComplaint] = useState("");
   const [hpi, setHpi] = useState("");
   const [planInstructions, setPlanInstructions] = useState("");
+  const [physicalExam, setPhysicalExam] = useState("");
 
   // ICD-11 Autocomplete States
   const [icdQuery, setIcdQuery] = useState("");
@@ -165,7 +168,7 @@ export default function ClinicianSOAPConsultation() {
       // No standalone list endpoint exists in the backend
       setPrescriptions([]);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to load consultation logs.");
+      setError(friendlyError(err, "load consultation records"));
     } finally {
       setLoading(false);
     }
@@ -215,7 +218,7 @@ export default function ClinicianSOAPConsultation() {
       setSuccessMsg("Consultation encounter initialized successfully.");
       fetchConsultationData();
     } catch {
-      setError("Failed to initialize active encounter.");
+      setError(friendlyError(new Error("initialize"), "start consultation encounter"));
     } finally {
       setSubmitLoading(false);
     }
@@ -239,8 +242,7 @@ export default function ClinicianSOAPConsultation() {
       setSuccessMsg("Subjective (CC & HPI) updated successfully.");
       fetchConsultationData();
     } catch (err: unknown) {
-      const apiError = err as { message?: string };
-      setError(apiError.message || "Failed to save Subjective notes.");
+      setError(friendlyError(err, "save subjective notes"));
     } finally {
       setSubmitLoading(false);
     }
@@ -269,8 +271,7 @@ export default function ClinicianSOAPConsultation() {
       setIcdQuery("");
       fetchConsultationData();
     } catch (err: unknown) {
-      const apiError = err as { message?: string };
-      setError(apiError.message || "Failed to log diagnosis.");
+      setError(friendlyError(err, "log diagnosis"));
     } finally {
       setSubmitLoading(false);
     }
@@ -287,17 +288,76 @@ export default function ClinicianSOAPConsultation() {
       setSuccessMsg("Diagnosis entry removed successfully.");
       fetchConsultationData();
     } catch (err: unknown) {
-      const apiError = err as { message?: string };
-      setError(apiError.message || "Failed to remove diagnosis.");
+      setError(friendlyError(err, "remove diagnosis"));
     } finally {
       setSubmitLoading(false);
     }
   };
 
   // Save Plan
-  const handleSavePlan = (e: React.FormEvent) => {
+  const handleSavePlan = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSuccessMsg("Clinical plan saved to draft summary.");
+    if (!summary?.encounter?.id) return;
+    setSubmitLoading(true);
+    setError(null);
+    setSuccessMsg(null);
+    try {
+      await api.post(`/encounters/${summary.encounter.id}/clinical-notes`, {
+        plan: planInstructions,
+        note_type: "consultation_plan",
+      }, token);
+      setSuccessMsg("Clinical plan saved successfully.");
+      fetchConsultationData();
+    } catch (err: unknown) {
+      setError(friendlyError(err, "save plan"));
+    } finally {
+      setSubmitLoading(false);
+    }
+  };
+
+  // Save Physical Exam
+  const handleSavePhysicalExam = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!summary?.encounter?.id || !physicalExam.trim()) return;
+    setSubmitLoading(true);
+    setError(null);
+    setSuccessMsg(null);
+    try {
+      await api.post(`/encounters/${summary.encounter.id}/clinical-notes`, {
+        physical_examination: physicalExam,
+        note_type: "physical_exam",
+      }, token);
+      setSuccessMsg("Physical exam findings saved.");
+      fetchConsultationData();
+    } catch (err: unknown) {
+      setError(friendlyError(err, "save physical exam"));
+    } finally {
+      setSubmitLoading(false);
+    }
+  };
+
+  // Complete Consultation
+  const [completingConsultation, setCompletingConsultation] = useState(false);
+
+  const handleCompleteConsultation = async (disposition: "discharge" | "admit") => {
+    if (!summary?.encounter?.id || completingConsultation) return;
+    setCompletingConsultation(true);
+    setError(null);
+    setSuccessMsg(null);
+    try {
+      await api.post(`/encounters/${summary.encounter.id}/complete`, {}, token);
+      if (disposition === "discharge") {
+        setSuccessMsg("Consultation completed. Patient discharged.");
+      } else {
+        setSuccessMsg("Consultation completed. Proceed to admit patient.");
+      }
+      setTimeout(() => {
+        router.push(`/patients/${patientId}`);
+      }, 1500);
+    } catch (err: unknown) {
+      setError(friendlyError(err, "complete consultation"));
+      setCompletingConsultation(false);
+    }
   };
 
   // Create Lab/Imaging Order
@@ -318,8 +378,7 @@ export default function ClinicianSOAPConsultation() {
       setOrderForm({ clinical_indication: "", priority: "Routine" });
       fetchConsultationData();
     } catch (err: unknown) {
-      const apiError = err as { message?: string };
-      setError(apiError.message || "Failed to place order.");
+      setError(friendlyError(err, "place order"));
     } finally {
       setSubmitLoading(false);
     }
@@ -351,8 +410,7 @@ export default function ClinicianSOAPConsultation() {
       setRxForm({ dosage: "", route: "oral", frequency: "BD", duration: "7 days", quantity: "30", notes: "", is_controlled: false });
       fetchConsultationData();
     } catch (err: unknown) {
-      const apiError = err as { message?: string };
-      setError(apiError.message || "Failed to create prescription.");
+      setError(friendlyError(err, "create prescription"));
     } finally {
       setSubmitLoading(false);
     }
@@ -612,14 +670,25 @@ export default function ClinicianSOAPConsultation() {
                   </div>
 
                   {/* Physical Exam Box */}
-                  <div className="space-y-2">
+                  <form onSubmit={handleSavePhysicalExam} className="space-y-2">
                     <label className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">Physician Objective Findings / Physical Exam</label>
                     <textarea
                       rows={5}
                       className="block w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary text-sm text-gray-900"
                       placeholder="Note physical exam observations, general appearance, chest sounds, abdominal rigidity, etc."
+                      value={physicalExam}
+                      onChange={(e) => setPhysicalExam(e.target.value)}
                     ></textarea>
-                  </div>
+                    <div className="flex justify-end pt-2">
+                      <button
+                        type="submit"
+                        disabled={submitLoading || !physicalExam.trim()}
+                        className="px-4 py-1.5 bg-[#00a651] hover:bg-[#048f47] text-white font-bold text-xs rounded shadow-sm transition-all focus:outline-none cursor-pointer disabled:opacity-50"
+                      >
+                        {submitLoading ? "Saving..." : "Save Physical Exam"}
+                      </button>
+                    </div>
+                  </form>
                 </div>
               )}
 
@@ -1011,6 +1080,38 @@ export default function ClinicianSOAPConsultation() {
                 </div>
               )}
             </div>
+
+            {/* Disposition Actions */}
+            {activeEncounterId && (
+              <div className="border-t border-gray-200 pt-6 mt-6 space-y-4">
+                <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider">Disposition</h3>
+                <p className="text-xs text-[#5f5e5e]">
+                  Decide the patient&apos;s next step after this consultation.
+                </p>
+                <div className="flex flex-wrap gap-3">
+                  <button
+                    onClick={() => handleCompleteConsultation("discharge")}
+                    disabled={completingConsultation}
+                    className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold rounded shadow-sm transition-all focus:outline-none cursor-pointer disabled:opacity-50"
+                  >
+                    {completingConsultation ? "Processing..." : "Discharge Home"}
+                  </button>
+                  <Link
+                    href={`/patients/${patientId}/consultation?admit=true`}
+                    className="px-5 py-2.5 bg-sky-600 hover:bg-sky-700 text-white text-sm font-bold rounded shadow-sm transition-all inline-flex items-center cursor-pointer"
+                  >
+                    Admit to Ward
+                  </Link>
+                  <button
+                    onClick={() => handleCompleteConsultation("admit")}
+                    disabled={completingConsultation}
+                    className="px-5 py-2.5 border border-gray-300 text-gray-700 text-sm font-bold rounded hover:bg-gray-50 transition-all focus:outline-none cursor-pointer disabled:opacity-50"
+                  >
+                    Complete Consultation
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

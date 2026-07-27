@@ -55,6 +55,7 @@ export default function PatientProfilePage() {
   const [patient, setPatient] = useState<Patient | null>(null);
   const [summary, setSummary] = useState<TriageSummary | null>(null);
   const [diagnoses, setDiagnoses] = useState<Diagnosis[]>([]);
+  const [encounterStatus, setEncounterStatus] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"vitals" | "diagnoses" | "allergies" | "consents">("vitals");
@@ -83,6 +84,16 @@ export default function PatientProfilePage() {
           (d) => d.patient_id === parseInt(patientId)
         );
         setDiagnoses(filtered);
+      }
+
+      // Fetch encounter status — check if patient has an active encounter
+      try {
+        const encounterRes = await api.get(`/patients/${patientId}/encounters?per_page=1`, token);
+        if (encounterRes?.data?.length > 0) {
+          setEncounterStatus(encounterRes.data[0].status);
+        }
+      } catch {
+        // No active encounter — not an error
       }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to load patient profile data.");
@@ -167,6 +178,24 @@ export default function PatientProfilePage() {
         allergiesConfirmed={summary?.allergies_confirmed}
         isPregnant={summary?.pregnancy_status}
       />
+
+      {/* Encounter Status Badge */}
+      {encounterStatus && (
+        <div className={`px-4 py-2 rounded text-sm font-bold flex items-center gap-2 ${
+          encounterStatus === "Checked-in" || encounterStatus === "In Triage"
+            ? "bg-amber-50 border border-amber-200 text-amber-800"
+            : encounterStatus === "In Consultation"
+              ? "bg-sky-50 border border-sky-200 text-sky-800"
+              : encounterStatus === "Admitted"
+                ? "bg-purple-50 border border-purple-200 text-purple-800"
+                : encounterStatus === "Completed" || encounterStatus === "Discharged"
+                  ? "bg-emerald-50 border border-emerald-200 text-emerald-800"
+                  : "bg-gray-50 border border-gray-200 text-gray-700"
+        }`}>
+          <span className="h-1.5 w-1.5 rounded-full bg-current animate-pulse"></span>
+          Current Status: {encounterStatus}
+        </div>
+      )}
 
       {/* Main Info Columns */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -276,7 +305,7 @@ export default function PatientProfilePage() {
                   {summary?.vital_signs && summary.vital_signs.length > 0 ? (
                     <div className="overflow-x-auto border border-gray-150 rounded">
                       <table className="min-w-full divide-y divide-gray-200 text-sm">
-                        <thead className="bg-[#fcf9f8]">
+                        <thead className="bg-[#fcf9f8] sticky top-0 z-10">
                           <tr>
                             <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase">Date / Time</th>
                             <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase">Temp</th>

@@ -6,6 +6,7 @@ import { useAuth } from "../../../../../store/RoleContext";
 import { api } from "../../../../../lib/api";
 import PatientBanner, { Patient, Allergy } from "../../../../../components/ui/PatientBanner";
 import { calculateNEWS2, AVPU, SpO2Scale, NEWS2Result } from "../../../../../lib/ews";
+import { friendlyError } from "../../../../../lib/errors";
 
 // ─── Input validation helpers ───────────────────────────────────────────────
 const digitsOnly = (v: string) => v.replace(/\D/g, "");
@@ -21,6 +22,35 @@ const bpOnly = (v: string) => {
   const parts = cleaned.split("/");
   return parts.length > 2 ? `${parts[0]}/${parts.slice(1).join("")}` : cleaned;
 };
+
+/** Vitals range validation — returns border color class based on clinical thresholds */
+function vitalBorderClass(value: string | undefined, type: "temp" | "bp_sys" | "pulse" | "rr" | "spo2"): string {
+  if (!value || value === "") return "border-gray-300";
+  const num = parseFloat(value);
+  if (isNaN(num)) return "border-gray-300";
+  switch (type) {
+    case "temp":
+      if (num < 35 || num > 39) return "border-red-400 bg-red-50/30";
+      if (num < 36.5 || num > 38) return "border-amber-400 bg-amber-50/30";
+      return "border-emerald-400 bg-emerald-50/30";
+    case "bp_sys":
+      if (num < 90 || num > 180) return "border-red-400 bg-red-50/30";
+      if (num < 100 || num > 160) return "border-amber-400 bg-amber-50/30";
+      return "border-emerald-400 bg-emerald-50/30";
+    case "pulse":
+      if (num < 50 || num > 120) return "border-red-400 bg-red-50/30";
+      if (num < 60 || num > 100) return "border-amber-400 bg-amber-50/30";
+      return "border-emerald-400 bg-emerald-50/30";
+    case "rr":
+      if (num < 8 || num > 30) return "border-red-400 bg-red-50/30";
+      if (num < 12 || num > 20) return "border-amber-400 bg-amber-50/30";
+      return "border-emerald-400 bg-emerald-50/30";
+    case "spo2":
+      if (num < 92) return "border-red-400 bg-red-50/30";
+      if (num < 95) return "border-amber-400 bg-amber-50/30";
+      return "border-emerald-400 bg-emerald-50/30";
+  }
+}
 // ─────────────────────────────────────────────────────────────────────────────
 
 interface TriageSummary {
@@ -34,6 +64,16 @@ interface TriageSummary {
   allergies: Allergy[];
   pregnancy_status: boolean;
   current_medications: unknown[];
+  vital_signs?: {
+    id: number;
+    temperature: number | null;
+    blood_pressure: string | null;
+    pulse_rate: number | null;
+    respiratory_rate: number | null;
+    oxygen_saturation: number | null;
+    ews_score: number | null;
+    recorded_at: string;
+  }[];
 }
 
 interface TrendPoint {
@@ -56,7 +96,7 @@ export default function NurseTriageWorkbench() {
   const patientId = params.id as string;
 
   // Active Tab
-  const [activeTab, setActiveTab] = useState<"vitals" | "allergies" | "complaint" | "pregnancy" | "infection" | "trends">("vitals");
+  const [activeTab, setActiveTab] = useState<"complaint" | "vitals" | "allergies" | "pregnancy" | "infection" | "trends">("complaint");
 
   // Core Data
   const [patient, setPatient] = useState<Patient | null>(null);
@@ -108,6 +148,9 @@ export default function NurseTriageWorkbench() {
   const [hasTravelHistory, setHasTravelHistory] = useState(false);
   const [suspectedInfectionType, setSuspectedInfectionType] = useState("");
 
+  // UI state: show additional measurements (GCS, BMI, glucose, pain)
+  const [showAdditionalVitals, setShowAdditionalVitals] = useState(false);
+
   // Fetch core patient data
   async function fetchSummaryData() {
     try {
@@ -138,7 +181,7 @@ export default function NurseTriageWorkbench() {
       }
 
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to load patient records.");
+      setError(friendlyError(err, "load patient records"));
     } finally {
       setLoading(false);
     }
@@ -230,7 +273,7 @@ export default function NurseTriageWorkbench() {
     } catch (err: unknown) {
       const apiError = err as { message?: string; errors?: Record<string, string[]> };
       setFormErrors(apiError.errors || {});
-      setError(apiError.message || "Failed to record vital signs.");
+      setError(friendlyError(err, "record vital signs"));
     } finally {
       setSubmitLoading(false);
     }
@@ -258,8 +301,7 @@ export default function NurseTriageWorkbench() {
       setReaction("");
       fetchSummaryData();
     } catch (err: unknown) {
-      const apiError = err as { message?: string };
-      setError(apiError.message || "Failed to record allergy.");
+      setError(friendlyError(err, "record allergy"));
     } finally {
       setSubmitLoading(false);
     }
@@ -276,8 +318,7 @@ export default function NurseTriageWorkbench() {
       setSuccessMsg("No Known Allergies (NKA) status confirmed.");
       fetchSummaryData();
     } catch (err: unknown) {
-      const apiError = err as { message?: string };
-      setError(apiError.message || "Failed to confirm allergies.");
+      setError(friendlyError(err, "confirm allergies"));
     } finally {
       setSubmitLoading(false);
     }
@@ -304,8 +345,7 @@ export default function NurseTriageWorkbench() {
       setSuccessMsg("Presenting complaints recorded successfully.");
       fetchSummaryData();
     } catch (err: unknown) {
-      const apiError = err as { message?: string };
-      setError(apiError.message || "Failed to save complaints.");
+      setError(friendlyError(err, "save complaints"));
     } finally {
       setSubmitLoading(false);
     }
@@ -329,8 +369,7 @@ export default function NurseTriageWorkbench() {
       setSuccessMsg("Pregnancy status successfully updated.");
       fetchSummaryData();
     } catch (err: unknown) {
-      const apiError = err as { message?: string };
-      setError(apiError.message || "Failed to update pregnancy status.");
+      setError(friendlyError(err, "update pregnancy status"));
     } finally {
       setSubmitLoading(false);
     }
@@ -356,12 +395,40 @@ export default function NurseTriageWorkbench() {
       setSuccessMsg("Infectious screening log saved. Precautions updated.");
       fetchSummaryData();
     } catch (err: unknown) {
-      const apiError = err as { message?: string };
-      setError(apiError.message || "Failed to save screening.");
+      setError(friendlyError(err, "save screening"));
     } finally {
       setSubmitLoading(false);
     }
   };
+
+  // Complete Triage — send patient to consultation queue
+  const [completing, setCompleting] = useState(false);
+
+  const handleCompleteTriage = async () => {
+    if (!token || completing) return;
+    setCompleting(true);
+    setError(null);
+    setSuccessMsg(null);
+    try {
+      await api.post(`/patients/${patientId}/triage/complete`, {}, token);
+      setSuccessMsg("Triage completed. Patient sent to consultation queue.");
+      setTimeout(() => {
+        router.push("/nurse-station");
+      }, 1500);
+    } catch (err: unknown) {
+      setError(friendlyError(err, "complete triage"));
+      setCompleting(false);
+    }
+  };
+
+  // Compute triage completion progress
+  const hasVitals = !!summary?.vital_signs && summary.vital_signs.length > 0;
+  const hasComplaint = !!summary?.encounter?.chief_complaint;
+  const hasAllergies = (summary?.allergies && summary.allergies.length > 0) || summary?.allergies_confirmed === true;
+  const mandatoryDone = hasComplaint && hasVitals && hasAllergies;
+  const totalMandatory = 3;
+  const completedMandatory = [hasComplaint, hasVitals, hasAllergies].filter(Boolean).length;
+  const progressPct = Math.round((completedMandatory / totalMandatory) * 100);
 
   if (loading) {
     return <div className="p-8 text-center text-sm font-mono text-gray-500">Loading patient triage file...</div>;
@@ -404,6 +471,17 @@ export default function NurseTriageWorkbench() {
         {/* Left Hand Tab Navigation */}
         <div className="lg:col-span-1 flex flex-col gap-1 bg-white rounded border border-[#becab7]/50 p-3 h-fit">
           <button
+            onClick={() => { setActiveTab("complaint"); setError(null); setSuccessMsg(null); }}
+            className={`w-full text-left px-4 py-2.5 text-sm rounded font-bold transition-all relative ${
+              activeTab === "complaint"
+                ? "bg-clinical-primary text-white border-l-4 border-brand-green"
+                : "text-gray-600 hover:bg-gray-50"
+            }`}
+          >
+            {hasComplaint ? "✓ " : ""}Chief Complaint
+            <span className="inline-block ml-1 text-[9px] font-mono text-amber-600 font-normal normal-case">(mandatory)</span>
+          </button>
+          <button
             onClick={() => { setActiveTab("vitals"); setError(null); setSuccessMsg(null); }}
             className={`w-full text-left px-4 py-2.5 text-sm rounded font-bold transition-all relative ${
               activeTab === "vitals"
@@ -411,7 +489,8 @@ export default function NurseTriageWorkbench() {
                 : "text-gray-600 hover:bg-gray-50"
             }`}
           >
-            Record Vitals & NEWS2
+            {hasVitals ? "✓ " : ""}Record Vitals & NEWS2
+            <span className="inline-block ml-1 text-[9px] font-mono text-amber-600 font-normal normal-case">(mandatory)</span>
           </button>
           <button
             onClick={() => { setActiveTab("allergies"); setError(null); setSuccessMsg(null); }}
@@ -421,17 +500,8 @@ export default function NurseTriageWorkbench() {
                 : "text-gray-600 hover:bg-gray-50"
             }`}
           >
-            Allergy Check
-          </button>
-          <button
-            onClick={() => { setActiveTab("complaint"); setError(null); setSuccessMsg(null); }}
-            className={`w-full text-left px-4 py-2.5 text-sm rounded font-bold transition-all relative ${
-              activeTab === "complaint"
-                ? "bg-clinical-primary text-white border-l-4 border-brand-green"
-                : "text-gray-600 hover:bg-gray-50"
-            }`}
-          >
-            Chief Complaint
+            {hasAllergies ? "✓ " : ""}Allergy Check
+            <span className="inline-block ml-1 text-[9px] font-mono text-amber-600 font-normal normal-case">(mandatory)</span>
           </button>
           {patient.gender === "Female" && (
             <button
@@ -443,6 +513,7 @@ export default function NurseTriageWorkbench() {
               }`}
             >
               Pregnancy Assessment
+            <span className="inline-block ml-1 text-[9px] font-mono text-gray-400 font-normal normal-case">(optional)</span>
             </button>
           )}
           <button
@@ -454,6 +525,7 @@ export default function NurseTriageWorkbench() {
             }`}
           >
             Infection Screening
+            <span className="inline-block ml-1 text-[9px] font-mono text-gray-400 font-normal normal-case">(optional)</span>
           </button>
           <button
             onClick={() => { setActiveTab("trends"); setError(null); setSuccessMsg(null); }}
@@ -464,6 +536,7 @@ export default function NurseTriageWorkbench() {
             }`}
           >
             Physiological Trends
+            <span className="inline-block ml-1 text-[9px] font-mono text-gray-400 font-normal normal-case">(optional)</span>
           </button>
         </div>
 
@@ -519,7 +592,7 @@ export default function NurseTriageWorkbench() {
                       type="text"
                       inputMode="decimal"
                       maxLength={5}
-                      className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary text-sm font-mono text-gray-900"
+                      className={`mt-1 block w-full px-3 py-2 border rounded focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary text-sm font-mono text-gray-900 ${vitalBorderClass(temperature, "temp")}`}
                       placeholder="e.g. 36.5"
                       value={temperature}
                       onChange={(e) => setTemperature(decimalOnly(e.target.value))}
@@ -534,7 +607,7 @@ export default function NurseTriageWorkbench() {
                       type="text"
                       inputMode="numeric"
                       maxLength={7}
-                      className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary text-sm font-mono text-gray-900"
+                      className={`mt-1 block w-full px-3 py-2 border rounded focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary text-sm font-mono text-gray-900 ${vitalBorderClass(bloodPressure?.split("/")[0], "bp_sys")}`}
                       placeholder="e.g. 120/80"
                       value={bloodPressure}
                       onChange={(e) => setBloodPressure(bpOnly(e.target.value))}
@@ -549,7 +622,7 @@ export default function NurseTriageWorkbench() {
                       type="text"
                       inputMode="numeric"
                       maxLength={3}
-                      className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary text-sm font-mono text-gray-900"
+                      className={`mt-1 block w-full px-3 py-2 border rounded focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary text-sm font-mono text-gray-900 ${vitalBorderClass(pulseRate, "pulse")}`}
                       placeholder="e.g. 72"
                       value={pulseRate}
                       onChange={(e) => setPulseRate(digitsOnly(e.target.value))}
@@ -564,7 +637,7 @@ export default function NurseTriageWorkbench() {
                       type="text"
                       inputMode="numeric"
                       maxLength={2}
-                      className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary text-sm font-mono text-gray-900"
+                      className={`mt-1 block w-full px-3 py-2 border rounded focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary text-sm font-mono text-gray-900 ${vitalBorderClass(respiratoryRate, "rr")}`}
                       placeholder="e.g. 16"
                       value={respiratoryRate}
                       onChange={(e) => setRespiratoryRate(digitsOnly(e.target.value))}
@@ -579,7 +652,7 @@ export default function NurseTriageWorkbench() {
                       type="text"
                       inputMode="numeric"
                       maxLength={3}
-                      className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary text-sm font-mono text-gray-900"
+                      className={`mt-1 block w-full px-3 py-2 border rounded focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary text-sm font-mono text-gray-900 ${vitalBorderClass(oxygenSaturation, "spo2")}`}
                       placeholder="e.g. 98"
                       value={oxygenSaturation}
                       onChange={(e) => setOxygenSaturation(digitsOnly(e.target.value))}
@@ -629,7 +702,25 @@ export default function NurseTriageWorkbench() {
                     </select>
                   </div>
 
-                  {/* Triage Level (ESI) */}
+                  {/* Toggle for Additional Measurements */}
+                  <div className="col-span-1 md:col-span-3 border-t border-gray-100 pt-4">
+                    <button
+                      type="button"
+                      onClick={() => setShowAdditionalVitals(!showAdditionalVitals)}
+                      className="flex items-center gap-2 text-xs font-bold text-gray-500 hover:text-gray-700 uppercase tracking-wider transition-colors cursor-pointer"
+                    >
+                      <svg className={`h-4 w-4 transition-transform ${showAdditionalVitals ? "rotate-90" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+                      </svg>
+                      {showAdditionalVitals ? "Hide" : "Show"} Additional Measurements
+                      <span className="text-[10px] font-mono text-gray-400 font-normal normal-case">(Weight, BMI, GCS, Pain, Glucose, Triage Level)</span>
+                    </button>
+                  </div>
+
+                  {/* Additional Measurements (collapsible) */}
+                  {showAdditionalVitals && (
+                    <>
+                      {/* Triage Level (ESI) */}
                   <div>
                     <label className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">Triage Priority Category</label>
                     <select
@@ -711,9 +802,12 @@ export default function NurseTriageWorkbench() {
                       onChange={(e) => setBloodGlucose(decimalOnly(e.target.value))}
                     />
                   </div>
+                    </>
+                  )}
                 </div>
 
-                {/* GCS Glasgow Coma Scale */}
+                {/* GCS Glasgow Coma Scale (collapsible) */}
+                {showAdditionalVitals && (
                 <div className="border-t border-gray-100 pt-6">
                   <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">Glasgow Coma Scale (GCS)</h4>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -764,6 +858,7 @@ export default function NurseTriageWorkbench() {
                     </div>
                   </div>
                 </div>
+                  )}
 
                 <div className="border-t border-gray-100 pt-6 flex justify-end">
                   <button
@@ -1220,6 +1315,60 @@ export default function NurseTriageWorkbench() {
             )}
           </div>
         </div>
+      </div>
+
+      {/* Triage Completion Section */}
+      <div className="bg-white rounded border border-[#becab7]/50 p-6">
+        {/* Progress Bar */}
+        <div className="mb-4">
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="text-xs font-bold text-[#5f5e5e] uppercase tracking-wider">
+              Triage Progress: {completedMandatory} of {totalMandatory} mandatory steps
+            </span>
+            <span className={`text-xs font-bold font-mono ${
+              mandatoryDone ? "text-emerald-600" : "text-amber-600"
+            }`}>
+              {mandatoryDone ? "100%" : `${progressPct}%`}
+            </span>
+          </div>
+          <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
+            <div
+              className={`h-full rounded-full transition-all duration-500 ${
+                mandatoryDone ? "bg-emerald-500" : "bg-clinical-primary"
+              }`}
+              style={{ width: `${progressPct}%` }}
+            ></div>
+          </div>
+          <div className="flex gap-4 mt-1.5 text-[10px] font-mono text-gray-400">
+            <span className={hasComplaint ? "text-emerald-600 font-semibold" : ""}>
+              {hasComplaint ? "✓" : "○"} Chief Complaint
+            </span>
+            <span className={hasVitals ? "text-emerald-600 font-semibold" : ""}>
+              {hasVitals ? "✓" : "○"} Vital Signs
+            </span>
+            <span className={hasAllergies ? "text-emerald-600 font-semibold" : ""}>
+              {hasAllergies ? "✓" : "○"} Allergies
+            </span>
+          </div>
+        </div>
+
+        {/* Complete Triage Button */}
+        <button
+          onClick={handleCompleteTriage}
+          disabled={!mandatoryDone || completing}
+          className={`w-full py-3 text-sm font-bold rounded transition-all focus:outline-none cursor-pointer ${
+            mandatoryDone
+              ? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm"
+              : "bg-gray-100 text-gray-400 cursor-not-allowed"
+          }`}
+        >
+          {completing
+            ? "Completing Triage..."
+            : mandatoryDone
+              ? "Complete Triage & Send to Consultation"
+              : "Complete Chief Complaint, Vital Signs, and Allergies first"
+          }
+        </button>
       </div>
     </div>
   );

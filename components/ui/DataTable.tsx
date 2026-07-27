@@ -108,7 +108,7 @@ export default function DataTable<T>({
     <div className="bg-white rounded border border-[#becab7]/50 overflow-hidden shadow-sm">
       <div className="overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-[#fcf9f8]">
+          <thead className="bg-[#fcf9f8] sticky top-0 z-10">
             <tr className="divide-x divide-gray-200/50">
               {columns.map((col) => (
                 <th

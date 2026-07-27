@@ -2,12 +2,15 @@
 
 import { useAuth } from "@/store/RoleContext";
 import { useFetch } from "@/lib/useFetch";
+import { useState } from "react";
+import { api } from "@/lib/api";
 import { StatsRow } from "@/components/receptionist/StatsRow";
 import { QueuePreview } from "@/components/receptionist/QueuePreview";
 import { QuickActions } from "@/components/receptionist/QuickActions";
 import { RoleGuard } from "@/components/auth/RoleGuard";
 import LoadingState from "@/components/ui/LoadingState";
-import { CalendarDays, Users, Clock, CheckCircle, XCircle, Banknote } from "lucide-react";
+import { CalendarDays, Users, Clock, CheckCircle, XCircle, ClipboardPlus, Search } from "lucide-react";
+import Link from "next/link";
 
 interface DashboardData {
   pending_triage?: number;
@@ -66,7 +69,9 @@ function formatDate(): string {
 }
 
 export default function ReceptionistDashboard() {
-  const { user } = useAuth();
+  const { user, token } = useAuth();
+  const [searchQuery, setSearchQuery] = useState("");
+  const [checkingIn, setCheckingIn] = useState<number | null>(null);
   const { data: dashboard, loading: dashLoading } = useFetch<DashboardData>("/dashboard");
   const { data: queueStats, loading: queueLoading } = useFetch<QueueStats>("/queue/stats", { interval: 30000 });
   const { data: appointmentsData, loading: apptLoading } = useFetch<{ data: Appointment[] }>(
@@ -83,8 +88,27 @@ export default function ReceptionistDashboard() {
     { label: "Waiting", value: queueStats?.waiting_count ?? dashboard?.pending_triage ?? 0, icon: Clock, color: "bg-amber-500" },
     { label: "Completed", value: queueStats?.completed_count ?? dashboard?.discharged_today ?? 0, icon: CheckCircle, color: "bg-emerald-500" },
     { label: "Emergency", value: dashboard?.emergency ?? 0, icon: XCircle, color: "bg-red-500" },
-    { label: "Registered Today", value: dashboard?.registered_today ?? 0, icon: Banknote, color: "bg-purple-500" },
+    { label: "Registered Today", value: dashboard?.registered_today ?? 0, icon: ClipboardPlus, color: "bg-purple-500" },
   ];
+
+  const handleCheckIn = async (appointmentId: number) => {
+    if (!token || checkingIn) return;
+    setCheckingIn(appointmentId);
+    try {
+      await api.post(`/appointments/${appointmentId}/check-in`, {}, token);
+      window.location.reload();
+    } catch {
+      setCheckingIn(null);
+    }
+  };
+
+  const filteredAppointments = searchQuery
+    ? appointments.filter((a) =>
+        `${a.patient.first_name} ${a.patient.last_name} ${a.patient.hospital_number}`
+          .toLowerCase()
+          .includes(searchQuery.toLowerCase())
+      )
+    : appointments;
 
   if (loading) {
     return (
@@ -109,6 +133,21 @@ export default function ReceptionistDashboard() {
       {/* Stats */}
       <StatsRow stats={stats} />
 
+      {/* Patient Search */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+        <input
+          type="text"
+          placeholder="Search patients by name or hospital number..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded text-sm focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary"
+        />
+        {searchQuery && filteredAppointments.length === 0 && appointments.length > 0 && (
+          <p className="text-xs text-gray-400 mt-1">No appointments match your search.</p>
+        )}
+      </div>
+
       {/* Queue + Actions */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <QueuePreview queue={queue} />
@@ -129,22 +168,25 @@ export default function ReceptionistDashboard() {
           </div>
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-[#fcf9f8]">
+              <thead className="bg-[#fcf9f8] sticky top-0 z-10">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-bold text-[#5f5e5e] uppercase tracking-wider">Time</th>
                   <th className="px-6 py-3 text-left text-xs font-bold text-[#5f5e5e] uppercase tracking-wider">Patient</th>
                   <th className="px-6 py-3 text-left text-xs font-bold text-[#5f5e5e] uppercase tracking-wider">Type</th>
                   <th className="px-6 py-3 text-left text-xs font-bold text-[#5f5e5e] uppercase tracking-wider">Status</th>
+                  <th className="px-6 py-3 text-left text-xs font-bold text-[#5f5e5e] uppercase tracking-wider">Action</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-100">
-                {appointments.slice(0, 8).map((appt) => (
+                {filteredAppointments.slice(0, 8).map((appt) => (
                   <tr key={appt.id} className="hover:bg-[#fcf9f8]/40 transition-colors">
                     <td className="px-6 py-3 text-sm font-mono text-gray-600">
                       {new Date(appt.scheduled_for).toLocaleTimeString("en-MW", { hour: "2-digit", minute: "2-digit" })}
                     </td>
                     <td className="px-6 py-3 text-sm font-semibold text-gray-900">
-                      {appt.patient.first_name} {appt.patient.last_name}
+                      <Link href={`/patients/${appt.patient.id}`} className="hover:text-clinical-primary hover:underline">
+                        {appt.patient.first_name} {appt.patient.last_name}
+                      </Link>
                     </td>
                     <td className="px-6 py-3 text-sm text-gray-600">{appt.appointment_type}</td>
                     <td className="px-6 py-3">
@@ -156,6 +198,17 @@ export default function ReceptionistDashboard() {
                       }`}>
                         {appt.status}
                       </span>
+                    </td>
+                    <td className="px-6 py-3">
+                      {appt.status !== "arrived" && appt.status !== "completed" && (
+                        <button
+                          onClick={() => handleCheckIn(appt.id)}
+                          disabled={checkingIn === appt.id}
+                          className="text-xs font-bold text-emerald-600 hover:text-emerald-800 uppercase tracking-wider disabled:opacity-50 cursor-pointer"
+                        >
+                          {checkingIn === appt.id ? "Checking in..." : "Check In"}
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}

@@ -18,17 +18,21 @@ interface AppointmentActionsProps {
 export function AppointmentActions({ appointment, onAction }: AppointmentActionsProps) {
   const { token } = useAuth();
   const [loading, setLoading] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
 
-  const canCheckIn = ["confirmed", "pending", "scheduled"].includes(appointment.status?.toLowerCase());
-  const canCancel = !["completed", "cancelled"].includes(appointment.status?.toLowerCase());
+  const status = appointment.status?.toLowerCase();
+  const canCheckIn = ["confirmed", "pending", "scheduled"].includes(status);
+  const canCancel = !["completed", "cancelled", "checked-in", "arrived"].includes(status);
 
   const handleCheckIn = useCallback(async () => {
     setLoading(true);
+    setActionError(null);
     try {
       await api.post(`/appointments/${appointment.id}/check-in`, {}, token);
       onAction();
-    } catch {
-      // silently fail — parent handles errors
+    } catch (err: unknown) {
+      const apiErr = err as { message?: string };
+      setActionError(apiErr.message || "Check-in failed");
     } finally {
       setLoading(false);
     }
@@ -37,11 +41,13 @@ export function AppointmentActions({ appointment, onAction }: AppointmentActions
   const handleCancel = useCallback(async () => {
     if (!confirm("Cancel this appointment?")) return;
     setLoading(true);
+    setActionError(null);
     try {
       await api.post(`/appointments/${appointment.id}/cancel`, {}, token);
       onAction();
-    } catch {
-      // silently fail
+    } catch (err: unknown) {
+      const apiErr = err as { message?: string };
+      setActionError(apiErr.message || "Cancel failed");
     } finally {
       setLoading(false);
     }
@@ -66,6 +72,9 @@ export function AppointmentActions({ appointment, onAction }: AppointmentActions
         >
           Cancel
         </button>
+      )}
+      {actionError && (
+        <span className="text-xs text-red-600">{actionError}</span>
       )}
     </div>
   );

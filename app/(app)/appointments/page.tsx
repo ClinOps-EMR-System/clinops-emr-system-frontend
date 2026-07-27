@@ -29,10 +29,10 @@ type StatusFilter = "all" | "confirmed" | "arrived" | "completed" | "cancelled" 
 
 function getStatusVariant(status: string): "success" | "warning" | "error" | "info" | "neutral" {
   const s = status?.toLowerCase();
-  if (s === "arrived") return "success";
+  if (s === "checked-in" || s === "arrived") return "success";
   if (s === "confirmed" || s === "scheduled") return "info";
   if (s === "completed") return "success";
-  if (s === "cancelled" || s === "no_show") return "error";
+  if (s === "cancelled" || s === "no-show" || s === "no_show") return "error";
   return "neutral";
 }
 
@@ -40,7 +40,10 @@ export default function AppointmentsPage() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [showNewAppointment, setShowNewAppointment] = useState(false);
 
-  const today = new Date().toISOString().split("T")[0];
+  const [today] = useState(() => {
+    const now = new Date();
+    return new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().split("T")[0];
+  });
   const { data, loading, refetch } = useFetch<{ data: Appointment[] }>(
     `/appointments?date=${today}`,
     { interval: 30000 }
@@ -50,15 +53,21 @@ export default function AppointmentsPage() {
 
   const filtered = statusFilter === "all"
     ? appointments
-    : appointments.filter((a) => a.status?.toLowerCase() === statusFilter);
+    : appointments.filter((a) => {
+        const s = a.status?.toLowerCase();
+        if (statusFilter === "confirmed") return ["confirmed", "scheduled"].includes(s);
+        if (statusFilter === "arrived") return ["checked-in", "arrived"].includes(s);
+        if (statusFilter === "no_show") return ["no-show", "no_show"].includes(s);
+        return s === statusFilter;
+      });
 
   const counts = {
     all: appointments.length,
     confirmed: appointments.filter((a) => ["confirmed", "scheduled"].includes(a.status?.toLowerCase())).length,
-    arrived: appointments.filter((a) => a.status?.toLowerCase() === "arrived").length,
+    arrived: appointments.filter((a) => ["checked-in", "arrived"].includes(a.status?.toLowerCase())).length,
     completed: appointments.filter((a) => a.status?.toLowerCase() === "completed").length,
     cancelled: appointments.filter((a) => a.status?.toLowerCase() === "cancelled").length,
-    no_show: appointments.filter((a) => a.status?.toLowerCase() === "no_show").length,
+    no_show: appointments.filter((a) => ["no-show", "no_show"].includes(a.status?.toLowerCase())).length,
   };
 
   const handleAction = useCallback(() => {
@@ -122,7 +131,7 @@ export default function AppointmentsPage() {
         ) : (
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-[#fcf9f8]">
+              <thead className="bg-[#fcf9f8] sticky top-0 z-10">
                 <tr className="divide-x divide-gray-200/50">
                   <th className="px-6 py-3 text-left text-xs font-bold text-[#5f5e5e] uppercase tracking-wider">Time</th>
                   <th className="px-6 py-3 text-left text-xs font-bold text-[#5f5e5e] uppercase tracking-wider">Patient</th>

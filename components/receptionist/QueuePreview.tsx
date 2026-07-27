@@ -60,7 +60,7 @@ export function QueuePreview({ queue }: { queue: QueuePatient[] }) {
           <div className="w-1.5 h-6 bg-brand-green rounded-full mr-3"></div>
           <h3 className="text-sm font-bold text-[#5f5e5e] uppercase tracking-wider">Next in Queue</h3>
         </div>
-        <Link href="/queue" className="text-xs font-bold text-clinical-primary hover:text-clinical-primary-hover uppercase tracking-wider">
+        <Link href="/triage-queue" className="text-xs font-bold text-clinical-primary hover:text-clinical-primary-hover uppercase tracking-wider">
           View All
         </Link>
       </div>

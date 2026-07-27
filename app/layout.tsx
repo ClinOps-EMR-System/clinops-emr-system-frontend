@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { AuthProvider } from "../store/RoleContext";
+import OfflineIndicator from "../components/ui/OfflineIndicator";
 
 const fontClassName = "font-sans";
 
@@ -25,6 +26,7 @@ export default function RootLayout({
         suppressHydrationWarning
       >
         <AuthProvider>
+          <OfflineIndicator />
           {children}
         </AuthProvider>
       </body>

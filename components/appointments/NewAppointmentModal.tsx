@@ -69,7 +69,13 @@ export function NewAppointmentModal({ open, onClose, onCreated }: NewAppointment
       setSelectedPatient(null);
       setFormData({ appointment_type: "Consultation", scheduled_date: new Date().toISOString().split("T")[0], scheduled_time: "09:00", reason: "", notes: "" });
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to create appointment");
+      const apiErr = err as { message?: string; errors?: Record<string, string[]> };
+      if (apiErr.errors && Object.keys(apiErr.errors).length > 0) {
+        const messages = Object.values(apiErr.errors).flat().join(". ");
+        setError(messages);
+      } else {
+        setError(apiErr.message || "Failed to create appointment");
+      }
     } finally {
       setSubmitting(false);
     }
@@ -180,9 +186,10 @@ export function NewAppointmentModal({ open, onClose, onCreated }: NewAppointment
 
         {/* Reason */}
         <div>
-          <label className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">Reason</label>
+          <label className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">Reason *</label>
           <input
             type="text"
+            required
             value={formData.reason}
             onChange={(e) => setFormData({ ...formData, reason: e.target.value })}
             placeholder="Reason for appointment"

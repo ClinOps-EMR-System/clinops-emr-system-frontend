@@ -217,14 +217,19 @@ export default function NurseStationPage() {
             {entries.length === 0 ? (
               <EmptyState
                 title="No patients waiting"
-                description="All patients have been triaged or the queue is empty"
+                description="All patients have been triaged. Check with reception for new arrivals."
+                action={
+                  <Link href="/triage-queue" className="inline-flex items-center px-4 py-2 bg-clinical-primary text-white text-sm font-bold rounded hover:bg-clinical-primary-hover transition-colors">
+                    View Queue
+                  </Link>
+                }
               />
             ) : otherEntries.length === 0 && urgentEntries.length > 0 ? (
               <p className="text-sm text-gray-500 italic">All waiting patients are urgent — see above</p>
             ) : (
               <div className="bg-white rounded border border-[#becab7]/50 overflow-hidden">
                 <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-[#fcf9f8]">
+                  <thead className="bg-[#fcf9f8] sticky top-0 z-10">
                     <tr>
                       <th className="px-6 py-3 text-left text-xs font-bold text-[#5f5e5e] uppercase tracking-wider">Patient</th>
                       <th className="px-6 py-3 text-left text-xs font-bold text-[#5f5e5e] uppercase tracking-wider">Hospital #</th>
