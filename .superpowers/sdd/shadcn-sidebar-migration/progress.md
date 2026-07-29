@@ -1,0 +1,23 @@
+# SDD ledger — plan: docs/superpowers/plans/2026-07-29-shadcn-sidebar-migration.md
+
+Base: 9c7ec73
+
+## Tasks
+
+### Task 1: Update nav-main.tsx — active route matching
+Status: pending
+
+### Task 2: Rewrite app-sidebar.tsx — ClinOps RBAC nav data
+Status: pending
+
+### Task 3: Update Topbar.tsx — use SidebarTrigger
+Status: pending
+
+### Task 4: Update (app)/layout.tsx — use SidebarProvider + AppSidebar
+Status: pending
+
+### Task 5: Remove old Sidebar and verify
+Status: pending
+
+### Task 6: Final verification
+Status: pending

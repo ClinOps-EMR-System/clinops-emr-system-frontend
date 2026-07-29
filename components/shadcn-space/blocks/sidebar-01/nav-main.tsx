@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { usePathname } from "next/navigation";
 import { ChevronRight, LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -28,7 +29,23 @@ export type NavItem = {
   children?: NavItem[];
 };
 
+function routeMatches(pathname: string, href?: string): boolean {
+  if (!href) return false;
+  if (href === "/") return pathname === "/";
+  return pathname === href || pathname.startsWith(href + "/");
+}
+
+function anyChildMatches(pathname: string, children?: NavItem[]): boolean {
+  if (!children) return false;
+  return children.some(
+    (child) =>
+      routeMatches(pathname, child.href) ||
+      anyChildMatches(pathname, child.children)
+  );
+}
+
 export function NavMain({ items }: { items: NavItem[] }) {
+  const pathname = usePathname();
   const [activeParent, setActiveParent] = React.useState<string | null>(
     items.find((i) => !i.isSection)?.title || null
   );
@@ -40,6 +57,7 @@ export function NavMain({ items }: { items: NavItem[] }) {
         <NavMainItem
           key={item.title || item.label || index}
           item={item}
+          pathname={pathname}
           activeParent={activeParent}
           setActiveParent={setActiveParent}
           activeChild={activeChild}
@@ -52,22 +70,28 @@ export function NavMain({ items }: { items: NavItem[] }) {
 
 function NavMainItem({
   item,
+  pathname,
   activeParent,
   setActiveParent,
   activeChild,
   setActiveChild,
 }: {
   item: NavItem;
+  pathname: string;
   activeParent: string | null;
   activeChild: string | null;
   setActiveParent: (val: string) => void;
   setActiveChild: (val: string | null) => void;
 }) {
   const hasChildren = !!item.children?.length;
-  const isParentActive = activeParent === item.title;
+  const isParentActive =
+    activeParent === item.title ||
+    (hasChildren
+      ? anyChildMatches(pathname, item.children)
+      : routeMatches(pathname, item.href));
   const [isOpen, setIsOpen] = React.useState(isParentActive);
 
-  // Sync open state when activeParent changes
+  // Sync open state when activeParent or route changes
   React.useEffect(() => {
     if (isParentActive) {
       setIsOpen(true);
@@ -122,6 +146,7 @@ function NavMainItem({
                     <NavMainSubItem
                       key={child.title || index}
                       item={child}
+                      pathname={pathname}
                       activeParent={activeParent}
                       setActiveParent={setActiveParent}
                       activeChild={activeChild}
@@ -172,6 +197,7 @@ function NavMainItem({
 
 function NavMainSubItem({
   item,
+  pathname,
   activeParent,
   setActiveParent,
   activeChild,
@@ -179,6 +205,7 @@ function NavMainSubItem({
   parentTitle,
 }: {
   item: NavItem;
+  pathname: string;
   activeParent: string | null;
   activeChild: string | null;
   setActiveParent: (val: string) => void;
@@ -186,7 +213,9 @@ function NavMainSubItem({
   parentTitle?: string;
 }) {
   const hasChildren = !!item.children?.length;
-  const [isOpen, setIsOpen] = React.useState(false);
+  const [isOpen, setIsOpen] = React.useState(
+    hasChildren && anyChildMatches(pathname, item.children)
+  );
 
   if (hasChildren && item.title) {
     return (
@@ -216,6 +245,7 @@ function NavMainSubItem({
                 <NavMainSubItem
                   key={child.title || index}
                   item={child}
+                  pathname={pathname}
                   activeParent={activeParent}
                   setActiveParent={setActiveParent}
                   activeChild={activeChild}
@@ -237,9 +267,11 @@ function NavMainSubItem({
           id={`nav-sub-button-${item.title.toLowerCase().replace(/\s+/g, '-')}`}
           className={cn(
             "w-full rounded-md transition-colors",
-            activeChild === item.title ? "bg-muted! text-foreground!" : ""
+            activeChild === item.title || routeMatches(pathname, item.href)
+              ? "bg-muted! text-foreground!"
+              : ""
           )}
-          isActive={activeChild === item.title}
+          isActive={activeChild === item.title || routeMatches(pathname, item.href)}
           onClick={() => {
             setActiveParent(parentTitle || "");
             setActiveChild(item.title!);
