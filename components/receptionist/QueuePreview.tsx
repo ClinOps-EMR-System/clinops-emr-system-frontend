@@ -123,8 +123,8 @@ export function QueuePreview({ queue, emergencyWaiting }: { queue: QueuePatient[
             </Link>
           </div>
           <div className="divide-y divide-gray-100">
-            {queue.slice(0, 5).map((entry) => (
-              <div key={entry.patient.id} className="px-6 py-3 flex items-center justify-between hover:bg-[#fcf9f8]/40 transition-colors">
+            {queue.slice(0, 5).map((entry, idx) => (
+              <div key={entry.id ?? entry.patient?.id ?? idx} className="px-6 py-3 flex items-center justify-between hover:bg-[#fcf9f8]/40 transition-colors">
                 <div className="flex items-center gap-3">
                   <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-extrabold border ${getPriorityColor(entry.priority)}`}>
                     {getPriorityLabel(entry.priority)}
