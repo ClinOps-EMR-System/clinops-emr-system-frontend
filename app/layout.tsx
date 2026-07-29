@@ -22,7 +22,7 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <body
-        className="min-h-screen flex flex-col bg-[#fcf9f8] text-[#1b1c1c] font-sans"
+        className="min-h-screen flex flex-col bg-[#fcf9f8] text-[#1b1c1c]"
         suppressHydrationWarning
       >
         <AuthProvider>

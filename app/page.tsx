@@ -19,7 +19,7 @@ export default function Home() {
   }, [token, isLoading, router]);
 
   return (
-    <div className="flex h-screen w-full items-center justify-center bg-[#fcf9f8] font-sans">
+    <div className="flex h-screen w-full items-center justify-center bg-[#fcf9f8]">
       <div className="h-8 w-8 animate-spin rounded-full border-4 border-brand-green border-t-transparent"></div>
     </div>
   );
