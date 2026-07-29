@@ -17,10 +17,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
+import StatusBadge from "@/components/ui/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import {
   Users,
@@ -31,6 +30,9 @@ import {
   Ambulance,
   DoorOpen,
   Pill,
+  MessageSquare,
+  ClipboardCheck,
+  User,
 } from "lucide-react";
 
 interface DashboardData {
@@ -49,6 +51,12 @@ interface DashboardData {
       district: string;
       created_at: string;
       registration_completed_at: string | null;
+      encounters?: Array<{
+        id: number;
+        status: string;
+        encounter_type: string;
+        triage_completed_at: string | null;
+      }>;
     }>;
   };
   encounters?: {
@@ -403,14 +411,58 @@ export default function Dashboard() {
                 <TableRow>
                   <TableHead>Patient Name</TableHead>
                   <TableHead>Hospital #</TableHead>
-                  <TableHead>Gender / Category</TableHead>
+                  <TableHead className="hidden md:table-cell">Gender / Category</TableHead>
                   <TableHead className="hidden md:table-cell">Village / District</TableHead>
                   <TableHead>Status</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {recentPatients.map((patient) => {
-                  const hasIncompleteReg = !patient.registration_completed_at;
+                  const encounter = patient.encounters?.[0];
+                  const isDraft = !patient.registration_completed_at;
+
+                  let statusLabel: string;
+                  let statusVariant: "success" | "warning" | "error" | "info" | "neutral" | "purple";
+                  let statusPulse = false;
+
+                  if (isDraft) {
+                    statusLabel = "Draft";
+                    statusVariant = "warning";
+                    statusPulse = true;
+                  } else if (!encounter) {
+                    statusLabel = "Registered";
+                    statusVariant = "neutral";
+                  } else {
+                    switch (encounter.status) {
+                      case "Checked-in":
+                      case "Emergency":
+                        statusLabel = "In Triage";
+                        statusVariant = "warning";
+                        statusPulse = true;
+                        break;
+                      case "Triage Complete":
+                        statusLabel = "Triaged";
+                        statusVariant = "info";
+                        break;
+                      case "In Consultation":
+                        statusLabel = "In Consult";
+                        statusVariant = "purple";
+                        statusPulse = true;
+                        break;
+                      case "Completed":
+                        statusLabel = "Completed";
+                        statusVariant = "success";
+                        break;
+                      case "Discharged":
+                        statusLabel = "Discharged";
+                        statusVariant = "success";
+                        break;
+                      default:
+                        statusLabel = encounter.status;
+                        statusVariant = "neutral";
+                    }
+                  }
+
                   return (
                     <TableRow key={patient.id}>
                       <TableCell className="font-medium">
@@ -419,48 +471,66 @@ export default function Dashboard() {
                       <TableCell className="font-mono text-xs text-muted-foreground">
                         {patient.hospital_number}
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="hidden md:table-cell text-muted-foreground">
                         {patient.gender} &middot; {patient.patient_category}
                       </TableCell>
                       <TableCell className="hidden md:table-cell text-muted-foreground">
                         {patient.village || "N/A"}, {patient.district || "N/A"}
                       </TableCell>
                       <TableCell>
-                        <div className="flex items-center gap-3">
-                          {hasIncompleteReg ? (
-                            <Badge variant="destructive">Draft</Badge>
-                          ) : (
-                            <Badge variant="secondary">Registered</Badge>
-                          )}
-                          <div className="flex gap-2">
-                            {hasIncompleteReg ? (
+                        <div className="flex items-center gap-2">
+                          <StatusBadge label={statusLabel} variant={statusVariant} pulse={statusPulse} />
+                          <div className="flex gap-1">
+                            {isDraft ? (
                               <Button
                                 size="xs"
-                                variant="link"
+                                variant="ghost"
                                 nativeButton={false}
                                 render={<Link href={`/patients/register?complete=${patient.id}`} />}
                               >
+                                <ClipboardCheck className="h-3.5 w-3.5 text-sky-600" />
                                 Complete
                               </Button>
+                            ) : !encounter ? (
+                              <Button
+                                size="xs"
+                                variant="ghost"
+                                nativeButton={false}
+                                render={<Link href={`/patients/${patient.id}/triage`} />}
+                              >
+                                <Stethoscope className="h-3.5 w-3.5 text-clinical-primary" />
+                                Triage
+                              </Button>
+                            ) : encounter.status === "Triage Complete" ? (
+                              <Button
+                                size="xs"
+                                variant="ghost"
+                                nativeButton={false}
+                                render={<Link href={`/patients/${patient.id}/consultation`} />}
+                              >
+                                <MessageSquare className="h-3.5 w-3.5 text-teal-600" />
+                                Consult
+                              </Button>
+                            ) : encounter.status === "In Consultation" ? (
+                              <Button
+                                size="xs"
+                                variant="ghost"
+                                nativeButton={false}
+                                render={<Link href={`/patients/${patient.id}/consultation`} />}
+                              >
+                                <MessageSquare className="h-3.5 w-3.5 text-teal-600" />
+                                Resume
+                              </Button>
                             ) : (
-                              <>
-                                <Button
-                                  size="xs"
-                                  variant="link"
-                                  nativeButton={false}
-                                  render={<Link href={`/patients/${patient.id}/triage`} />}
-                                >
-                                  Triage
-                                </Button>
-                                <Button
-                                  size="xs"
-                                  variant="link"
-                                  nativeButton={false}
-                                  render={<Link href={`/patients/${patient.id}/consultation`} />}
-                                >
-                                  Consult
-                                </Button>
-                              </>
+                              <Button
+                                size="xs"
+                                variant="ghost"
+                                nativeButton={false}
+                                render={<Link href={`/patients/${patient.id}`} />}
+                              >
+                                <User className="h-3.5 w-3.5 text-muted-foreground" />
+                                View
+                              </Button>
                             )}
                           </div>
                         </div>
