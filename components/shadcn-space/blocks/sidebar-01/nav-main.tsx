@@ -94,6 +94,7 @@ function NavMainItem({
   // Sync open state when activeParent or route changes
   React.useEffect(() => {
     if (isParentActive) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setIsOpen(true);
     }
   }, [isParentActive]);
