@@ -6,29 +6,34 @@ import { useFetch } from "../../../lib/useFetch";
 import StatusBadge from "../../../components/ui/StatusBadge";
 
 interface DashboardData {
-  total_patients?: number;
-  pending_triage?: number;
-  in_consultation?: number;
-  emergency?: number;
-  discharged_today?: number;
-  registered_today?: number;
-  recent_patients?: Array<{
-    id: number;
-    hospital_number: string;
-    first_name: string;
-    last_name: string;
-    gender: string;
-    patient_category: string;
-    village: string;
-    district: string;
-    created_at: string;
-    registration_completed_at: string | null;
-  }>;
-  pending_orders?: number;
-  pending_prescriptions?: number;
-  active_admissions?: number;
-  pending_referrals?: number;
-  unpaid_bills?: number;
+  patients?: {
+    total?: number;
+    emergency?: number;
+    today_registrations?: number;
+    recent?: Array<{
+      id: number;
+      hospital_number: string;
+      first_name: string;
+      last_name: string;
+      gender: string;
+      patient_category: string;
+      village: string;
+      district: string;
+      created_at: string;
+      registration_completed_at: string | null;
+    }>;
+  };
+  encounters?: {
+    awaiting_triage?: number;
+    in_consultation?: number;
+    emergency?: number;
+    discharged_today?: number;
+  };
+  queue?: {
+    waiting_for_doctor?: number;
+    by_priority?: Record<string, number>;
+    oldest_wait_time?: number;
+  };
 }
 
 export default function Dashboard() {
@@ -40,20 +45,16 @@ export default function Dashboard() {
   const isAdmin = userRoles.includes("admin");
 
   const stats = {
-    totalPatients: dashboard?.total_patients ?? 0,
-    pendingTriage: dashboard?.pending_triage ?? 0,
-    inConsultation: dashboard?.in_consultation ?? 0,
-    emergency: dashboard?.emergency ?? 0,
-    dischargedToday: dashboard?.discharged_today ?? 0,
-    registeredToday: dashboard?.registered_today ?? 0,
-    pendingOrders: dashboard?.pending_orders ?? 0,
-    pendingPrescriptions: dashboard?.pending_prescriptions ?? 0,
-    activeAdmissions: dashboard?.active_admissions ?? 0,
-    pendingReferrals: dashboard?.pending_referrals ?? 0,
-    unpaidBills: dashboard?.unpaid_bills ?? 0,
+    totalPatients: dashboard?.patients?.total ?? 0,
+    awaitingTriage: dashboard?.encounters?.awaiting_triage ?? 0,
+    inConsultation: dashboard?.encounters?.in_consultation ?? 0,
+    emergency: dashboard?.encounters?.emergency ?? 0,
+    dischargedToday: dashboard?.encounters?.discharged_today ?? 0,
+    registeredToday: dashboard?.patients?.today_registrations ?? 0,
+    waitingForDoctor: dashboard?.queue?.waiting_for_doctor ?? 0,
   };
 
-  const recentPatients = dashboard?.recent_patients ?? [];
+  const recentPatients = dashboard?.patients?.recent ?? [];
 
   return (
     <div className="max-w-7xl mx-auto space-y-8 font-sans">
@@ -98,42 +99,45 @@ export default function Dashboard() {
         </div>
       </section>
 
-      {/* Primary Metrics */}
+      {/* Primary Metrics — clickable cards */}
       <section className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-white rounded border border-[#becab7]/50 p-5 flex flex-col justify-between">
+        <Link href="/patients" className="bg-white rounded border border-[#becab7]/50 p-5 flex flex-col justify-between hover:border-[#3e4a3b]/30 hover:shadow-sm transition-all">
           <dt className="text-xs font-bold text-[#5f5e5e] uppercase tracking-wider mb-2">Total Patients</dt>
           <dd className="text-3xl font-extrabold text-[#1b1c1c] font-mono">
             {loading ? "..." : stats.totalPatients}
           </dd>
-        </div>
-        <div className="bg-white rounded border border-[#becab7]/50 p-5 flex flex-col justify-between">
+        </Link>
+        <Link href="/patients/register" className="bg-white rounded border border-[#becab7]/50 p-5 flex flex-col justify-between hover:border-[#3e4a3b]/30 hover:shadow-sm transition-all">
           <dt className="text-xs font-bold text-[#5f5e5e] uppercase tracking-wider mb-2">Registered Today</dt>
           <dd className="text-3xl font-extrabold text-[#1b1c1c] font-mono">
             {loading ? "..." : stats.registeredToday}
           </dd>
-        </div>
-        <div className="bg-white rounded border border-[#becab7]/50 p-5 flex flex-col justify-between">
-          <dt className="text-xs font-bold text-[#5f5e5e] uppercase tracking-wider mb-2">Pending Triage</dt>
-          <dd className={`text-3xl font-extrabold font-mono ${stats.pendingTriage > 0 ? "text-amber-600" : "text-[#1b1c1c]"}`}>
-            {loading ? "..." : stats.pendingTriage}
+        </Link>
+        <Link href="/triage-queue" className="bg-white rounded border border-[#becab7]/50 p-5 flex flex-col justify-between hover:border-[#3e4a3b]/30 hover:shadow-sm transition-all">
+          <dt className="text-xs font-bold text-[#5f5e5e] uppercase tracking-wider mb-2">Awaiting Triage</dt>
+          <dd className={`text-3xl font-extrabold font-mono ${stats.awaitingTriage > 0 ? "text-amber-600" : "text-[#1b1c1c]"}`}>
+            {loading ? "..." : stats.awaitingTriage}
           </dd>
-        </div>
-        <div className="bg-white rounded border border-[#becab7]/50 p-5 flex flex-col justify-between">
-          <dt className="text-xs font-bold text-[#5f5e5e] uppercase tracking-wider mb-2">Active Admissions</dt>
-          <dd className="text-3xl font-extrabold text-[#1b1c1c] font-mono">
-            {loading ? "..." : stats.activeAdmissions}
+        </Link>
+        <Link href="/emergency-queue" className="bg-white rounded border border-red-200 p-5 flex flex-col justify-between hover:border-red-400 hover:shadow-md transition-all group">
+          <dt className="text-xs font-bold text-red-700 uppercase tracking-wider mb-2 flex items-center gap-2">
+            <span className="h-2 w-2 rounded-full bg-red-500 group-hover:animate-pulse"></span>
+            Emergency
+          </dt>
+          <dd className={`text-3xl font-extrabold font-mono ${stats.emergency > 0 ? "text-red-600" : "text-[#1b1c1c]"}`}>
+            {loading ? "..." : stats.emergency}
           </dd>
-        </div>
+        </Link>
       </section>
 
       {/* Operational Metrics */}
       <section className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Link href="/pharmacy" className="bg-white rounded border border-[#becab7]/50 p-5 hover:border-brand-green hover:shadow-sm transition-all group">
+        <Link href="/queue" className="bg-white rounded border border-[#becab7]/50 p-5 hover:border-brand-green hover:shadow-sm transition-all group">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-xs font-bold text-[#5f5e5e] uppercase tracking-wider">Pending Prescriptions</p>
-              <p className={`text-2xl font-extrabold font-mono mt-1 ${stats.pendingPrescriptions > 0 ? "text-amber-600" : "text-[#1b1c1c]"}`}>
-                {loading ? "..." : stats.pendingPrescriptions}
+              <p className="text-xs font-bold text-[#5f5e5e] uppercase tracking-wider">Waiting for Doctor</p>
+              <p className={`text-2xl font-extrabold font-mono mt-1 ${stats.waitingForDoctor > 0 ? "text-amber-600" : "text-[#1b1c1c]"}`}>
+                {loading ? "..." : stats.waitingForDoctor}
               </p>
             </div>
             <div className="h-10 w-10 rounded bg-amber-100 flex items-center justify-center group-hover:bg-amber-200 transition-colors">
@@ -144,32 +148,32 @@ export default function Dashboard() {
           </div>
         </Link>
 
-        <Link href="/lab" className="bg-white rounded border border-[#becab7]/50 p-5 hover:border-brand-green hover:shadow-sm transition-all group">
+        <Link href="/queue" className="bg-white rounded border border-[#becab7]/50 p-5 hover:border-brand-green hover:shadow-sm transition-all group">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-xs font-bold text-[#5f5e5e] uppercase tracking-wider">Pending Lab Orders</p>
-              <p className={`text-2xl font-extrabold font-mono mt-1 ${stats.pendingOrders > 0 ? "text-sky-600" : "text-[#1b1c1c]"}`}>
-                {loading ? "..." : stats.pendingOrders}
+              <p className="text-xs font-bold text-[#5f5e5e] uppercase tracking-wider">In Consultation</p>
+              <p className={`text-2xl font-extrabold font-mono mt-1 ${stats.inConsultation > 0 ? "text-blue-600" : "text-[#1b1c1c]"}`}>
+                {loading ? "..." : stats.inConsultation}
               </p>
             </div>
-            <div className="h-10 w-10 rounded bg-sky-100 flex items-center justify-center group-hover:bg-sky-200 transition-colors">
-              <svg className="h-5 w-5 text-sky-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="h-10 w-10 rounded bg-blue-100 flex items-center justify-center group-hover:bg-blue-200 transition-colors">
+              <svg className="h-5 w-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
               </svg>
             </div>
           </div>
         </Link>
 
-        <Link href="/billing" className="bg-white rounded border border-[#becab7]/50 p-5 hover:border-brand-green hover:shadow-sm transition-all group">
+        <Link href="/admissions" className="bg-white rounded border border-[#becab7]/50 p-5 hover:border-brand-green hover:shadow-sm transition-all group">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-xs font-bold text-[#5f5e5e] uppercase tracking-wider">Unpaid Bills</p>
-              <p className={`text-2xl font-extrabold font-mono mt-1 ${stats.unpaidBills > 0 ? "text-red-600" : "text-[#1b1c1c]"}`}>
-                {loading ? "..." : stats.unpaidBills}
+              <p className="text-xs font-bold text-[#5f5e5e] uppercase tracking-wider">Discharged Today</p>
+              <p className={`text-2xl font-extrabold font-mono mt-1 ${stats.dischargedToday > 0 ? "text-emerald-600" : "text-[#1b1c1c]"}`}>
+                {loading ? "..." : stats.dischargedToday}
               </p>
             </div>
-            <div className="h-10 w-10 rounded bg-red-100 flex items-center justify-center group-hover:bg-red-200 transition-colors">
-              <svg className="h-5 w-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="h-10 w-10 rounded bg-emerald-100 flex items-center justify-center group-hover:bg-emerald-200 transition-colors">
+              <svg className="h-5 w-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
               </svg>
             </div>

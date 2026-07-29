@@ -32,16 +32,9 @@ interface Referral {
   referring_clinician?: { name: string };
 }
 
-interface Department {
-  id: number;
-  name: string;
-  code: string;
-}
-
 export default function ReferralsPage() {
   const { token } = useAuth();
   const [referrals, setReferrals] = useState<Referral[]>([]);
-  const [departments, setDepartments] = useState<Department[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -49,12 +42,13 @@ export default function ReferralsPage() {
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [form, setForm] = useState({
     patient_id: "",
-    referral_type: "internal",
-    urgency: "routine",
+    encounter_id: "",
+    referral_type: "Consultation",
+    urgency: "Routine",
     clinical_summary: "",
-    reason: "",
     destination_department: "",
     destination_facility: "",
+    transport_notes: "",
   });
   const [submitting, setSubmitting] = useState(false);
 
@@ -62,15 +56,13 @@ export default function ReferralsPage() {
     try {
       setLoading(true);
       setError(null);
-      const [referralsRes, deptsRes] = await Promise.allSettled([
+      const [referralsRes] = await Promise.allSettled([
         api.get("/referrals", token),
-        api.get("/departments", token),
       ]);
       if (referralsRes.status === "fulfilled" && referralsRes.value?.data) {
-        setReferrals(Array.isArray(referralsRes.value.data) ? referralsRes.value.data : referralsRes.value.data.data || []);
-      }
-      if (deptsRes.status === "fulfilled" && deptsRes.value?.data) {
-        setDepartments(Array.isArray(deptsRes.value.data) ? deptsRes.value.data : deptsRes.value.data.data || []);
+        const data = referralsRes.value.data;
+        const items = data.data || data;
+        setReferrals(Array.isArray(items) ? items : []);
       }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to load referrals");
@@ -99,15 +91,16 @@ export default function ReferralsPage() {
     try {
       await api.post("/referrals", {
         patient_id: parseInt(form.patient_id),
+        encounter_id: parseInt(form.encounter_id),
         referral_type: form.referral_type,
         urgency: form.urgency,
         clinical_summary: form.clinical_summary || null,
-        reason: form.reason || null,
         destination_department: form.destination_department || null,
-        destination_facility: form.destination_facility || null,
+        destination_facility: form.destination_facility,
+        transport_notes: form.transport_notes || null,
       }, token);
       setCreateModalOpen(false);
-      setForm({ patient_id: "", referral_type: "internal", urgency: "routine", clinical_summary: "", reason: "", destination_department: "", destination_facility: "" });
+      setForm({ patient_id: "", encounter_id: "", referral_type: "Consultation", urgency: "Routine", clinical_summary: "", destination_department: "", destination_facility: "", transport_notes: "" });
       fetchData();
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to create referral");
@@ -255,48 +248,45 @@ export default function ReferralsPage() {
         }
       >
         <form onSubmit={handleCreate} className="space-y-4">
-          <div>
-            <label className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">Patient ID *</label>
-            <input type="number" required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary" value={form.patient_id} onChange={(e) => setForm({ ...form, patient_id: e.target.value })} placeholder="Enter patient ID" />
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">Patient ID *</label>
+              <input type="number" required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary" value={form.patient_id} onChange={(e) => setForm({ ...form, patient_id: e.target.value })} placeholder="Enter patient ID" />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">Encounter ID *</label>
+              <input type="number" required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary" value={form.encounter_id} onChange={(e) => setForm({ ...form, encounter_id: e.target.value })} placeholder="Enter encounter ID" />
+            </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">Referral Type</label>
               <select className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded bg-white text-sm focus:outline-none focus:border-clinical-primary" value={form.referral_type} onChange={(e) => setForm({ ...form, referral_type: e.target.value })}>
-                <option value="internal">Internal (Same Facility)</option>
-                <option value="external">External (Different Facility)</option>
+                <option value="Consultation">Consultation</option>
+                <option value="Transfer of Care">Transfer of Care</option>
+                <option value="Emergency Transfer">Emergency Transfer</option>
               </select>
             </div>
             <div>
               <label className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">Urgency</label>
               <select className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded bg-white text-sm focus:outline-none focus:border-clinical-primary" value={form.urgency} onChange={(e) => setForm({ ...form, urgency: e.target.value })}>
-                <option value="routine">Routine</option>
-                <option value="urgent">Urgent</option>
-                <option value="emergency">Emergency</option>
+                <option value="Routine">Routine</option>
+                <option value="Urgent">Urgent</option>
+                <option value="Emergency">Emergency</option>
               </select>
             </div>
           </div>
-          {form.referral_type === "internal" ? (
-            <div>
-              <label className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">Destination Department</label>
-              <select className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded bg-white text-sm focus:outline-none focus:border-clinical-primary" value={form.destination_department} onChange={(e) => setForm({ ...form, destination_department: e.target.value })}>
-                <option value="">Select department</option>
-                {departments.map((d) => <option key={d.id} value={d.name}>{d.name}</option>)}
-              </select>
-            </div>
-          ) : (
-            <div>
-              <label className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">Destination Facility</label>
-              <input type="text" className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary" value={form.destination_facility} onChange={(e) => setForm({ ...form, destination_facility: e.target.value })} placeholder="Facility name" />
-            </div>
-          )}
           <div>
-            <label className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">Clinical Summary</label>
-            <textarea rows={3} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary" value={form.clinical_summary} onChange={(e) => setForm({ ...form, clinical_summary: e.target.value })} placeholder="Key clinical findings, diagnoses, and treatment to date" />
+            <label className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">Destination Facility *</label>
+            <input type="text" required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary" value={form.destination_facility} onChange={(e) => setForm({ ...form, destination_facility: e.target.value })} placeholder="Facility name" />
           </div>
           <div>
-            <label className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">Reason for Referral</label>
-            <textarea rows={2} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary" value={form.reason} onChange={(e) => setForm({ ...form, reason: e.target.value })} placeholder="Specific question or reason for referral" />
+            <label className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">Destination Department</label>
+            <input type="text" className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary" value={form.destination_department} onChange={(e) => setForm({ ...form, destination_department: e.target.value })} placeholder="Optional" />
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">Clinical Summary *</label>
+            <textarea rows={3} required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary" value={form.clinical_summary} onChange={(e) => setForm({ ...form, clinical_summary: e.target.value })} placeholder="Key clinical findings, diagnoses, and treatment to date" />
           </div>
         </form>
       </Modal>

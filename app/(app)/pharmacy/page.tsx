@@ -14,24 +14,29 @@ interface Prescription {
   id: number;
   patient_id: number;
   encounter_id: number;
-  drug_name: string;
+  drug_id: number;
   dosage: string;
   route: string;
   frequency: string;
   duration: string;
-  quantity: number;
+  quantity_dispensed: number | null;
   status: string;
   notes: string | null;
-  is_controlled: boolean;
-  prescribed_at: string;
   dispensed_at: string | null;
   dispensed_by: number | null;
+  created_at: string;
   patient?: {
     first_name: string;
     last_name: string;
     hospital_number: string;
   };
-  prescriber?: {
+  drug?: {
+    name: string;
+    is_controlled: boolean;
+    formulation: string;
+    strength: string;
+  };
+  prescribedBy?: {
     name: string;
   };
 }
@@ -75,7 +80,7 @@ export default function PharmacyPage() {
 
   const filteredPrescriptions = prescriptions.filter((rx) => {
     const matchesSearch = !searchQuery ||
-      rx.drug_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      rx.drug?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       rx.patient?.hospital_number?.includes(searchQuery) ||
       rx.patient?.first_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       rx.patient?.last_name?.toLowerCase().includes(searchQuery.toLowerCase());
@@ -85,7 +90,7 @@ export default function PharmacyPage() {
 
   const pendingCount = prescriptions.filter((rx) => rx.status?.toLowerCase() === "prescribed" || rx.status?.toLowerCase() === "active").length;
   const dispensedCount = prescriptions.filter((rx) => rx.status?.toLowerCase() === "dispensed").length;
-  const controlledCount = prescriptions.filter((rx) => rx.is_controlled && rx.status?.toLowerCase() !== "dispensed").length;
+  const controlledCount = prescriptions.filter((rx) => rx.drug?.is_controlled && rx.status?.toLowerCase() !== "dispensed").length;
 
   const handleDispense = async () => {
     if (!selectedPrescription) return;
@@ -200,8 +205,8 @@ export default function PharmacyPage() {
                 <tr className="divide-x divide-gray-200/50">
                   <th className="px-6 py-3 text-left text-xs font-bold text-[#5f5e5e] uppercase tracking-wider">Patient</th>
                   <th className="px-6 py-3 text-left text-xs font-bold text-[#5f5e5e] uppercase tracking-wider">Drug</th>
-                  <th className="px-6 py-3 text-left text-xs font-bold text-[#5f5e5e] uppercase tracking-wider">Dosage & Route</th>
-                  <th className="px-6 py-3 text-left text-xs font-bold text-[#5f5e5e] uppercase tracking-wider">Frequency</th>
+                  <th className="px-6 py-3 text-left text-xs font-bold text-[#5f5e5e] uppercase tracking-wider hidden md:table-cell">Dosage &amp; Route</th>
+                  <th className="px-6 py-3 text-left text-xs font-bold text-[#5f5e5e] uppercase tracking-wider hidden lg:table-cell">Frequency</th>
                   <th className="px-6 py-3 text-left text-xs font-bold text-[#5f5e5e] uppercase tracking-wider">Status</th>
                   <th className="px-6 py-3 text-left text-xs font-bold text-[#5f5e5e] uppercase tracking-wider">Actions</th>
                 </tr>
@@ -216,13 +221,13 @@ export default function PharmacyPage() {
                       <div className="text-xs text-gray-400 font-mono">{rx.patient?.hospital_number}</div>
                     </td>
                     <td className="px-6 py-4">
-                      <div className="text-sm font-semibold text-gray-900">{rx.drug_name}</div>
-                      {rx.is_controlled && (
+                      <div className="text-sm font-semibold text-gray-900">{rx.drug?.name || "—"}</div>
+                      {rx.drug?.is_controlled && (
                         <StatusBadge label="Controlled" variant="error" size="sm" />
                       )}
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-600 font-mono">{rx.dosage} {rx.route}</td>
-                    <td className="px-6 py-4 text-sm text-gray-600">{rx.frequency}</td>
+                    <td className="px-6 py-4 text-sm text-gray-600 font-mono hidden md:table-cell">{rx.dosage} {rx.route}</td>
+                    <td className="px-6 py-4 text-sm text-gray-600 hidden lg:table-cell">{rx.frequency}</td>
                     <td className="px-6 py-4">
                       <StatusBadge label={rx.status} variant={
                         rx.status?.toLowerCase() === "dispensed" ? "success" :
@@ -296,7 +301,7 @@ export default function PharmacyPage() {
                 </div>
                 <div>
                   <span className="text-gray-400 text-xs">Drug:</span>
-                  <p className="font-semibold text-gray-900">{selectedPrescription.drug_name}</p>
+                  <p className="font-semibold text-gray-900">{selectedPrescription.drug?.name || "—"}</p>
                 </div>
                 <div>
                   <span className="text-gray-400 text-xs">Dosage:</span>
@@ -312,9 +317,9 @@ export default function PharmacyPage() {
                 </div>
                 <div>
                   <span className="text-gray-400 text-xs">Quantity:</span>
-                  <p className="font-semibold text-gray-900 font-mono">{selectedPrescription.quantity}</p>
+                  <p className="font-semibold text-gray-900 font-mono">{selectedPrescription.quantity_dispensed ?? "—"}</p>
                 </div>
-                {selectedPrescription.is_controlled && (
+                {selectedPrescription.drug?.is_controlled && (
                   <div className="col-span-2">
                     <StatusBadge label="Controlled Substance - Audit Trail Required" variant="error" size="md" />
                   </div>

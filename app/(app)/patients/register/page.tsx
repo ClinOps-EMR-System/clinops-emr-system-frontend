@@ -187,8 +187,20 @@ function PatientRegistrationForm() {
       }
 
       if (response) {
+        const patientId = response?.data?.id ?? response?.data?.patient?.id;
         success(editId ? "Patient record updated successfully." : "Patient registered successfully.");
-        router.push(editId ? `/patients/${editId}` : "/patients");
+        if (editId) {
+          router.push(`/patients/${editId}`);
+        } else if (completeId) {
+          // Emergency intake completed — go to patient profile
+          router.push(`/patients/${completeId}`);
+        } else if (isEmergency) {
+          // Quick emergency reg — go to patients list (rapid triage next)
+          router.push("/patients");
+        } else {
+          // Standard registration — go straight to patient profile
+          router.push(patientId ? `/patients/${patientId}` : "/patients");
+        }
       }
     } catch (err: unknown) {
       const apiError = err as { message?: string; errors?: Record<string, string[]> };

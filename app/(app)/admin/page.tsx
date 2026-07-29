@@ -170,9 +170,9 @@ export default function AdminPage() {
                   <thead className="bg-[#fcf9f8] sticky top-0 z-10">
                     <tr className="divide-x divide-gray-200/50">
                       <th className="px-6 py-3 text-left text-xs font-bold text-[#5f5e5e] uppercase tracking-wider">Name</th>
-                      <th className="px-6 py-3 text-left text-xs font-bold text-[#5f5e5e] uppercase tracking-wider">Email</th>
+                      <th className="px-6 py-3 text-left text-xs font-bold text-[#5f5e5e] uppercase tracking-wider hidden md:table-cell">Email</th>
                       <th className="px-6 py-3 text-left text-xs font-bold text-[#5f5e5e] uppercase tracking-wider">Role</th>
-                      <th className="px-6 py-3 text-left text-xs font-bold text-[#5f5e5e] uppercase tracking-wider">Department</th>
+                      <th className="px-6 py-3 text-left text-xs font-bold text-[#5f5e5e] uppercase tracking-wider hidden lg:table-cell">Department</th>
                       <th className="px-6 py-3 text-left text-xs font-bold text-[#5f5e5e] uppercase tracking-wider">Status</th>
                       <th className="px-6 py-3 text-left text-xs font-bold text-[#5f5e5e] uppercase tracking-wider">Actions</th>
                     </tr>
@@ -181,9 +181,9 @@ export default function AdminPage() {
                     {filteredUsers.map((u) => (
                       <tr key={u.id} className="hover:bg-[#fcf9f8]/40 transition-colors">
                         <td className="px-6 py-4 text-sm font-semibold text-gray-900">{u.name}</td>
-                        <td className="px-6 py-4 text-sm text-gray-600 font-mono">{u.email}</td>
+                        <td className="px-6 py-4 text-sm text-gray-600 font-mono hidden md:table-cell">{u.email}</td>
                         <td className="px-6 py-4"><StatusBadge label={u.role || "No Role"} variant="info" /></td>
-                        <td className="px-6 py-4 text-sm text-gray-600">{u.department?.name || "—"}</td>
+                        <td className="px-6 py-4 text-sm text-gray-600 hidden lg:table-cell">{u.department?.name || "—"}</td>
                         <td className="px-6 py-4"><StatusBadge label={u.is_active ? "Active" : "Inactive"} variant={u.is_active ? "success" : "neutral"} /></td>
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-3">

@@ -74,6 +74,7 @@ export default function PatientSearchDirectory() {
       key: "date_of_birth",
       header: "DOB / Age",
       sortable: true,
+      mobileHidden: true,
       render: (p) => {
         const age = new Date().getFullYear() - new Date(p.date_of_birth).getFullYear();
         return (
@@ -87,6 +88,7 @@ export default function PatientSearchDirectory() {
     {
       key: "village",
       header: "Village, District",
+      mobileHidden: true,
       render: (p) => (
         <span className="text-gray-500">{p.village || "N/A"}, {p.district || "N/A"}</span>
       ),
@@ -94,6 +96,7 @@ export default function PatientSearchDirectory() {
     {
       key: "patient_category",
       header: "Payer Category",
+      mobileHidden: true,
       render: (p) => (
         <div className="flex items-center gap-1.5">
           <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
@@ -180,7 +183,7 @@ export default function PatientSearchDirectory() {
             <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1" htmlFor="gender-filter">Gender</label>
             <select
               id="gender-filter"
-              className="border border-gray-300 rounded px-3 py-1.5 text-sm bg-white focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary"
+              className="border border-gray-300 rounded px-3 py-2 text-sm bg-white focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary min-h-[44px]"
               value={genderFilter}
               onChange={(e) => setGenderFilter(e.target.value)}
             >
@@ -195,7 +198,7 @@ export default function PatientSearchDirectory() {
             <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1" htmlFor="category-filter">Category</label>
             <select
               id="category-filter"
-              className="border border-gray-300 rounded px-3 py-1.5 text-sm bg-white focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary"
+              className="border border-gray-300 rounded px-3 py-2 text-sm bg-white focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary min-h-[44px]"
               value={categoryFilter}
               onChange={(e) => setCategoryFilter(e.target.value)}
             >

@@ -1,35 +1,57 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
+
+function subscribeOnline(callback: () => void) {
+  window.addEventListener("online", callback);
+  window.addEventListener("offline", callback);
+  return () => {
+    window.removeEventListener("online", callback);
+    window.removeEventListener("offline", callback);
+  };
+}
+
+function getOnlineSnapshot() {
+  return navigator.onLine;
+}
+
+function getServerOnlineSnapshot() {
+  return true;
+}
+
+function subscribeMounted() {
+  return () => {};
+}
+
+function getMountedSnapshot() {
+  return true;
+}
+
+function getServerMountedSnapshot() {
+  return false;
+}
 
 export default function OfflineIndicator() {
-  const [online, setOnline] = useState(() => typeof navigator !== "undefined" ? navigator.onLine : true);
+  const mounted = useSyncExternalStore(subscribeMounted, getMountedSnapshot, getServerMountedSnapshot);
+  const online = useSyncExternalStore(subscribeOnline, getOnlineSnapshot, getServerOnlineSnapshot);
   const [pendingSaves, setPendingSaves] = useState(0);
 
   useEffect(() => {
-    const handleOnline = () => setOnline(true);
-    const handleOffline = () => setOnline(false);
-
-    window.addEventListener("online", handleOnline);
-    window.addEventListener("offline", handleOffline);
-
-    // Check for pending saves on interval
-    const checkPending = setInterval(() => {
+    const checkPending = () => {
       try {
         const pending = JSON.parse(localStorage.getItem("clinops_pending") || "[]");
         setPendingSaves(pending.length);
       } catch {
         setPendingSaves(0);
       }
-    }, 5000);
-
-    return () => {
-      window.removeEventListener("online", handleOnline);
-      window.removeEventListener("offline", handleOffline);
-      clearInterval(checkPending);
     };
+    checkPending();
+
+    const interval = setInterval(checkPending, 5000);
+    return () => clearInterval(interval);
   }, []);
 
+  if (!mounted) return null;
   if (online && pendingSaves === 0) return null;
 
   return (

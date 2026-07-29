@@ -2,7 +2,7 @@
 
 import { useAuth } from "@/store/RoleContext";
 import { useFetch } from "@/lib/useFetch";
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { api } from "@/lib/api";
 import { StatsRow } from "@/components/receptionist/StatsRow";
 import { QueuePreview } from "@/components/receptionist/QueuePreview";
@@ -13,12 +13,22 @@ import { CalendarDays, Users, Clock, CheckCircle, XCircle, ClipboardPlus, Search
 import Link from "next/link";
 
 interface DashboardData {
-  pending_triage?: number;
-  in_consultation?: number;
-  emergency?: number;
-  discharged_today?: number;
-  total_patients?: number;
-  registered_today?: number;
+  patients?: {
+    total?: number;
+    emergency?: number;
+    today_registrations?: number;
+  };
+  encounters?: {
+    awaiting_triage?: number;
+    in_consultation?: number;
+    emergency?: number;
+    discharged_today?: number;
+  };
+  queue?: {
+    waiting_for_doctor?: number;
+    by_priority?: Record<string, number>;
+    oldest_wait_time?: number;
+  };
 }
 
 interface QueueStats {
@@ -26,17 +36,42 @@ interface QueueStats {
   in_consultation_count?: number;
   completed_count?: number;
   oldest_wait_time?: string;
-  by_priority?: Array<{
-    id?: number;
-    patient: {
-      id: number;
-      first_name: string;
-      last_name: string;
-      hospital_number: string;
-    };
-    priority: number;
-    entered_queue_at: string;
-  }>;
+  by_priority?: Record<string, number>;
+}
+
+interface QueueEntry {
+  id: number;
+  patient_id: number;
+  encounter_id: number;
+  priority: number;
+  position: number;
+  patient: {
+    id: number;
+    first_name: string;
+    last_name: string;
+    hospital_number: string;
+    full_name?: string;
+  };
+  entered_queue_at: string;
+  chief_complaint?: string;
+}
+
+interface QueueData {
+  entries: QueueEntry[];
+  meta: {
+    waiting_count: number;
+    by_priority: Record<string, number>;
+    oldest_wait_time: number;
+  };
+}
+
+interface EmergencyWaitingPatient {
+  patient_id: number;
+  hospital_number: string;
+  full_name: string;
+  chief_complaint: string;
+  arrived_at: string;
+  wait_minutes: number;
 }
 
 interface Appointment {
@@ -72,35 +107,63 @@ export default function ReceptionistDashboard() {
   const { user, token } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
   const [checkingIn, setCheckingIn] = useState<number | null>(null);
+  const [checkinError, setCheckinError] = useState<string | null>(null);
+  const [checkinSuccess, setCheckinSuccess] = useState<number | null>(null);
   const { data: dashboard, loading: dashLoading } = useFetch<DashboardData>("/dashboard");
   const { data: queueStats, loading: queueLoading } = useFetch<QueueStats>("/queue/stats", { interval: 30000 });
-  const { data: appointmentsData, loading: apptLoading } = useFetch<{ data: Appointment[] }>(
-    `/appointments?date=${new Date().toISOString().split("T")[0]}`
+  const { data: queueData, loading: queueDataLoading } = useFetch<QueueData>("/queue", { interval: 30000 });
+  const { data: emergencyWaitingData, loading: emergencyLoading } = useFetch<EmergencyWaitingPatient[]>(
+    "/emergency/waiting",
+    { interval: 30000 }
+  );
+  const { data: appointmentsData, loading: apptLoading, refetch: refetchAppointments } = useFetch<Appointment[]>(
+    `/appointments?date=${new Date().toLocaleDateString("en-CA")}`
   );
 
-  const loading = dashLoading || queueLoading || apptLoading;
-  const appointments = appointmentsData?.data ?? [];
-  const queue = queueStats?.by_priority ?? [];
+  const loading = dashLoading || queueLoading || queueDataLoading || emergencyLoading || apptLoading;
+  const appointments = appointmentsData ?? [];
+  const emergencyWaiting = emergencyWaitingData ?? [];
+  const queue = (queueData?.entries ?? []).map((e: QueueEntry) => ({
+    id: e.id,
+    patient: {
+      id: e.patient.id,
+      first_name: e.patient.first_name || e.patient.full_name?.split(" ")[0] || "",
+      last_name: e.patient.last_name || e.patient.full_name?.split(" ").slice(1).join(" ") || e.patient.full_name || "",
+      hospital_number: e.patient.hospital_number,
+    },
+    priority: typeof e.priority === "number" ? e.priority : parseInt(e.priority) || 3,
+    entered_queue_at: e.entered_queue_at,
+  }));
+
+  const awaitingTriageCount = emergencyWaiting.length;
+  const awaitingDoctorCount = queueStats?.waiting_count ?? dashboard?.queue?.waiting_for_doctor ?? 0;
 
   const stats = [
-    { label: "Appointments", value: appointments.length, icon: CalendarDays, color: "bg-sky-500" },
-    { label: "Arrived", value: queueStats?.in_consultation_count ?? dashboard?.in_consultation ?? 0, icon: Users, color: "bg-brand-green" },
-    { label: "Waiting", value: queueStats?.waiting_count ?? dashboard?.pending_triage ?? 0, icon: Clock, color: "bg-amber-500" },
-    { label: "Completed", value: queueStats?.completed_count ?? dashboard?.discharged_today ?? 0, icon: CheckCircle, color: "bg-emerald-500" },
-    { label: "Emergency", value: dashboard?.emergency ?? 0, icon: XCircle, color: "bg-red-500" },
-    { label: "Registered Today", value: dashboard?.registered_today ?? 0, icon: ClipboardPlus, color: "bg-purple-500" },
+    { label: "Appointments", value: appointments.length, icon: CalendarDays, color: "bg-sky-500", href: "/appointments" },
+    { label: "Awaiting Triage", value: awaitingTriageCount, icon: Clock, color: "bg-amber-500", href: "/triage-queue" },
+    { label: "Awaiting Doctor", value: awaitingDoctorCount, icon: Users, color: "bg-brand-green", href: "/queue" },
+    { label: "In Consultation", value: queueStats?.in_consultation_count ?? dashboard?.encounters?.in_consultation ?? 0, icon: CheckCircle, color: "bg-emerald-500", href: "/queue" },
+    { label: "Emergency", value: dashboard?.encounters?.emergency ?? 0, icon: XCircle, color: "bg-red-500", href: "/emergency-queue" },
+    { label: "Registered Today", value: dashboard?.patients?.today_registrations ?? 0, icon: ClipboardPlus, color: "bg-purple-500", href: "/patients/register" },
   ];
 
-  const handleCheckIn = async (appointmentId: number) => {
+  const handleCheckIn = useCallback(async (appointmentId: number) => {
     if (!token || checkingIn) return;
     setCheckingIn(appointmentId);
+    setCheckinError(null);
     try {
       await api.post(`/appointments/${appointmentId}/check-in`, {}, token);
-      window.location.reload();
-    } catch {
+      setCheckinSuccess(appointmentId);
       setCheckingIn(null);
+      refetchAppointments();
+      setTimeout(() => setCheckinSuccess(null), 3000);
+    } catch (err: unknown) {
+      const apiErr = err as { message?: string };
+      setCheckinError(apiErr.message || "Check-in failed");
+      setCheckingIn(null);
+      setTimeout(() => setCheckinError(null), 5000);
     }
-  };
+  }, [token, checkingIn, refetchAppointments]);
 
   const filteredAppointments = searchQuery
     ? appointments.filter((a) =>
@@ -138,7 +201,7 @@ export default function ReceptionistDashboard() {
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
         <input
           type="text"
-          placeholder="Search patients by name or hospital number..."
+          placeholder="Search today's appointments..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded text-sm focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary"
@@ -150,9 +213,21 @@ export default function ReceptionistDashboard() {
 
       {/* Queue + Actions */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <QueuePreview queue={queue} />
+        <QueuePreview queue={queue} emergencyWaiting={emergencyWaiting} />
         <QuickActions />
       </div>
+
+      {/* Check-in feedback */}
+      {checkinSuccess && (
+        <div className="bg-emerald-50 border border-emerald-200 rounded px-4 py-3 flex items-center gap-2">
+          <span className="text-emerald-700 text-sm font-semibold">Patient checked in successfully</span>
+        </div>
+      )}
+      {checkinError && (
+        <div className="bg-red-50 border border-red-200 rounded px-4 py-3 flex items-center gap-2">
+          <span className="text-red-700 text-sm font-semibold">{checkinError}</span>
+        </div>
+      )}
 
       {/* Today's Appointments */}
       {appointments.length > 0 && (
@@ -170,11 +245,11 @@ export default function ReceptionistDashboard() {
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-[#fcf9f8] sticky top-0 z-10">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-bold text-[#5f5e5e] uppercase tracking-wider">Time</th>
-                  <th className="px-6 py-3 text-left text-xs font-bold text-[#5f5e5e] uppercase tracking-wider">Patient</th>
-                  <th className="px-6 py-3 text-left text-xs font-bold text-[#5f5e5e] uppercase tracking-wider">Type</th>
-                  <th className="px-6 py-3 text-left text-xs font-bold text-[#5f5e5e] uppercase tracking-wider">Status</th>
-                  <th className="px-6 py-3 text-left text-xs font-bold text-[#5f5e5e] uppercase tracking-wider">Action</th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-[#5f5e5e] uppercase tracking-wider">Time</th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-[#5f5e5e] uppercase tracking-wider">Patient</th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-[#5f5e5e] uppercase tracking-wider">Type</th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-[#5f5e5e] uppercase tracking-wider">Status</th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-[#5f5e5e] uppercase tracking-wider">Action</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-100">

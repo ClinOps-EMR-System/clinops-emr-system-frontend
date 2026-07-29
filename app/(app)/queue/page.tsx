@@ -32,7 +32,12 @@ interface QueueStats {
 }
 
 interface QueueResponse {
-  data: QueueEntry[];
+  entries: QueueEntry[];
+  meta: {
+    waiting_count: number;
+    by_priority: Record<string, number>;
+    oldest_wait_time: string;
+  };
 }
 
 export default function QueuePage() {
@@ -40,7 +45,7 @@ export default function QueuePage() {
   const { data: stats, loading: statsLoading } = useFetch<QueueStats>("/queue/stats", { interval: 30000 });
 
   const loading = queueLoading || statsLoading;
-  const entries = queueData?.data ?? [];
+  const entries = queueData?.entries ?? [];
 
   const waiting = entries.filter((e) => e.status === "waiting");
   const highPriority = waiting.filter((e) => e.priority <= 2);

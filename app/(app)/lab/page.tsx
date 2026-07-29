@@ -15,32 +15,38 @@ interface LabOrder {
   patient_id: number;
   encounter_id: number;
   order_type: string;
-  test_name: string;
-  loinc_code: string | null;
   clinical_indication: string | null;
   priority: string;
   status: string;
-  ordered_at: string;
+  created_at: string;
   patient?: {
     first_name: string;
     last_name: string;
     hospital_number: string;
+  };
+  lab_request?: {
+    id: number;
+    test_name: string;
+    loinc_code: string | null;
+    specimen_type: string | null;
+    status: string;
   };
 }
 
 interface LabResult {
   id: number;
   lab_request_id: number;
-  result_value: string;
+  result_value_text: string | null;
+  result_value_numeric: number | null;
   unit: string | null;
   reference_range: string | null;
   is_abnormal: boolean;
   is_critical: boolean;
-  interpretation: string | null;
   verified_by: number | null;
   verified_at: string | null;
-  entered_at: string;
+  created_at: string;
   lab_request?: {
+    id: number;
     test_name: string;
     patient_id: number;
     patient?: {
@@ -61,7 +67,7 @@ export default function LabPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [resultModalOpen, setResultModalOpen] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<LabOrder | null>(null);
-  const [resultForm, setResultForm] = useState({ result_value: "", unit: "", reference_range: "", interpretation: "", is_abnormal: false, is_critical: false });
+  const [resultForm, setResultForm] = useState({ result_value_text: "", result_value_numeric: "", unit: "", reference_range: "", interpretation: "", is_abnormal: false, is_critical: false });
   const [submitting, setSubmitting] = useState(false);
 
   async function fetchData() {
@@ -73,11 +79,15 @@ export default function LabPage() {
         api.get("/lab-results", token),
       ]);
       if (ordersRes && ordersRes.data) {
-        const labOrders = ordersRes.data.filter((o: LabOrder) => o.order_type === "lab");
+        const allOrders = ordersRes.data.data || ordersRes.data;
+        const labOrders = (Array.isArray(allOrders) ? allOrders : []).filter(
+          (o: LabOrder) => o.order_type?.toLowerCase() === "lab"
+        );
         setOrders(labOrders);
       }
       if (resultsRes && resultsRes.data) {
-        setResults(resultsRes.data);
+        const allResults = resultsRes.data.data || resultsRes.data;
+        setResults(Array.isArray(allResults) ? allResults : []);
       }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to load lab data");
@@ -94,7 +104,7 @@ export default function LabPage() {
 
   const filteredOrders = orders.filter((o) => {
     const matchesSearch = !searchQuery ||
-      o.test_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      o.lab_request?.test_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       o.patient?.hospital_number?.includes(searchQuery) ||
       o.patient?.first_name?.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesSearch;
@@ -106,15 +116,29 @@ export default function LabPage() {
   const handleSubmitResult = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedOrder) return;
+    const labRequestId = selectedOrder.lab_request?.id;
+    if (!labRequestId) {
+      setError("No lab request found for this order.");
+      return;
+    }
     setSubmitting(true);
     try {
-      await api.post(`/lab-results`, {
-        lab_request_id: selectedOrder.id,
-        ...resultForm,
-      }, token);
+      const payload: Record<string, unknown> = {
+        lab_request_id: labRequestId,
+        unit: resultForm.unit || null,
+        reference_range: resultForm.reference_range || null,
+        is_abnormal: resultForm.is_abnormal,
+        is_critical: resultForm.is_critical,
+      };
+      if (resultForm.result_value_numeric && !isNaN(parseFloat(resultForm.result_value_numeric))) {
+        payload.result_value_numeric = parseFloat(resultForm.result_value_numeric);
+      } else {
+        payload.result_value_text = resultForm.result_value_text;
+      }
+      await api.post("/lab-results", payload, token);
       setResultModalOpen(false);
       setSelectedOrder(null);
-      setResultForm({ result_value: "", unit: "", reference_range: "", interpretation: "", is_abnormal: false, is_critical: false });
+      setResultForm({ result_value_text: "", result_value_numeric: "", unit: "", reference_range: "", interpretation: "", is_abnormal: false, is_critical: false });
       fetchData();
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to submit result");
@@ -178,7 +202,7 @@ export default function LabPage() {
             role="tab"
             aria-selected={activeTab === tab.key}
             onClick={() => setActiveTab(tab.key)}
-            className={`flex-1 px-4 py-2.5 text-sm font-bold rounded transition-all ${
+            className={`flex-1 px-4 py-3 text-sm font-bold rounded transition-all min-h-[44px] ${
               activeTab === tab.key
                 ? "bg-clinical-primary text-white"
                 : "text-gray-600 hover:bg-gray-50"
@@ -242,8 +266,8 @@ export default function LabPage() {
                         <div className="text-xs text-gray-400 font-mono">{order.patient?.hospital_number}</div>
                       </td>
                       <td className="px-6 py-4">
-                        <div className="text-sm font-semibold text-gray-900">{order.test_name}</div>
-                        {order.loinc_code && <div className="text-xs text-gray-400 font-mono">LOINC: {order.loinc_code}</div>}
+                        <div className="text-sm font-semibold text-gray-900">{order.lab_request?.test_name || "—"}</div>
+                        {order.lab_request?.loinc_code && <div className="text-xs text-gray-400 font-mono">LOINC: {order.lab_request.loinc_code}</div>}
                       </td>
                       <td className="px-6 py-4">
                         <StatusBadge label={order.priority} variant={order.priority?.toLowerCase() === "stat" ? "error" : order.priority?.toLowerCase() === "urgent" ? "warning" : "info"} />
@@ -278,7 +302,7 @@ export default function LabPage() {
                           {order.patient ? `${order.patient.first_name} ${order.patient.last_name}` : `Patient #${order.patient_id}`}
                         </div>
                       </td>
-                      <td className="px-6 py-4 text-sm font-semibold text-gray-900">{order.test_name}</td>
+                      <td className="px-6 py-4 text-sm font-semibold text-gray-900">{order.lab_request?.test_name || "—"}</td>
                       <td className="px-6 py-4"><StatusBadge label={order.priority} variant="info" /></td>
                       <td className="px-6 py-4"><StatusBadge label={order.status} variant="info" /></td>
                       <td className="px-6 py-4">
@@ -305,7 +329,7 @@ export default function LabPage() {
                       </td>
                       <td className="px-6 py-4 text-sm font-semibold text-gray-900">{result.lab_request?.test_name}</td>
                       <td className="px-6 py-4">
-                        <span className="font-mono text-sm font-bold">{result.result_value}</span>
+                        <span className="font-mono text-sm font-bold">{result.result_value_numeric ?? result.result_value_text ?? "—"}</span>
                         {result.unit && <span className="text-xs text-gray-400 ml-1">{result.unit}</span>}
                         {result.is_abnormal && <StatusBadge label="Abnormal" variant="warning" className="ml-2" />}
                         {result.is_critical && <StatusBadge label="Critical" variant="error" pulse className="ml-2" />}
@@ -330,14 +354,14 @@ export default function LabPage() {
         open={resultModalOpen}
         onClose={() => { setResultModalOpen(false); setSelectedOrder(null); }}
         title="Enter Lab Result"
-        subtitle={selectedOrder ? `${selectedOrder.test_name} for Patient #${selectedOrder.patient_id}` : ""}
+        subtitle={selectedOrder ? `${selectedOrder.lab_request?.test_name || "Lab Test"} for Patient #${selectedOrder.patient_id}` : ""}
         size="lg"
         footer={
           <>
             <button onClick={() => { setResultModalOpen(false); setSelectedOrder(null); }} className="px-4 py-2 text-sm font-semibold text-gray-600 bg-white border border-gray-300 rounded hover:bg-gray-50">
               Cancel
             </button>
-            <button onClick={handleSubmitResult} disabled={submitting || !resultForm.result_value.trim()} className="px-4 py-2 text-sm font-bold text-white bg-clinical-primary rounded hover:bg-clinical-primary-hover disabled:opacity-50">
+            <button onClick={handleSubmitResult} disabled={submitting || (!resultForm.result_value_text.trim() && !resultForm.result_value_numeric.trim())} className="px-4 py-2 text-sm font-bold text-white bg-clinical-primary rounded hover:bg-clinical-primary-hover disabled:opacity-50">
               {submitting ? "Submitting..." : "Submit Result"}
             </button>
           </>
@@ -346,14 +370,24 @@ export default function LabPage() {
         <form onSubmit={handleSubmitResult} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">Result Value *</label>
+              <label className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">Numeric Result</label>
+              <input
+                type="number"
+                step="any"
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary"
+                value={resultForm.result_value_numeric}
+                onChange={(e) => setResultForm({ ...resultForm, result_value_numeric: e.target.value })}
+                placeholder="e.g., 12.5, 120"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">Text Result</label>
               <input
                 type="text"
-                required
                 className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary"
-                value={resultForm.result_value}
-                onChange={(e) => setResultForm({ ...resultForm, result_value: e.target.value })}
-                placeholder="e.g., 12.5, Positive, 120/80"
+                value={resultForm.result_value_text}
+                onChange={(e) => setResultForm({ ...resultForm, result_value_text: e.target.value })}
+                placeholder="e.g., Positive, 120/80"
               />
             </div>
             <div>

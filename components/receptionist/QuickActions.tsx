@@ -15,23 +15,13 @@ const actions = [
   },
   {
     label: "New Appointment",
-    href: "/appointments",
+    href: "/appointments?new=true",
     icon: (
       <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
       </svg>
     ),
     color: "bg-sky-100 text-sky-600",
-  },
-  {
-    label: "Collect Payment",
-    href: "/payments",
-    icon: (
-      <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
-      </svg>
-    ),
-    color: "bg-amber-100 text-amber-600",
   },
   {
     label: "Search Patient",
@@ -64,12 +54,12 @@ export function QuickActions() {
           <Link
             key={action.label}
             href={action.href}
-            className="flex items-center gap-3 p-3 rounded border border-gray-200 hover:border-brand-green hover:bg-[#fcf9f8] transition-all"
+            className="flex flex-col items-center gap-2 p-3 rounded border border-gray-200 hover:border-brand-green hover:bg-[#fcf9f8] transition-all overflow-hidden text-center"
           >
-            <div className={`h-9 w-9 rounded flex items-center justify-center ${action.color}`}>
+            <div className={`h-9 w-9 rounded flex items-center justify-center ${action.color} shrink-0`}>
               {action.icon}
             </div>
-            <span className="text-sm font-bold text-gray-700">{action.label}</span>
+            <span className="text-xs font-bold text-gray-700 leading-tight break-words">{action.label}</span>
           </Link>
         ))}
       </div>

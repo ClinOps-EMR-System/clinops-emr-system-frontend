@@ -59,7 +59,7 @@ export default function Modal({ open, onClose, title, subtitle, children, size =
             <X className="h-5 w-5" />
           </button>
         </div>
-        <div className="px-6 py-4 max-h-[60vh] overflow-y-auto">
+        <div className="px-6 py-4 max-h-[50vh] sm:max-h-[60vh] overflow-y-auto">
           {children}
         </div>
         {footer && (
