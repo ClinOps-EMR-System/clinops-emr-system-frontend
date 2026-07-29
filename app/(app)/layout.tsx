@@ -1,10 +1,11 @@
 "use client";
 
-import React, { useState, useCallback, useEffect } from "react";
-import Sidebar from "../../components/layout/Sidebar";
+import React from "react";
 import Topbar from "../../components/layout/Topbar";
 import { useAuth } from "../../store/RoleContext";
 import { ToastProvider } from "../../components/ui/Toast";
+import { SidebarProvider } from "../../components/ui/sidebar";
+import { AppSidebar } from "../../components/shadcn-space/blocks/sidebar-01/app-sidebar";
 
 export default function AppLayout({
   children,
@@ -12,22 +13,6 @@ export default function AppLayout({
   children: React.ReactNode;
 }) {
   const { isAuthenticated, isLoading } = useAuth();
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
-
-  const toggleSidebar = useCallback(() => {
-    setSidebarCollapsed((prev) => !prev);
-  }, []);
-
-  // Close sidebar on escape key
-  useEffect(() => {
-    function handleKey(e: KeyboardEvent) {
-      if (e.key === "Escape" && !sidebarCollapsed) {
-        setSidebarCollapsed(true);
-      }
-    }
-    document.addEventListener("keydown", handleKey);
-    return () => document.removeEventListener("keydown", handleKey);
-  }, [sidebarCollapsed]);
 
   if (isLoading) {
     return (
@@ -48,17 +33,9 @@ export default function AppLayout({
 
   return (
     <ToastProvider>
-      <div className="flex h-screen w-full overflow-hidden bg-clinical-bg">
-        {/* Skip to content link */}
-        <a
-          href="#main-content"
-          className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[200] focus:bg-white focus:px-4 focus:py-2 focus:rounded focus:shadow-lg focus:border focus:border-clinical-primary focus:text-clinical-primary focus:font-bold focus:text-sm"
-        >
-          Skip to main content
-        </a>
-
-        <Sidebar collapsed={sidebarCollapsed} onToggle={toggleSidebar} />
-        <div className="flex-1 flex flex-col min-w-0">
+      <SidebarProvider>
+        <AppSidebar />
+        <div className="flex flex-1 flex-col min-w-0">
           <Topbar />
           <main
             id="main-content"
@@ -68,7 +45,7 @@ export default function AppLayout({
             {children}
           </main>
         </div>
-      </div>
+      </SidebarProvider>
     </ToastProvider>
   );
 }
