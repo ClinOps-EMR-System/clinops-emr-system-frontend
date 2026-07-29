@@ -18,8 +18,6 @@
   --color-clinical-muted: #5f5e5e;
   --color-clinical-error: #ba1a1a;
   
-  --font-sans: var(--font-sans);
-  --font-mono: var(--font-mono);
 }
 
 :root {
