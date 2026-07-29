@@ -104,14 +104,14 @@ function getPrimaryAction(patient: Patient): ActionConfig {
       };
     case "Triage Complete":
       return {
-        href: `/patients/${encounter.id}/consultation`,
+        href: `/patients/${patient.id}/consultation`,
         label: "Consult",
         icon: MessageSquare,
         iconColor: "text-teal-600",
       };
     case "In Consultation":
       return {
-        href: `/patients/${encounter.id}/consultation`,
+        href: `/patients/${patient.id}/consultation`,
         label: "Resume Consult",
         icon: MessageSquare,
         iconColor: "text-teal-600",
@@ -177,8 +177,8 @@ export default function PatientSearchTable({
 
   const sortedPatients = useMemo(() => {
     return [...patients].sort((a, b) => {
-      const aVal = (a as Record<string, unknown>)[sort.key];
-      const bVal = (b as Record<string, unknown>)[sort.key];
+      const aVal = (a as unknown as Record<string, unknown>)[sort.key];
+      const bVal = (b as unknown as Record<string, unknown>)[sort.key];
       if (aVal == null && bVal == null) return 0;
       if (aVal == null) return 1;
       if (bVal == null) return -1;
