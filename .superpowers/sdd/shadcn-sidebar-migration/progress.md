@@ -5,7 +5,7 @@ Base: 9c7ec73
 ## Tasks
 
 ### Task 1: Update nav-main.tsx — active route matching
-Status: pending
+Status: complete (commits 5d673b6, review clean)
 
 ### Task 2: Rewrite app-sidebar.tsx — ClinOps RBAC nav data
 Status: pending
