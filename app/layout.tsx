@@ -3,6 +3,11 @@ import "./globals.css";
 import { AuthProvider } from "../store/RoleContext";
 import OfflineIndicator from "../components/ui/OfflineIndicator";
 import KeyboardShortcutsOverlay from "../components/ui/KeyboardShortcutsOverlay";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { Inter } from "next/font/google";
+import { cn } from "@/lib/utils";
+
+const inter = Inter({subsets:['latin'],variable:'--font-sans'});
 
 const fontClassName = "font-sans";
 
@@ -19,7 +24,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${fontClassName} h-full antialiased`}
+      className={cn("h-full", "antialiased", fontClassName, "font-sans", inter.variable)}
       suppressHydrationWarning
     >
       <body
@@ -27,9 +32,11 @@ export default function RootLayout({
         suppressHydrationWarning
       >
         <AuthProvider>
-          <OfflineIndicator />
-          <KeyboardShortcutsOverlay />
-          {children}
+          <TooltipProvider>
+            <OfflineIndicator />
+            <KeyboardShortcutsOverlay />
+            {children}
+          </TooltipProvider>
         </AuthProvider>
       </body>
     </html>
