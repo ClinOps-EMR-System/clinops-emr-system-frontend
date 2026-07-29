@@ -8,10 +8,10 @@ Base: 9c7ec73
 Status: complete (commits 5d673b6, review clean)
 
 ### Task 2: Rewrite app-sidebar.tsx — ClinOps RBAC nav data
-Status: pending
+Status: complete (commits 0ac7001, review clean)
 
 ### Task 3: Update Topbar.tsx — use SidebarTrigger
-Status: pending
+Status: complete
 
 ### Task 4: Update (app)/layout.tsx — use SidebarProvider + AppSidebar
 Status: pending

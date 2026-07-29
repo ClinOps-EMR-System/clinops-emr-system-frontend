@@ -5,7 +5,8 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "../../store/RoleContext";
 import { api } from "../../lib/api";
-import { Menu, X, Search, Bell, ChevronDown } from "lucide-react";
+import { X, Search, Bell, ChevronDown } from "lucide-react";
+import { SidebarTrigger } from "@/components/ui/sidebar";
 
 interface PatientResult {
   id: number;
@@ -18,12 +19,7 @@ interface PatientResult {
   registration_completed_at: string | null;
 }
 
-interface TopbarProps {
-  onMenuToggle: () => void;
-  sidebarCollapsed: boolean;
-}
-
-export default function Topbar({ onMenuToggle, sidebarCollapsed }: TopbarProps) {
+export default function Topbar() {
   const pathname = usePathname();
   const router = useRouter();
   const { user, logout, token } = useAuth();
@@ -153,14 +149,7 @@ export default function Topbar({ onMenuToggle, sidebarCollapsed }: TopbarProps) 
   return (
     <header className="h-16 bg-brand-dark flex items-center gap-4 px-4 md:px-6 border-b border-gray-800 z-10 font-sans">
 
-      {/* Mobile menu button */}
-      <button
-        onClick={onMenuToggle}
-        className="lg:hidden text-gray-400 hover:text-white p-1.5 rounded-md hover:bg-gray-800/50 transition-colors"
-        aria-label={sidebarCollapsed ? "Open navigation menu" : "Close navigation menu"}
-      >
-        {sidebarCollapsed ? <Menu className="h-5 w-5" /> : <X className="h-5 w-5" />}
-      </button>
+      <SidebarTrigger className="lg:hidden text-gray-400 hover:text-white p-1.5 rounded-md hover:bg-gray-800/50 transition-colors cursor-pointer" />
 
       {/* Breadcrumbs — last crumb visible on mobile, full trail on sm+ */}
       <nav aria-label="Breadcrumb" className="flex items-center shrink-0">
