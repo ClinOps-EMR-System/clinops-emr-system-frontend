@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { usePathname } from "next/navigation";
+import Link from "next/link";
 import { ChevronRight, LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -51,11 +52,25 @@ export function NavMain({ items }: { items: NavItem[] }) {
   );
   const [activeChild, setActiveChild] = React.useState<string | null>(null);
 
+  // Sync activeParent with current route
+  React.useEffect(() => {
+    const matchingItem = items.find(
+      (item) => !item.isSection && !item.children && item.href && routeMatches(pathname, item.href)
+    );
+    if (matchingItem?.title && matchingItem.title !== activeParent) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setActiveParent(matchingItem.title);
+      setActiveChild(null);
+    }
+    // Only sync on pathname changes, not when activeParent changes (that would be circular)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname]);
+
   return (
     <>
       {items.map((item, index) => (
         <NavMainItem
-          key={item.title || item.label || index}
+          key={`${item.isSection ? 'section' : 'item'}-${item.title || item.label || index}`}
           item={item}
           pathname={pathname}
           activeParent={activeParent}
@@ -182,7 +197,7 @@ function NavMainItem({
                 "rounded-md text-sm font-medium px-3 py-2 h-9 transition-colors cursor-pointer",
                 isParentActive ? "bg-primary! text-primary-foreground!" : ""
               )}
-              render={<a href={item.href} />}
+              render={<Link href={item.href ?? "#"} />}
             >
               {item.icon && <item.icon />}
               {item.title}
@@ -277,8 +292,10 @@ function NavMainSubItem({
             setActiveParent(parentTitle || "");
             setActiveChild(item.title!);
           }}
-          render={<a href={item.href}>{item.title}</a>}
-        />
+          render={<Link href={item.href ?? "#"} />}
+        >
+          {item.title}
+        </SidebarMenuSubButton>
       </SidebarMenuSubItem>
     );
   }

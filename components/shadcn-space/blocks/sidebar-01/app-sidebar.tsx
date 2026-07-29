@@ -2,8 +2,6 @@
 
 import { Sidebar, SidebarContent, SidebarHeader, SidebarFooter, SidebarMenu, SidebarMenuItem } from "@/components/ui/sidebar";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import Logo from "@/assets/logo/logo";
 import { NavItem, NavMain } from "@/components/shadcn-space/blocks/sidebar-01/nav-main";
 import { useAuth } from "@/store/RoleContext";
@@ -93,32 +91,7 @@ export function AppSidebar() {
             <div className="px-4">
               <NavMain items={filteredItems} />
             </div>
-            <div className="pt-5 px-4">
-              <Card className="shadow-none ring-0 bg-secondary px-4 py-6">
-                <CardContent className="p-0 flex flex-col gap-3 items-center">
-                  <img
-                    src="https://images.shadcnspace.com/assets/backgrounds/download-img.png"
-                    alt="sidebar-img"
-                    width={74}
-                    height={74}
-                    className="h-20 w-20"
-                  />
-                  <div className="flex flex-col gap-4 items-center">
-                    <div>
-                      <p className="text-base font-semibold text-card-foreground text-center">
-                        Grab Pro Now
-                      </p>
-                      <p className="text-sm font-regular text-muted-foreground text-center">
-                        Customize your admin
-                      </p>
-                    </div>
-                    <Button className="w-fit h-9 px-4 py-2 shadow-none cursor-pointer rounded-xl">
-                      Get Premium
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
+
           </ScrollArea>
         </SidebarContent>
 
