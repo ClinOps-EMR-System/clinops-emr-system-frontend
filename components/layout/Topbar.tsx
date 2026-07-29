@@ -5,7 +5,8 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "../../store/RoleContext";
 import { api } from "../../lib/api";
-import { Menu, X, Search, Bell, ChevronDown } from "lucide-react";
+import { X, Search, Bell, ChevronDown } from "lucide-react";
+import { SidebarTrigger } from "@/components/ui/sidebar";
 
 interface PatientResult {
   id: number;
@@ -18,12 +19,7 @@ interface PatientResult {
   registration_completed_at: string | null;
 }
 
-interface TopbarProps {
-  onMenuToggle: () => void;
-  sidebarCollapsed: boolean;
-}
-
-export default function Topbar({ onMenuToggle, sidebarCollapsed }: TopbarProps) {
+export default function Topbar() {
   const pathname = usePathname();
   const router = useRouter();
   const { user, logout, token } = useAuth();
@@ -151,22 +147,15 @@ export default function Topbar({ onMenuToggle, sidebarCollapsed }: TopbarProps) 
   const initials = getInitials(name);
 
   return (
-    <header className="h-16 bg-brand-dark flex items-center gap-4 px-4 md:px-6 border-b border-gray-800 z-10 font-sans">
+    <header className="h-16 bg-sidebar flex items-center gap-4 px-4 md:px-6 border-b border-sidebar-border z-10 font-sans">
 
-      {/* Mobile menu button */}
-      <button
-        onClick={onMenuToggle}
-        className="lg:hidden text-gray-400 hover:text-white p-1.5 rounded-md hover:bg-gray-800/50 transition-colors"
-        aria-label={sidebarCollapsed ? "Open navigation menu" : "Close navigation menu"}
-      >
-        {sidebarCollapsed ? <Menu className="h-5 w-5" /> : <X className="h-5 w-5" />}
-      </button>
+      <SidebarTrigger className="lg:hidden text-sidebar-foreground/70 hover:text-sidebar-foreground p-1.5 rounded-md hover:bg-sidebar-accent transition-colors cursor-pointer" />
 
       {/* Breadcrumbs — last crumb visible on mobile, full trail on sm+ */}
       <nav aria-label="Breadcrumb" className="flex items-center shrink-0">
         <ol className="flex items-center gap-1.5 text-[11px] font-bold font-mono tracking-wide">
           <li className="inline-flex items-center">
-            <Link href="/dashboard" className="text-gray-400 hover:text-white transition-colors uppercase inline-flex items-center min-h-0 min-w-0 h-auto py-0">
+            <Link href="/dashboard" className="text-sidebar-foreground/70 hover:text-sidebar-foreground transition-colors uppercase inline-flex items-center min-h-0 min-w-0 h-auto py-0">
               <span className="sm:hidden">⌂</span>
               <span className="hidden sm:inline">Home</span>
             </Link>
@@ -177,8 +166,8 @@ export default function Topbar({ onMenuToggle, sidebarCollapsed }: TopbarProps) 
             if (!isLast && idx < breadcrumbs.length - 1) {
               return (
                 <li key={idx} className="inline-flex items-center gap-1.5 hidden sm:inline-flex">
-                  <span className="text-gray-600 select-none inline-flex items-center" aria-hidden="true">/</span>
-                  <Link href={crumb.href} className="text-gray-400 hover:text-white transition-colors uppercase inline-flex items-center min-h-0 min-w-0 h-auto py-0">
+                  <span className="text-sidebar-foreground/50 select-none inline-flex items-center" aria-hidden="true">/</span>
+                  <Link href={crumb.href} className="text-sidebar-foreground/70 hover:text-sidebar-foreground transition-colors uppercase inline-flex items-center min-h-0 min-w-0 h-auto py-0">
                     {crumb.label}
                   </Link>
                 </li>
@@ -186,11 +175,11 @@ export default function Topbar({ onMenuToggle, sidebarCollapsed }: TopbarProps) 
             }
             return (
               <li key={idx} className="inline-flex items-center gap-1.5">
-                <span className="text-gray-600 select-none inline-flex items-center" aria-hidden="true">/</span>
+                <span className="text-sidebar-foreground/50 select-none inline-flex items-center" aria-hidden="true">/</span>
                 {isLast ? (
-                  <span className="text-brand-green font-bold uppercase inline-flex items-center" aria-current="page">{crumb.label}</span>
+                  <span className="text-sidebar-primary font-bold uppercase inline-flex items-center" aria-current="page">{crumb.label}</span>
                 ) : (
-                  <Link href={crumb.href} className="text-gray-400 hover:text-white transition-colors uppercase inline-flex items-center min-h-0 min-w-0 h-auto py-0">
+                  <Link href={crumb.href} className="text-sidebar-foreground/70 hover:text-sidebar-foreground transition-colors uppercase inline-flex items-center min-h-0 min-w-0 h-auto py-0">
                     {crumb.label}
                   </Link>
                 )}
@@ -209,19 +198,19 @@ export default function Topbar({ onMenuToggle, sidebarCollapsed }: TopbarProps) 
               <div className="relative flex-1">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   {searchLoading ? (
-                    <svg className="h-4 w-4 text-brand-green animate-spin" fill="none" viewBox="0 0 24 24">
+                    <svg className="h-4 w-4 text-sidebar-primary animate-spin" fill="none" viewBox="0 0 24 24">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                     </svg>
                   ) : (
-                    <Search className="h-4 w-4 text-gray-500" />
+                    <Search className="h-4 w-4 text-sidebar-foreground/60" />
                   )}
                 </div>
                 <input
                   ref={mobileSearchInputRef}
                   type="text"
                   autoComplete="off"
-                  className="w-full pl-9 pr-9 py-2 rounded-md bg-gray-800 border border-gray-700 text-gray-200 placeholder-gray-500 text-sm focus:outline-none focus:border-brand-green focus:ring-1 focus:ring-brand-green transition"
+                  className="w-full pl-9 pr-9 py-2 rounded-md bg-sidebar-accent border border-sidebar-border text-sidebar-foreground placeholder-sidebar-foreground/60 text-sm focus:outline-none focus:border-sidebar-primary focus:ring-1 focus:ring-sidebar-primary transition"
                   placeholder="Search name, hospital #..."
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
@@ -231,7 +220,7 @@ export default function Topbar({ onMenuToggle, sidebarCollapsed }: TopbarProps) 
                   <button
                     type="button"
                     onClick={() => { setQuery(""); setResults([]); setSearchOpen(false); }}
-                    className="absolute inset-y-0 right-3 flex items-center text-gray-500 hover:text-gray-200 transition-colors"
+                    className="absolute inset-y-0 right-3 flex items-center text-sidebar-foreground/60 hover:text-sidebar-foreground transition-colors"
                     aria-label="Clear search"
                   >
                     <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -243,7 +232,7 @@ export default function Topbar({ onMenuToggle, sidebarCollapsed }: TopbarProps) 
               <button
                 type="button"
                 onClick={() => { setMobileSearchOpen(false); setQuery(""); setResults([]); setSearchOpen(false); }}
-                className="p-2 text-gray-400 hover:text-white rounded-md hover:bg-gray-800/50 transition-colors shrink-0"
+                className="p-2 text-sidebar-foreground/70 hover:text-sidebar-foreground rounded-md hover:bg-sidebar-accent transition-colors shrink-0"
                 aria-label="Close search"
               >
                 <X className="h-5 w-5" />
@@ -253,7 +242,7 @@ export default function Topbar({ onMenuToggle, sidebarCollapsed }: TopbarProps) 
             <button
               type="button"
               onClick={() => setMobileSearchOpen(true)}
-              className="p-2 text-gray-400 hover:text-white rounded-md hover:bg-gray-800/50 transition-colors"
+              className="p-2 text-sidebar-foreground/70 hover:text-sidebar-foreground rounded-md hover:bg-sidebar-accent transition-colors"
               aria-label="Open patient search"
             >
               <Search className="h-5 w-5" />
@@ -314,19 +303,19 @@ export default function Topbar({ onMenuToggle, sidebarCollapsed }: TopbarProps) 
           <div className="relative">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               {searchLoading ? (
-                <svg className="h-4 w-4 text-brand-green animate-spin" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                </svg>
-              ) : (
-                <Search className="h-4 w-4 text-gray-500" />
-              )}
-            </div>
-            <input
-              id="global-patient-search"
-              type="text"
-              autoComplete="off"
-              className="w-full pl-9 pr-16 py-2 rounded-md bg-gray-800 border border-gray-700 text-gray-200 placeholder-gray-500 text-sm focus:outline-none focus:border-brand-green focus:ring-1 focus:ring-brand-green transition"
+                  <svg className="h-4 w-4 text-sidebar-primary animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                ) : (
+                  <Search className="h-4 w-4 text-sidebar-foreground/60" />
+                )}
+              </div>
+              <input
+                id="global-patient-search"
+                type="text"
+                autoComplete="off"
+                className="w-full pl-9 pr-16 py-2 rounded-md bg-sidebar-accent border border-sidebar-border text-sidebar-foreground placeholder-sidebar-foreground/60 text-sm focus:outline-none focus:border-sidebar-primary focus:ring-1 focus:ring-sidebar-primary transition"
               placeholder="Search patients by name, hospital #, ID..."
               value={query}
               onChange={(e) => setQuery(e.target.value)}
@@ -334,14 +323,14 @@ export default function Topbar({ onMenuToggle, sidebarCollapsed }: TopbarProps) 
             />
             {!query && (
               <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none">
-                <kbd className="text-[10px] font-mono text-gray-600 bg-gray-700/60 px-1.5 py-0.5 rounded border border-gray-600">/</kbd>
+                <kbd className="text-[10px] font-mono text-sidebar-foreground/50 bg-sidebar-accent/70 px-1.5 py-0.5 rounded border border-sidebar-border">/</kbd>
               </div>
             )}
             {query && (
               <button
                 type="button"
                 onClick={() => { setQuery(""); setResults([]); setSearchOpen(false); }}
-                className="absolute inset-y-0 right-3 flex items-center text-gray-500 hover:text-gray-200 transition-colors"
+                className="absolute inset-y-0 right-3 flex items-center text-sidebar-foreground/60 hover:text-sidebar-foreground transition-colors"
                 aria-label="Clear search"
               >
                 <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -404,28 +393,28 @@ export default function Topbar({ onMenuToggle, sidebarCollapsed }: TopbarProps) 
       {/* Right: Actions */}
       <div className="flex items-center gap-3 shrink-0">
         <button
-          className="text-gray-400 hover:text-white relative p-2 rounded-full hover:bg-gray-800/50 transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
+          className="text-sidebar-foreground/70 hover:text-sidebar-foreground relative p-2 rounded-full hover:bg-sidebar-accent transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
           aria-label="Notifications"
         >
           <Bell className="h-5 w-5" />
-          <span className="absolute top-2 right-2 block h-2 w-2 rounded-full bg-brand-green ring-2 ring-brand-dark" />
+          <span className="absolute top-2 right-2 block h-2 w-2 rounded-full bg-sidebar-primary ring-2 ring-sidebar" />
         </button>
 
         <div className="relative">
           <button
             onClick={() => setDropdownOpen(!dropdownOpen)}
-            className="flex items-center gap-2 cursor-pointer p-1 rounded-md hover:bg-gray-800/40 focus:outline-none transition-colors"
+            className="flex items-center gap-2 cursor-pointer p-1 rounded-md hover:bg-sidebar-accent/80 focus:outline-none transition-colors"
             aria-label="User menu"
             aria-expanded={dropdownOpen}
             aria-haspopup="true"
           >
-            <div className="h-8 w-8 rounded-full bg-teal-700 flex items-center justify-center text-white text-xs font-bold font-mono border border-teal-600">
+            <div className="h-8 w-8 rounded-full bg-sidebar-primary flex items-center justify-center text-sidebar-primary-foreground text-xs font-bold font-mono border border-sidebar-primary">
               {initials}
             </div>
-            <span className="hidden md:inline-block text-sm text-gray-300 font-medium max-w-[120px] truncate">
+            <span className="hidden md:inline-block text-sm text-sidebar-foreground/80 font-medium max-w-[120px] truncate">
               {name}
             </span>
-            <ChevronDown className="h-4 w-4 text-gray-500 hidden md:block" />
+            <ChevronDown className="h-4 w-4 text-sidebar-foreground/60 hidden md:block" />
           </button>
 
           {dropdownOpen && (
