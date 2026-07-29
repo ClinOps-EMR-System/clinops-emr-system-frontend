@@ -8,6 +8,7 @@ import { calculateNEWS2, type AVPU, type SpO2Scale, type NEWS2Result } from "@/l
 import { friendlyError } from "@/lib/errors";
 import PatientBanner from "@/components/ui/PatientBanner";
 import type { Patient, Allergy } from "@/types/patient";
+import StatusBadge from "@/components/ui/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -20,9 +21,8 @@ import TriageProgressCard from "@/components/triage/TriageProgressCard";
 import { cn } from "@/lib/utils";
 import {
   ArrowLeft, Loader2, Check, TriangleAlert, Stethoscope,
-  HeartPulse, Thermometer, Wind, Eye, Brain, Weight,
-  Syringe, Baby, AlertTriangle, Activity, Send, Undo2,
-  ChevronRight, ChevronDown, Grip, X,
+  HeartPulse, Syringe, Baby, AlertTriangle, Activity, Undo2,
+  ChevronRight, ChevronDown,
 } from "lucide-react";
 
 const digitsOnly = (v: string) => v.replace(/\D/g, "");
@@ -539,6 +539,23 @@ export default function NurseTriageWorkbench() {
         isPregnant={summary?.pregnancy_status}
       />
 
+      <Card className="border-l-4 border-l-primary">
+        <CardContent className="p-4 flex items-center justify-between flex-wrap gap-3">
+          <div className="flex items-center gap-3">
+            <StatusBadge label="In Triage" variant="purple" pulse />
+            {hasComplaint && <Badge variant="outline">Chief Complaint Recorded</Badge>}
+            {hasVitals && <Badge variant="outline">Vitals Logged</Badge>}
+          </div>
+          <div className="flex items-center gap-4 text-sm text-muted-foreground">
+            {hasAllergies && (
+              <span className="flex items-center gap-1 text-emerald-600 font-semibold">
+                <Check className="h-3.5 w-3.5" /> Allergies Cleared
+              </span>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         <TriageSidebar
           activeTab={activeTab}
@@ -549,23 +566,19 @@ export default function NurseTriageWorkbench() {
           showPregnancy={patient.gender === "Female"}
         />
 
-        <div className="lg:col-span-3 space-y-6">
+        <div className="lg:col-span-3">
+          <Card>
+            <CardContent className="p-6 space-y-6">
           {successMsg && (
-            <Card className="border-emerald-200 bg-emerald-50">
-              <CardContent className="flex items-center gap-3 py-3">
-                <Check className="h-5 w-5 text-emerald-600 shrink-0" />
-                <p className="text-sm font-semibold text-emerald-800">{successMsg}</p>
-              </CardContent>
-            </Card>
+            <div className="rounded-lg bg-emerald-50 border border-emerald-200 px-4 py-3 text-sm text-emerald-800 font-semibold flex items-center gap-2">
+              <Check className="h-4 w-4 text-emerald-600 shrink-0" /> {successMsg}
+            </div>
           )}
 
           {error && (
-            <Card className="border-destructive/30 bg-destructive/5">
-              <CardContent className="flex items-center gap-3 py-3">
-                <TriangleAlert className="h-5 w-5 text-destructive shrink-0" />
-                <p className="text-sm font-semibold text-destructive">{error}</p>
-              </CardContent>
-            </Card>
+            <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-800 font-semibold flex items-center gap-2">
+              <TriangleAlert className="h-4 w-4 text-red-600 shrink-0" /> {error}
+            </div>
           )}
 
           {/* ── Vitals Tab ── */}
@@ -607,7 +620,7 @@ export default function NurseTriageWorkbench() {
 
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide">Temperature (°C)</label>
+                      <label className="text-xs font-semibold text-foreground uppercase tracking-wide">Temperature (°C)</label>
                       <Input
                         type="text" inputMode="decimal" maxLength={5}
                         placeholder="e.g. 36.5"
@@ -618,7 +631,7 @@ export default function NurseTriageWorkbench() {
                       {formErrors.temperature && <p className="text-xs text-destructive">{formErrors.temperature.join(" ")}</p>}
                     </div>
                     <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide">Blood Pressure</label>
+                      <label className="text-xs font-semibold text-foreground uppercase tracking-wide">Blood Pressure</label>
                       <Input
                         type="text" inputMode="numeric" maxLength={7}
                         placeholder="e.g. 120/80"
@@ -629,7 +642,7 @@ export default function NurseTriageWorkbench() {
                       {formErrors.blood_pressure && <p className="text-xs text-destructive">{formErrors.blood_pressure.join(" ")}</p>}
                     </div>
                     <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide">Pulse Rate (bpm)</label>
+                      <label className="text-xs font-semibold text-foreground uppercase tracking-wide">Pulse Rate (bpm)</label>
                       <Input
                         type="text" inputMode="numeric" maxLength={3}
                         placeholder="e.g. 72"
@@ -640,7 +653,7 @@ export default function NurseTriageWorkbench() {
                       {formErrors.pulse_rate && <p className="text-xs text-destructive">{formErrors.pulse_rate.join(" ")}</p>}
                     </div>
                     <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide">Respiratory Rate (breaths/min)</label>
+                      <label className="text-xs font-semibold text-foreground uppercase tracking-wide">Respiratory Rate (breaths/min)</label>
                       <Input
                         type="text" inputMode="numeric" maxLength={2}
                         placeholder="e.g. 16"
@@ -651,7 +664,7 @@ export default function NurseTriageWorkbench() {
                       {formErrors.respiratory_rate && <p className="text-xs text-destructive">{formErrors.respiratory_rate.join(" ")}</p>}
                     </div>
                     <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide">Oxygen Saturation (SpO2 %)</label>
+                      <label className="text-xs font-semibold text-foreground uppercase tracking-wide">Oxygen Saturation (SpO2 %)</label>
                       <Input
                         type="text" inputMode="numeric" maxLength={3}
                         placeholder="e.g. 98"
@@ -662,9 +675,9 @@ export default function NurseTriageWorkbench() {
                       {formErrors.oxygen_saturation && <p className="text-xs text-destructive">{formErrors.oxygen_saturation.join(" ")}</p>}
                     </div>
                     <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide">Oxygen Scale (NEWS2)</label>
+                      <label className="text-xs font-semibold text-foreground uppercase tracking-wide">Oxygen Scale (NEWS2)</label>
                       <select
-                        className="mt-1 block w-full px-3 py-2 border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-clinical-primary text-sm"
+                        className="mt-1 block w-full px-3 py-2 border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus-visible:ring-ring text-sm"
                         value={spo2Scale}
                         onChange={(e) => setSpo2Scale(parseInt(e.target.value) as SpO2Scale)}
                       >
@@ -676,7 +689,7 @@ export default function NurseTriageWorkbench() {
                       <label className="flex items-center gap-2 text-sm text-foreground cursor-pointer font-bold">
                         <input
                           type="checkbox"
-                          className="h-4 w-4 text-clinical-primary rounded border-border focus:ring-clinical-primary"
+                          className="h-4 w-4 text-primary rounded border-border focus-visible:ring-ring"
                           checked={supplementalOxygen}
                           onChange={(e) => setSupplementalOxygen(e.target.checked)}
                         />
@@ -684,9 +697,9 @@ export default function NurseTriageWorkbench() {
                       </label>
                     </div>
                     <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide">Consciousness (AVPU)</label>
+                      <label className="text-xs font-semibold text-foreground uppercase tracking-wide">Consciousness (AVPU)</label>
                       <select
-                        className="mt-1 block w-full px-3 py-2 border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-clinical-primary text-sm"
+                        className="mt-1 block w-full px-3 py-2 border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus-visible:ring-ring text-sm"
                         value={consciousness}
                         onChange={(e) => setConsciousness(e.target.value as AVPU)}
                       >
@@ -714,9 +727,9 @@ export default function NurseTriageWorkbench() {
                   {showAdditionalVitals && (
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
                       <div className="space-y-1.5">
-                        <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide">Triage Priority Category</label>
+                        <label className="text-xs font-semibold text-foreground uppercase tracking-wide">Triage Priority Category</label>
                         <select
-                          className="mt-1 block w-full px-3 py-2 border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-clinical-primary text-sm"
+                          className="mt-1 block w-full px-3 py-2 border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus-visible:ring-ring text-sm"
                           value={triageCategory}
                           onChange={(e) => setTriageCategory(e.target.value)}
                         >
@@ -728,7 +741,7 @@ export default function NurseTriageWorkbench() {
                         </select>
                       </div>
                       <div className="space-y-1.5">
-                        <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide">Weight (kg)</label>
+                        <label className="text-xs font-semibold text-foreground uppercase tracking-wide">Weight (kg)</label>
                         <Input
                           type="text" inputMode="decimal" maxLength={5} placeholder="e.g. 70.0"
                           value={weight} onChange={(e) => setWeight(decimalOnly(e.target.value))}
@@ -736,7 +749,7 @@ export default function NurseTriageWorkbench() {
                         />
                       </div>
                       <div className="space-y-1.5">
-                        <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide">Height (cm)</label>
+                        <label className="text-xs font-semibold text-foreground uppercase tracking-wide">Height (cm)</label>
                         <Input
                           type="text" inputMode="decimal" maxLength={5} placeholder="e.g. 175"
                           value={height} onChange={(e) => setHeight(decimalOnly(e.target.value))}
@@ -744,13 +757,13 @@ export default function NurseTriageWorkbench() {
                         />
                       </div>
                       <div className="space-y-1.5">
-                        <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide">Calculated BMI</label>
+                        <label className="text-xs font-semibold text-foreground uppercase tracking-wide">Calculated BMI</label>
                         <div className="h-10 px-3 bg-muted border border-border rounded-lg text-sm font-mono text-foreground flex items-center">
                           {bmi ? `${bmi} kg/m²` : "Enter Wt & Ht to calculate"}
                         </div>
                       </div>
                       <div className="space-y-1.5">
-                        <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide">Pain Score (0-10)</label>
+                        <label className="text-xs font-semibold text-foreground uppercase tracking-wide">Pain Score (0-10)</label>
                         <Input
                           type="text" inputMode="numeric" maxLength={2}
                           placeholder="0 = No Pain, 10 = Severe"
@@ -763,7 +776,7 @@ export default function NurseTriageWorkbench() {
                         />
                       </div>
                       <div className="space-y-1.5">
-                        <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide">Blood Glucose (mmol/L)</label>
+                        <label className="text-xs font-semibold text-foreground uppercase tracking-wide">Blood Glucose (mmol/L)</label>
                         <Input
                           type="text" inputMode="decimal" maxLength={5} placeholder="e.g. 5.5"
                           value={bloodGlucose} onChange={(e) => setBloodGlucose(decimalOnly(e.target.value))}
@@ -776,10 +789,10 @@ export default function NurseTriageWorkbench() {
                   {showAdditionalVitals && (
                     <div className="space-y-4 pt-2">
                       <Separator />
-                      <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Glasgow Coma Scale (GCS)</h4>
+                      <h4 className="text-xs font-semibold text-foreground uppercase tracking-widest">Glasgow Coma Scale (GCS)</h4>
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div className="space-y-1.5">
-                          <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide">GCS Eye (1-4)</label>
+                          <label className="text-xs font-semibold text-foreground uppercase tracking-wide">GCS Eye (1-4)</label>
                           <Input
                             type="text" inputMode="numeric" maxLength={1}
                             placeholder="1 (None) to 4 (Spontaneous)"
@@ -792,7 +805,7 @@ export default function NurseTriageWorkbench() {
                           />
                         </div>
                         <div className="space-y-1.5">
-                          <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide">GCS Verbal (1-5)</label>
+                          <label className="text-xs font-semibold text-foreground uppercase tracking-wide">GCS Verbal (1-5)</label>
                           <Input
                             type="text" inputMode="numeric" maxLength={1}
                             placeholder="1 (None) to 5 (Oriented)"
@@ -805,7 +818,7 @@ export default function NurseTriageWorkbench() {
                           />
                         </div>
                         <div className="space-y-1.5">
-                          <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide">GCS Motor (1-6)</label>
+                          <label className="text-xs font-semibold text-foreground uppercase tracking-wide">GCS Motor (1-6)</label>
                           <Input
                             type="text" inputMode="numeric" maxLength={1}
                             placeholder="1 (None) to 6 (Obeys commands)"
@@ -853,7 +866,7 @@ export default function NurseTriageWorkbench() {
                 </CardHeader>
                 <CardContent className="space-y-6">
                   <div className="bg-muted/30 p-4 rounded-lg border">
-                    <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-3">Noted Allergies</h4>
+                    <h4 className="text-xs font-semibold text-foreground uppercase tracking-widest mb-3">Noted Allergies</h4>
                     {summary?.allergies && summary.allergies.length > 0 ? (
                       <div className="divide-y divide-border bg-card rounded-lg border overflow-hidden">
                         {summary.allergies.map((a) => (
@@ -882,19 +895,19 @@ export default function NurseTriageWorkbench() {
                   <Separator />
 
                   <form onSubmit={handleSaveAllergy} className="space-y-6">
-                    <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Add New Patient Allergy</h4>
+                    <h4 className="text-xs font-semibold text-foreground uppercase tracking-widest">Add New Patient Allergy</h4>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="space-y-1.5">
-                        <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide">Allergen</label>
+                        <label className="text-xs font-semibold text-foreground uppercase tracking-wide">Allergen</label>
                         <Input
                           required placeholder="e.g. Penicillin, Peanuts"
                           value={allergen} onChange={(e) => setAllergen(e.target.value)}
                         />
                       </div>
                       <div className="space-y-1.5">
-                        <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide">Allergen Type</label>
+                        <label className="text-xs font-semibold text-foreground uppercase tracking-wide">Allergen Type</label>
                         <select
-                          className="block w-full px-3 py-2 border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-clinical-primary text-sm"
+                          className="block w-full px-3 py-2 border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus-visible:ring-ring text-sm"
                           value={allergyType} onChange={(e) => setAllergyType(e.target.value)}
                         >
                           <option value="Drug">Drug</option>
@@ -904,16 +917,16 @@ export default function NurseTriageWorkbench() {
                         </select>
                       </div>
                       <div className="space-y-1.5">
-                        <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide">Reaction Details (Optional)</label>
+                        <label className="text-xs font-semibold text-foreground uppercase tracking-wide">Reaction Details (Optional)</label>
                         <Input
                           placeholder="e.g. Skin rashes, hives, swelling, anaphylaxis"
                           value={reaction} onChange={(e) => setReaction(e.target.value)}
                         />
                       </div>
                       <div className="space-y-1.5">
-                        <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide">Severity Level</label>
+                        <label className="text-xs font-semibold text-foreground uppercase tracking-wide">Severity Level</label>
                         <select
-                          className="block w-full px-3 py-2 border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-clinical-primary text-sm"
+                          className="block w-full px-3 py-2 border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus-visible:ring-ring text-sm"
                           value={severity} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setSeverity(e.target.value as typeof severity)}
                         >
                           <option value="mild">Mild</option>
@@ -947,22 +960,22 @@ export default function NurseTriageWorkbench() {
                 </CardHeader>
                 <CardContent className="space-y-6">
                   <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide">
+                    <label className="text-xs font-semibold text-foreground uppercase tracking-wide">
                       Chief Complaint (CC) <span className="text-destructive">*</span>
                     </label>
                     <textarea
                       rows={3} required
-                      className="block w-full px-3 py-2 border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-clinical-primary text-sm text-foreground font-mono"
+                      className="block w-full px-3 py-2 border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus-visible:ring-ring text-sm text-foreground font-mono"
                       placeholder="e.g. High fever for 3 days, dry cough, and sudden loss of appetite."
                       value={chiefComplaint}
                       onChange={(e) => setChiefComplaint(e.target.value)}
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide">History of Present Illness (HPI)</label>
+                    <label className="text-xs font-semibold text-foreground uppercase tracking-wide">History of Present Illness (HPI)</label>
                     <textarea
                       rows={6}
-                      className="block w-full px-3 py-2 border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-clinical-primary text-sm text-foreground font-mono"
+                      className="block w-full px-3 py-2 border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus-visible:ring-ring text-sm text-foreground font-mono"
                       placeholder="Record detailed onset, severity, location, timing, aggravating factors, and therapies attempted."
                       value={hpi}
                       onChange={(e) => setHpi(e.target.value)}
@@ -995,7 +1008,7 @@ export default function NurseTriageWorkbench() {
                     <label className="flex items-center gap-3 text-sm text-foreground cursor-pointer font-bold">
                       <input
                         type="checkbox"
-                        className="h-5 w-5 text-clinical-primary rounded border-border focus:ring-clinical-primary"
+                        className="h-5 w-5 text-primary rounded border-border focus-visible:ring-ring"
                         checked={isPregnant}
                         onChange={(e) => setIsPregnant(e.target.checked)}
                       />
@@ -1005,11 +1018,11 @@ export default function NurseTriageWorkbench() {
                     {isPregnant && (
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-border">
                         <div className="space-y-1.5">
-                          <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide">Last Menstrual Period (LMP)</label>
+                          <label className="text-xs font-semibold text-foreground uppercase tracking-wide">Last Menstrual Period (LMP)</label>
                           <Input type="date" value={lmp} onChange={(e) => setLmp(e.target.value)} className="font-mono" />
                         </div>
                         <div className="space-y-1.5">
-                          <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide">Gestational Age (weeks)</label>
+                          <label className="text-xs font-semibold text-foreground uppercase tracking-wide">Gestational Age (weeks)</label>
                           <Input
                             type="text" inputMode="numeric" maxLength={2} placeholder="e.g. 24"
                             value={gestationalWeeks}
@@ -1048,7 +1061,7 @@ export default function NurseTriageWorkbench() {
                 </CardHeader>
                 <CardContent className="space-y-6">
                   <div className="bg-muted/30 p-4 rounded-lg border space-y-4">
-                    <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Infectious Risk Checklist</h4>
+                    <h4 className="text-xs font-semibold text-foreground uppercase tracking-widest">Infectious Risk Checklist</h4>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       {[
                         { label: "Presence of Active Fever", checked: hasFever, set: setHasFever },
@@ -1059,7 +1072,7 @@ export default function NurseTriageWorkbench() {
                         <label key={item.label} className="flex items-center gap-2 text-sm text-foreground cursor-pointer">
                           <input
                             type="checkbox"
-                            className="h-4 w-4 text-clinical-primary rounded border-border focus:ring-clinical-primary"
+                            className="h-4 w-4 text-primary rounded border-border focus-visible:ring-ring"
                             checked={item.checked}
                             onChange={(e) => item.set(e.target.checked)}
                           />
@@ -1070,7 +1083,7 @@ export default function NurseTriageWorkbench() {
                   </div>
 
                   <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide">Suspected Infection / Remarks (Optional)</label>
+                    <label className="text-xs font-semibold text-foreground uppercase tracking-wide">Suspected Infection / Remarks (Optional)</label>
                     <Input
                       placeholder="e.g. Tuberculosis, Cholera, COVID-19"
                       value={suspectedInfectionType} onChange={(e) => setSuspectedInfectionType(e.target.value)}
@@ -1105,14 +1118,14 @@ export default function NurseTriageWorkbench() {
                   <div className="space-y-8">
                     {trends.temperature && trends.temperature.length > 0 && (
                       <div className="bg-card p-4 rounded-lg border">
-                        <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-3">Temperature Graph (°C)</h4>
+                        <h4 className="text-xs font-semibold text-foreground uppercase tracking-widest mb-3">Temperature Graph (°C)</h4>
                         <div className="h-40 flex items-end gap-1.5 pt-6 border-b border-l border-border px-3 relative">
                           {trends.temperature.map((point, index) => {
                             const val = point.value;
                             const minVal = 35; const maxVal = 42;
                             const pct = Math.max(10, Math.min(100, ((val - minVal) / (maxVal - minVal)) * 100));
                             return (
-                              <div key={index} className="flex-1 bg-clinical-primary/70 hover:bg-clinical-primary transition-colors group relative rounded-t"
+                              <div key={index} className="flex-1 bg-primary/70 hover:bg-primary transition-colors group relative rounded-t"
                                 style={{ height: `${pct}%` }}>
                                 <span className="absolute -top-6 left-1/2 -translate-x-1/2 hidden group-hover:block px-1.5 py-0.5 bg-foreground text-background text-[10px] font-mono rounded shadow">
                                   {val}°C
@@ -1128,7 +1141,7 @@ export default function NurseTriageWorkbench() {
                     )}
                     {trends.pulse_rate && trends.pulse_rate.length > 0 && (
                       <div className="bg-card p-4 rounded-lg border">
-                        <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-3">Heart Pulse Trend (bpm)</h4>
+                        <h4 className="text-xs font-semibold text-foreground uppercase tracking-widest mb-3">Heart Pulse Trend (bpm)</h4>
                         <div className="h-40 flex items-end gap-1.5 pt-6 border-b border-l border-border px-3 relative">
                           {trends.pulse_rate.map((point, index) => {
                             const val = point.value; const minVal = 40; const maxVal = 160;
@@ -1148,7 +1161,7 @@ export default function NurseTriageWorkbench() {
                     )}
                     {trends.oxygen_saturation && trends.oxygen_saturation.length > 0 && (
                       <div className="bg-card p-4 rounded-lg border">
-                        <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-3">Oxygen Saturation (%)</h4>
+                        <h4 className="text-xs font-semibold text-foreground uppercase tracking-widest mb-3">Oxygen Saturation (%)</h4>
                         <div className="h-40 flex items-end gap-1.5 pt-6 border-b border-l border-border px-3 relative">
                           {trends.oxygen_saturation.map((point, index) => {
                             const val = point.value; const minVal = 70; const maxVal = 100;
@@ -1168,7 +1181,7 @@ export default function NurseTriageWorkbench() {
                     )}
                     {trends.ews_score && trends.ews_score.length > 0 && (
                       <div className="bg-card p-4 rounded-lg border">
-                        <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-3">Early Warning Score (NEWS2)</h4>
+                        <h4 className="text-xs font-semibold text-foreground uppercase tracking-widest mb-3">Early Warning Score (NEWS2)</h4>
                         <div className="h-40 flex items-end gap-1.5 pt-6 border-b border-l border-border px-3 relative">
                           {trends.ews_score.map((point, index) => {
                             const val = point.value; const minVal = 0; const maxVal = 15;
@@ -1192,6 +1205,8 @@ export default function NurseTriageWorkbench() {
               </CardContent>
             </Card>
           )}
+            </CardContent>
+          </Card>
         </div>
       </div>
 

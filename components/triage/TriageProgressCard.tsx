@@ -43,7 +43,7 @@ export default function TriageProgressCard({
             <div
               className={cn(
                 "h-full rounded-full transition-all duration-500",
-                mandatoryDone ? "bg-emerald-500" : "bg-clinical-primary"
+                mandatoryDone ? "bg-emerald-500" : "bg-primary"
               )}
               style={{ width: `${progressPct}%` }}
             />

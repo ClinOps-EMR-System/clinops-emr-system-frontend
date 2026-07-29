@@ -49,7 +49,7 @@ export default function TriageSidebar({
               className={cn(
                 "flex-shrink-0 px-3 py-2 text-xs font-bold rounded transition-all min-h-[40px] whitespace-nowrap flex items-center gap-1.5",
                 activeTab === tab.key
-                  ? "bg-clinical-primary text-white"
+                  ? "bg-primary text-primary-foreground"
                   : "text-gray-600 hover:bg-gray-50 bg-gray-50"
               )}
             >
@@ -73,7 +73,7 @@ export default function TriageSidebar({
               className={cn(
                 "w-full flex items-center gap-2.5 px-4 py-2.5 text-sm rounded-lg font-bold transition-all text-left",
                 isActive
-                  ? "bg-clinical-primary text-white shadow-sm"
+                  ? "bg-primary text-primary-foreground shadow-sm"
                   : "text-muted-foreground hover:bg-muted hover:text-foreground"
               )}
             >
