@@ -27,6 +27,7 @@ export interface Patient {
   consent_research?: boolean;
   created_at?: string;
   registration_completed_at?: string | null;
+  creator?: { id: number; name: string };
   encounters?: Encounter[];
 }
 

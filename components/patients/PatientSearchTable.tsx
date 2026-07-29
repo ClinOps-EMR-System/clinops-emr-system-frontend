@@ -37,6 +37,10 @@ interface SortState {
   dir: SortDir;
 }
 
+function getSortableValue(patient: Patient, key: SortKey): string {
+  return patient[key] ?? "";
+}
+
 function getClinicalStatus(
   patient: Patient
 ): { label: string; variant: "success" | "warning" | "error" | "info" | "neutral" | "purple"; pulse?: boolean } {
@@ -146,6 +150,7 @@ function SortableHead({ sort, onToggle, columnKey, children }: {
   return (
     <TableHead>
       <button
+        type="button"
         onClick={() => onToggle(columnKey)}
         className="inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors"
       >
@@ -177,18 +182,12 @@ export default function PatientSearchTable({
 
   const sortedPatients = useMemo(() => {
     return [...patients].sort((a, b) => {
-      const aVal = (a as unknown as Record<string, unknown>)[sort.key];
-      const bVal = (b as unknown as Record<string, unknown>)[sort.key];
-      if (aVal == null && bVal == null) return 0;
-      if (aVal == null) return 1;
-      if (bVal == null) return -1;
-      if (typeof aVal === "string" && typeof bVal === "string") {
-        return sort.dir === "asc" ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
-      }
-      if (typeof aVal === "number" && typeof bVal === "number") {
-        return sort.dir === "asc" ? aVal - bVal : bVal - aVal;
-      }
-      return 0;
+      const aVal = getSortableValue(a, sort.key);
+      const bVal = getSortableValue(b, sort.key);
+
+      return sort.dir === "asc"
+        ? aVal.localeCompare(bVal)
+        : bVal.localeCompare(aVal);
     });
   }, [patients, sort]);
 
@@ -209,8 +208,8 @@ export default function PatientSearchTable({
       <CardContent className="px-0">
         {loading ? (
           <div className="flex flex-col gap-3 px-(--card-spacing) py-4">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="flex items-center gap-4">
+            {Array.from({ length: 6 }, (_, i) => `patient-skeleton-${i + 1}`).map((skeletonKey) => (
+              <div key={skeletonKey} className="flex items-center gap-4">
                 <Skeleton className="h-5 w-36" />
                 <Skeleton className="h-5 w-20" />
                 <Skeleton className="h-5 w-32" />
