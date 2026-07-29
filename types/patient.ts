@@ -27,6 +27,18 @@ export interface Patient {
   consent_research?: boolean;
   created_at?: string;
   registration_completed_at?: string | null;
+  encounters?: Encounter[];
+}
+
+export interface Encounter {
+  id: number;
+  encounter_type: string;
+  status: string;
+  triage_completed_at?: string | null;
+  triage_priority?: number | null;
+  chief_complaint?: string;
+  visit_date?: string;
+  created_at?: string;
 }
 
 export interface Allergy {
