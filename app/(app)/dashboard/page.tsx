@@ -3,7 +3,35 @@
 import Link from "next/link";
 import { useAuth } from "../../../store/RoleContext";
 import { useFetch } from "../../../lib/useFetch";
-import StatusBadge from "../../../components/ui/StatusBadge";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Separator } from "@/components/ui/separator";
+import { cn } from "@/lib/utils";
+import {
+  Users,
+  Clock,
+  Stethoscope,
+  ArrowRight,
+  Plus,
+  Ambulance,
+  DoorOpen,
+  Pill,
+} from "lucide-react";
 
 interface DashboardData {
   patients?: {
@@ -36,6 +64,15 @@ interface DashboardData {
   };
 }
 
+interface FlowStage {
+  key: string;
+  label: string;
+  count: number;
+  href: string;
+  color: string;
+  icon: typeof Users;
+}
+
 export default function Dashboard() {
   const { user } = useAuth();
   const { data: dashboard, loading, error } = useFetch<DashboardData>("/dashboard");
@@ -54,20 +91,66 @@ export default function Dashboard() {
     waitingForDoctor: dashboard?.queue?.waiting_for_doctor ?? 0,
   };
 
+  const flowStages: FlowStage[] = [
+    {
+      key: "waiting",
+      label: "Waiting",
+      count: stats.waitingForDoctor,
+      href: "/queue",
+      color: "text-amber-600",
+      icon: Clock,
+    },
+    {
+      key: "triage",
+      label: "Awaiting Triage",
+      count: stats.awaitingTriage,
+      href: "/triage-queue",
+      color: "text-sky-600",
+      icon: Stethoscope,
+    },
+    {
+      key: "consultation",
+      label: "In Consultation",
+      count: stats.inConsultation,
+      href: "/consultation-queue",
+      color: "text-blue-600",
+      icon: Users,
+    },
+    {
+      key: "pharmacy",
+      label: "To Pharmacy",
+      count: 0,
+      href: "/pharmacy",
+      color: "text-emerald-600",
+      icon: Pill,
+    },
+    {
+      key: "discharge",
+      label: "Discharged Today",
+      count: stats.dischargedToday,
+      href: "/admissions",
+      color: "text-teal-600",
+      icon: DoorOpen,
+    },
+  ];
+
   const recentPatients = dashboard?.patients?.recent ?? [];
 
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
+
   return (
-    <div className="max-w-7xl mx-auto space-y-8 font-sans">
-      {/* Welcome Section */}
-      <section className="flex flex-col sm:flex-row justify-between sm:items-end gap-4">
-        <div>
-          <span className="text-xs font-bold text-brand-green tracking-widest uppercase">
+    <div className="flex flex-col gap-6">
+      {/* Header */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div className="flex flex-col gap-1">
+          <span className="text-xs font-semibold tracking-widest uppercase text-muted-foreground">
             Clinical Workspace
           </span>
-          <h1 className="text-3xl font-bold text-[#1b1c1c] mt-1">
-            Good morning, {staffName}
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+            {greeting}, {staffName}
           </h1>
-          <p className="text-sm text-[#5f5e5e] mt-1 font-mono">
+          <p className="text-sm text-muted-foreground">
             {new Date().toLocaleDateString("en-US", {
               weekday: "long",
               year: "numeric",
@@ -76,243 +159,311 @@ export default function Dashboard() {
             })}
           </p>
         </div>
-        
-        <div className="flex flex-wrap gap-3">
-          <Link
-            href="/patients/register"
-            className="inline-flex items-center justify-center px-4 py-2.5 border border-transparent text-sm font-bold rounded bg-clinical-primary text-white hover:bg-clinical-primary-hover shadow-sm transition-all focus:outline-none cursor-pointer"
+        <div className="flex gap-3">
+          <Button
+            render={<Link href="/patients/register" />}
           >
-            <svg className="mr-2 -ml-1 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
-            </svg>
+            <Plus data-icon="inline-start" />
             Register Patient
-          </Link>
-          <Link
-            href="/patients/register?emergency=true"
-            className="inline-flex items-center justify-center px-4 py-2.5 border border-transparent text-sm font-bold rounded bg-amber-600 text-white hover:bg-amber-700 shadow-sm transition-all focus:outline-none cursor-pointer"
+          </Button>
+          <Button
+            variant="outline"
+            render={<Link href="/patients/register?emergency=true" />}
           >
-            <svg className="mr-2 -ml-1 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-            </svg>
+            <Ambulance data-icon="inline-start" />
             Emergency
-          </Link>
+          </Button>
         </div>
-      </section>
+      </div>
 
-      {/* Primary Metrics — clickable cards */}
-      <section className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Link href="/patients" className="bg-white rounded border border-[#becab7]/50 p-5 flex flex-col justify-between hover:border-[#3e4a3b]/30 hover:shadow-sm transition-all">
-          <dt className="text-xs font-bold text-[#5f5e5e] uppercase tracking-wider mb-2">Total Patients</dt>
-          <dd className="text-3xl font-extrabold text-[#1b1c1c] font-mono">
-            {loading ? "..." : stats.totalPatients}
-          </dd>
-        </Link>
-        <Link href="/patients/register" className="bg-white rounded border border-[#becab7]/50 p-5 flex flex-col justify-between hover:border-[#3e4a3b]/30 hover:shadow-sm transition-all">
-          <dt className="text-xs font-bold text-[#5f5e5e] uppercase tracking-wider mb-2">Registered Today</dt>
-          <dd className="text-3xl font-extrabold text-[#1b1c1c] font-mono">
-            {loading ? "..." : stats.registeredToday}
-          </dd>
-        </Link>
-        <Link href="/triage-queue" className="bg-white rounded border border-[#becab7]/50 p-5 flex flex-col justify-between hover:border-[#3e4a3b]/30 hover:shadow-sm transition-all">
-          <dt className="text-xs font-bold text-[#5f5e5e] uppercase tracking-wider mb-2">Awaiting Triage</dt>
-          <dd className={`text-3xl font-extrabold font-mono ${stats.awaitingTriage > 0 ? "text-amber-600" : "text-[#1b1c1c]"}`}>
-            {loading ? "..." : stats.awaitingTriage}
-          </dd>
-        </Link>
-        <Link href="/emergency-queue" className="bg-white rounded border border-red-200 p-5 flex flex-col justify-between hover:border-red-400 hover:shadow-md transition-all group">
-          <dt className="text-xs font-bold text-red-700 uppercase tracking-wider mb-2 flex items-center gap-2">
-            <span className="h-2 w-2 rounded-full bg-red-500 group-hover:animate-pulse"></span>
-            Emergency
-          </dt>
-          <dd className={`text-3xl font-extrabold font-mono ${stats.emergency > 0 ? "text-red-600" : "text-[#1b1c1c]"}`}>
-            {loading ? "..." : stats.emergency}
-          </dd>
-        </Link>
-      </section>
-
-      {/* Operational Metrics */}
-      <section className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Link href="/queue" className="bg-white rounded border border-[#becab7]/50 p-5 hover:border-brand-green hover:shadow-sm transition-all group">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-bold text-[#5f5e5e] uppercase tracking-wider">Waiting for Doctor</p>
-              <p className={`text-2xl font-extrabold font-mono mt-1 ${stats.waitingForDoctor > 0 ? "text-amber-600" : "text-[#1b1c1c]"}`}>
-                {loading ? "..." : stats.waitingForDoctor}
-              </p>
-            </div>
-            <div className="h-10 w-10 rounded bg-amber-100 flex items-center justify-center group-hover:bg-amber-200 transition-colors">
-              <svg className="h-5 w-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
-              </svg>
-            </div>
-          </div>
+      {/* Primary Metrics */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <Link href="/patients" className="block">
+          <Card className="transition-all hover:shadow-sm">
+            <CardHeader className="flex-row items-center justify-between gap-4">
+              <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Total Patients
+              </CardTitle>
+              <Users className="size-4 text-muted-foreground/60" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-semibold tabular-nums tracking-tight text-foreground">
+                {loading ? <Skeleton className="h-8 w-16" /> : stats.totalPatients}
+              </div>
+            </CardContent>
+          </Card>
         </Link>
 
-        <Link href="/queue" className="bg-white rounded border border-[#becab7]/50 p-5 hover:border-brand-green hover:shadow-sm transition-all group">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-bold text-[#5f5e5e] uppercase tracking-wider">In Consultation</p>
-              <p className={`text-2xl font-extrabold font-mono mt-1 ${stats.inConsultation > 0 ? "text-blue-600" : "text-[#1b1c1c]"}`}>
-                {loading ? "..." : stats.inConsultation}
-              </p>
-            </div>
-            <div className="h-10 w-10 rounded bg-blue-100 flex items-center justify-center group-hover:bg-blue-200 transition-colors">
-              <svg className="h-5 w-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
-              </svg>
-            </div>
-          </div>
+        <Link href="/patients/register" className="block">
+          <Card className="transition-all hover:shadow-sm">
+            <CardHeader className="flex-row items-center justify-between gap-4">
+              <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Registered Today
+              </CardTitle>
+              <Plus className="size-4 text-muted-foreground/60" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-semibold tabular-nums tracking-tight text-foreground">
+                {loading ? <Skeleton className="h-8 w-16" /> : stats.registeredToday}
+              </div>
+            </CardContent>
+          </Card>
         </Link>
 
-        <Link href="/admissions" className="bg-white rounded border border-[#becab7]/50 p-5 hover:border-brand-green hover:shadow-sm transition-all group">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-bold text-[#5f5e5e] uppercase tracking-wider">Discharged Today</p>
-              <p className={`text-2xl font-extrabold font-mono mt-1 ${stats.dischargedToday > 0 ? "text-emerald-600" : "text-[#1b1c1c]"}`}>
-                {loading ? "..." : stats.dischargedToday}
-              </p>
-            </div>
-            <div className="h-10 w-10 rounded bg-emerald-100 flex items-center justify-center group-hover:bg-emerald-200 transition-colors">
-              <svg className="h-5 w-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
-              </svg>
-            </div>
-          </div>
+        <Link href="/triage-queue" className="block">
+          <Card className={cn(
+            "transition-all hover:shadow-sm",
+            stats.awaitingTriage > 0 && "ring-1 ring-amber-500/20"
+          )}>
+            <CardHeader className="flex-row items-center justify-between gap-4">
+              <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Awaiting Triage
+              </CardTitle>
+              <Clock className={cn(
+                "size-4",
+                stats.awaitingTriage > 0 ? "text-amber-500" : "text-muted-foreground/60"
+              )} />
+            </CardHeader>
+            <CardContent>
+              <div className={cn(
+                "text-3xl font-semibold tabular-nums tracking-tight",
+                stats.awaitingTriage > 0 ? "text-amber-600" : "text-foreground"
+              )}>
+                {loading ? <Skeleton className="h-8 w-16" /> : stats.awaitingTriage}
+              </div>
+            </CardContent>
+          </Card>
         </Link>
-      </section>
 
-      {/* Quick Actions - Role Based */}
+        <Link href="/emergency-queue" className="block">
+          <Card className={cn(
+            "transition-all hover:shadow-sm",
+            stats.emergency > 0 && "ring-1 ring-red-500/20"
+          )}>
+            <CardHeader className="flex-row items-center justify-between gap-4">
+              <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                <span className={cn(
+                  "size-1.5 rounded-full",
+                  stats.emergency > 0 ? "bg-red-500 animate-pulse" : "bg-muted-foreground/60"
+                )} />
+                Emergency
+              </CardTitle>
+              <Ambulance className={cn(
+                "size-4",
+                stats.emergency > 0 ? "text-red-500" : "text-muted-foreground/60"
+              )} />
+            </CardHeader>
+            <CardContent>
+              <div className={cn(
+                "text-3xl font-semibold tabular-nums tracking-tight",
+                stats.emergency > 0 ? "text-red-600" : "text-foreground"
+              )}>
+                {loading ? <Skeleton className="h-8 w-16" /> : stats.emergency}
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
+      </div>
+
+      {/* Patient Flow Pipeline */}
+      <div className="rounded-xl bg-card p-5 ring-1 ring-foreground/10">
+        <div className="flex items-center gap-2 mb-5">
+          <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+            Patient Flow
+          </h2>
+          {loading && (
+            <span className="size-1.5 rounded-full bg-muted-foreground/30 animate-pulse" />
+          )}
+        </div>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+          {flowStages.map((stage, i) => (
+            <div key={stage.key} className="flex items-center gap-3 sm:flex-col sm:gap-2">
+              <Link
+                href={stage.href}
+                className={cn(
+                  "flex sm:w-full items-center gap-3 rounded-lg border p-3 transition-all hover:shadow-sm sm:flex-col sm:gap-2 sm:text-center",
+                  stage.count > 0
+                    ? "border-foreground/10 bg-background"
+                    : "border-dashed border-foreground/5 bg-muted/30"
+                )}
+              >
+                <stage.icon className={cn(
+                  "size-5 shrink-0",
+                  stage.count > 0 ? stage.color : "text-muted-foreground/40"
+                )} />
+                <div className="flex flex-col sm:items-center">
+                  <span className={cn(
+                    "text-xl font-semibold tabular-nums tracking-tight leading-none",
+                    stage.count > 0 ? "text-foreground" : "text-muted-foreground/50"
+                  )}>
+                    {loading ? "..." : stage.count}
+                  </span>
+                  <span className="mt-1 text-[11px] font-medium text-muted-foreground leading-tight">
+                    {stage.label}
+                  </span>
+                </div>
+              </Link>
+              {i < flowStages.length - 1 && (
+                <ArrowRight className="hidden size-4 shrink-0 text-muted-foreground/30 sm:block" />
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Quick Actions */}
       {isAdmin && (
-        <section className="bg-white rounded border border-[#becab7]/50 p-6">
-          <h2 className="text-sm font-bold text-[#5f5e5e] uppercase tracking-wider mb-4">Quick Actions</h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <Link href="/pharmacy" className="flex items-center gap-3 p-3 rounded border border-gray-200 hover:border-brand-green hover:bg-[#fcf9f8] transition-all">
-              <div className="h-8 w-8 rounded bg-amber-100 flex items-center justify-center"><span className="text-amber-600 text-sm">Rx</span></div>
-              <span className="text-sm font-bold text-gray-700">Pharmacy Queue</span>
-            </Link>
-            <Link href="/lab" className="flex items-center gap-3 p-3 rounded border border-gray-200 hover:border-brand-green hover:bg-[#fcf9f8] transition-all">
-              <div className="h-8 w-8 rounded bg-sky-100 flex items-center justify-center"><span className="text-sky-600 text-sm font-bold">Lab</span></div>
-              <span className="text-sm font-bold text-gray-700">Lab Orders</span>
-            </Link>
-            <Link href="/billing" className="flex items-center gap-3 p-3 rounded border border-gray-200 hover:border-brand-green hover:bg-[#fcf9f8] transition-all">
-              <div className="h-8 w-8 rounded bg-emerald-100 flex items-center justify-center"><span className="text-emerald-600 text-sm font-bold">$</span></div>
-              <span className="text-sm font-bold text-gray-700">Billing</span>
-            </Link>
-            <Link href="/admin" className="flex items-center gap-3 p-3 rounded border border-gray-200 hover:border-brand-green hover:bg-[#fcf9f8] transition-all">
-              <div className="h-8 w-8 rounded bg-purple-100 flex items-center justify-center"><span className="text-purple-600 text-sm font-bold">Ad</span></div>
-              <span className="text-sm font-bold text-gray-700">Administration</span>
-            </Link>
-          </div>
-        </section>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Quick Actions
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <Button
+                variant="outline"
+                className="h-auto flex-col gap-1.5 p-4"
+                render={<Link href="/pharmacy" />}
+              >
+                <Pill className="size-5 text-amber-600" />
+                <span className="text-xs font-medium">Pharmacy</span>
+              </Button>
+              <Button
+                variant="outline"
+                className="h-auto flex-col gap-1.5 p-4"
+                render={<Link href="/lab" />}
+              >
+                <svg className="size-5 text-sky-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
+                </svg>
+                <span className="text-xs font-medium">Lab Orders</span>
+              </Button>
+              <Button
+                variant="outline"
+                className="h-auto flex-col gap-1.5 p-4"
+                render={<Link href="/billing" />}
+              >
+                <span className="flex size-5 items-center justify-center text-sm font-bold text-emerald-600">
+                  $
+                </span>
+                <span className="text-xs font-medium">Billing</span>
+              </Button>
+              <Button
+                variant="outline"
+                className="h-auto flex-col gap-1.5 p-4"
+                render={<Link href="/admin" />}
+              >
+                <span className="flex size-5 items-center justify-center text-sm font-bold text-purple-600">
+                  Ad
+                </span>
+                <span className="text-xs font-medium">Administration</span>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       )}
 
-      {/* Recent Activity Table Section */}
-      <section className="bg-white rounded border border-[#becab7]/50 overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-100 flex items-center">
-          <div className="w-1.5 h-6 bg-brand-green rounded-full mr-3"></div>
-          <h2 className="text-lg font-bold text-gray-900">
+      {/* Recent Patients */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             Recent Patient Registrations
-          </h2>
-        </div>
-
-        {loading ? (
-          <div className="p-8 text-center text-sm text-gray-500 font-mono">
-            Loading patient records from server...
-          </div>
-        ) : error ? (
-          <div className="p-8 text-center text-sm text-red-600">
-            Error: {error}
-          </div>
-        ) : recentPatients.length === 0 ? (
-          <div className="p-12 text-center text-sm text-gray-400">
-            No patient registrations recorded.
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-[#fcf9f8] sticky top-0 z-10">
-                <tr className="divide-x divide-gray-200/50">
-                  <th className="px-6 py-3 text-left text-xs font-bold text-[#5f5e5e] uppercase tracking-wider">
-                    Patient Name
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-bold text-[#5f5e5e] uppercase tracking-wider">
-                    Hospital Number
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-bold text-[#5f5e5e] uppercase tracking-wider">
-                    Gender / Category
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-bold text-[#5f5e5e] uppercase tracking-wider">
-                    Village / District
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-bold text-[#5f5e5e] uppercase tracking-wider">
-                    Status / Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-100">
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="px-0">
+          {loading ? (
+            <div className="flex flex-col gap-3 px-(--card-spacing) py-4">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="flex items-center gap-4">
+                  <Skeleton className="h-5 w-32" />
+                  <Skeleton className="h-5 w-24" />
+                  <Skeleton className="h-5 w-20" />
+                  <Skeleton className="h-5 w-28" />
+                </div>
+              ))}
+            </div>
+          ) : error ? (
+            <div className="px-(--card-spacing) py-8 text-center text-sm text-destructive">
+              {error}
+            </div>
+          ) : recentPatients.length === 0 ? (
+            <div className="px-(--card-spacing) py-12 text-center text-sm text-muted-foreground">
+              No patient registrations recorded today.
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Patient Name</TableHead>
+                  <TableHead>Hospital #</TableHead>
+                  <TableHead>Gender / Category</TableHead>
+                  <TableHead className="hidden md:table-cell">Village / District</TableHead>
+                  <TableHead>Status</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {recentPatients.map((patient) => {
                   const hasIncompleteReg = !patient.registration_completed_at;
                   return (
-                    <tr
-                      key={patient.id}
-                      className="hover:bg-[#fcf9f8]/40 hover:border-l-4 hover:border-brand-green/80 transition-all divide-x divide-gray-100"
-                    >
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
+                    <TableRow key={patient.id}>
+                      <TableCell className="font-medium">
                         {patient.first_name} {patient.last_name}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-xs text-gray-500">
+                      </TableCell>
+                      <TableCell className="font-mono text-xs text-muted-foreground">
                         {patient.hospital_number}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                        {patient.gender} · {patient.patient_category}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      </TableCell>
+                      <TableCell>
+                        {patient.gender} &middot; {patient.patient_category}
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell text-muted-foreground">
                         {patient.village || "N/A"}, {patient.district || "N/A"}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center justify-between gap-4">
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-3">
                           {hasIncompleteReg ? (
-                            <StatusBadge label="Emergency Draft" variant="warning" />
+                            <Badge variant="destructive">Draft</Badge>
                           ) : (
-                            <StatusBadge label="Registered" variant="success" />
+                            <Badge variant="secondary">Registered</Badge>
                           )}
-
-                          <div className="flex gap-3">
+                          <div className="flex gap-2">
                             {hasIncompleteReg ? (
-                              <Link
-                                href={`/patients/register?complete=${patient.id}`}
-                                className="text-xs font-bold text-[#0ea5e9] hover:text-[#0288c4] uppercase tracking-wider"
+                              <Button
+                                size="xs"
+                                variant="link"
+                                render={<Link href={`/patients/register?complete=${patient.id}`} />}
                               >
                                 Complete
-                              </Link>
+                              </Button>
                             ) : (
                               <>
-                                <Link
-                                  href={`/patients/${patient.id}/triage`}
-                                  className="text-xs font-bold text-clinical-primary hover:text-clinical-primary-hover uppercase tracking-wider"
+                                <Button
+                                  size="xs"
+                                  variant="link"
+                                  render={<Link href={`/patients/${patient.id}/triage`} />}
                                 >
                                   Triage
-                                </Link>
-                                <span className="text-gray-300">|</span>
-                                <Link
-                                  href={`/patients/${patient.id}/consultation`}
-                                  className="text-xs font-bold text-teal-600 hover:text-teal-800 uppercase tracking-wider"
+                                </Button>
+                                <Button
+                                  size="xs"
+                                  variant="link"
+                                  render={<Link href={`/patients/${patient.id}/consultation`} />}
                                 >
                                   Consult
-                                </Link>
+                                </Button>
                               </>
                             )}
                           </div>
                         </div>
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   );
                 })}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

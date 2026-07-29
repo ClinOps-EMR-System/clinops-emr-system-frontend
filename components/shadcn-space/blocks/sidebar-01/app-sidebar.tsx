@@ -69,7 +69,7 @@ export function AppSidebar() {
     : ALL_NAV_ITEMS;
 
   return (
-    <Sidebar className="px-0 h-full [&_[data-slot=sidebar-inner]]:h-full">
+    <Sidebar className="px-0 h-full **:data-[slot=sidebar-inner]:h-full">
       <div className="flex flex-col h-full">
         <SidebarHeader className="px-4 shrink-0">
           <SidebarMenu>
