@@ -307,12 +307,12 @@ export default function PatientProfilePage() {
                       <table className="min-w-full divide-y divide-gray-200 text-sm">
                         <thead className="bg-[#fcf9f8] sticky top-0 z-10">
                           <tr>
-                            <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase">Date / Time</th>
-                            <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase">Temp</th>
-                            <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase">BP</th>
-                            <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase">Pulse</th>
-                            <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase">SpO2</th>
-                            <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase">NEWS2</th>
+                            <th scope="col" className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase">Date / Time</th>
+                            <th scope="col" className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase">Temp</th>
+                            <th scope="col" className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase">BP</th>
+                            <th scope="col" className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase">Pulse</th>
+                            <th scope="col" className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase">SpO2</th>
+                            <th scope="col" className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase">NEWS2</th>
                           </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-100 font-mono text-xs">

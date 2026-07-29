@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "../../store/RoleContext";
@@ -28,6 +28,8 @@ export default function Topbar({ onMenuToggle, sidebarCollapsed }: TopbarProps) 
   const router = useRouter();
   const { user, logout, token } = useAuth();
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
+  const mobileSearchInputRef = useRef<HTMLInputElement>(null);
 
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
@@ -85,11 +87,19 @@ export default function Topbar({ onMenuToggle, sidebarCollapsed }: TopbarProps) 
       if (e.key === "Escape") {
         setSearchOpen(false);
         setQuery("");
+        setMobileSearchOpen(false);
       }
     }
     document.addEventListener("keydown", handleKey);
     return () => document.removeEventListener("keydown", handleKey);
   }, []);
+
+  // Auto-focus mobile search input when expanded
+  useEffect(() => {
+    if (mobileSearchOpen && mobileSearchInputRef.current) {
+      mobileSearchInputRef.current.focus();
+    }
+  }, [mobileSearchOpen]);
 
   const handleResultClick = (patient: PatientResult) => {
     setSearchOpen(false);
@@ -152,28 +162,155 @@ export default function Topbar({ onMenuToggle, sidebarCollapsed }: TopbarProps) 
         {sidebarCollapsed ? <Menu className="h-5 w-5" /> : <X className="h-5 w-5" />}
       </button>
 
-      {/* Breadcrumbs */}
-      <div className="flex items-center gap-1.5 text-[11px] font-bold text-gray-400 font-mono tracking-wide shrink-0 hidden sm:flex">
-        <Link href="/dashboard" className="hover:text-white transition-colors uppercase">
-          Home
-        </Link>
-        {breadcrumbs.map((crumb, idx) => (
-          <React.Fragment key={idx}>
-            <span className="text-gray-600 font-sans text-xs">/</span>
-            {idx === breadcrumbs.length - 1 ? (
-              <span className="text-brand-green font-bold uppercase">{crumb.label}</span>
-            ) : (
-              <Link href={crumb.href} className="hover:text-white transition-colors uppercase">
-                {crumb.label}
-              </Link>
-            )}
-          </React.Fragment>
-        ))}
-      </div>
+      {/* Breadcrumbs — last crumb visible on mobile, full trail on sm+ */}
+      <nav aria-label="Breadcrumb" className="flex items-center shrink-0">
+        <ol className="flex items-center gap-1.5 text-[11px] font-bold font-mono tracking-wide">
+          <li className="inline-flex items-center">
+            <Link href="/dashboard" className="text-gray-400 hover:text-white transition-colors uppercase inline-flex items-center min-h-0 min-w-0 h-auto py-0">
+              <span className="sm:hidden">⌂</span>
+              <span className="hidden sm:inline">Home</span>
+            </Link>
+          </li>
+          {breadcrumbs.map((crumb, idx) => {
+            const isLast = idx === breadcrumbs.length - 1;
+            // On mobile, hide intermediate crumbs (show only last)
+            if (!isLast && idx < breadcrumbs.length - 1) {
+              return (
+                <li key={idx} className="inline-flex items-center gap-1.5 hidden sm:inline-flex">
+                  <span className="text-gray-600 select-none inline-flex items-center" aria-hidden="true">/</span>
+                  <Link href={crumb.href} className="text-gray-400 hover:text-white transition-colors uppercase inline-flex items-center min-h-0 min-w-0 h-auto py-0">
+                    {crumb.label}
+                  </Link>
+                </li>
+              );
+            }
+            return (
+              <li key={idx} className="inline-flex items-center gap-1.5">
+                <span className="text-gray-600 select-none inline-flex items-center" aria-hidden="true">/</span>
+                {isLast ? (
+                  <span className="text-brand-green font-bold uppercase inline-flex items-center" aria-current="page">{crumb.label}</span>
+                ) : (
+                  <Link href={crumb.href} className="text-gray-400 hover:text-white transition-colors uppercase inline-flex items-center min-h-0 min-w-0 h-auto py-0">
+                    {crumb.label}
+                  </Link>
+                )}
+              </li>
+            );
+          })}
+        </ol>
+      </nav>
 
-      {/* Global Patient Search */}
+      {/* Global Patient Search — collapsible on mobile */}
       <div className="flex-1 flex justify-center">
-        <div ref={searchRef} className="relative w-full max-w-md">
+        {/* Mobile: search icon button, expands to full bar on tap */}
+        <div className="lg:hidden flex-1 flex justify-end" ref={searchRef}>
+          {mobileSearchOpen ? (
+            <div className="relative w-full flex items-center gap-2">
+              <div className="relative flex-1">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  {searchLoading ? (
+                    <svg className="h-4 w-4 text-brand-green animate-spin" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                    </svg>
+                  ) : (
+                    <Search className="h-4 w-4 text-gray-500" />
+                  )}
+                </div>
+                <input
+                  ref={mobileSearchInputRef}
+                  type="text"
+                  autoComplete="off"
+                  className="w-full pl-9 pr-9 py-2 rounded-md bg-gray-800 border border-gray-700 text-gray-200 placeholder-gray-500 text-sm focus:outline-none focus:border-brand-green focus:ring-1 focus:ring-brand-green transition"
+                  placeholder="Search name, hospital #..."
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  onFocus={() => results.length > 0 && setSearchOpen(true)}
+                />
+                {query && (
+                  <button
+                    type="button"
+                    onClick={() => { setQuery(""); setResults([]); setSearchOpen(false); }}
+                    className="absolute inset-y-0 right-3 flex items-center text-gray-500 hover:text-gray-200 transition-colors"
+                    aria-label="Clear search"
+                  >
+                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => { setMobileSearchOpen(false); setQuery(""); setResults([]); setSearchOpen(false); }}
+                className="p-2 text-gray-400 hover:text-white rounded-md hover:bg-gray-800/50 transition-colors shrink-0"
+                aria-label="Close search"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setMobileSearchOpen(true)}
+              className="p-2 text-gray-400 hover:text-white rounded-md hover:bg-gray-800/50 transition-colors"
+              aria-label="Open patient search"
+            >
+              <Search className="h-5 w-5" />
+            </button>
+          )}
+          {/* Search results dropdown for mobile */}
+          {searchOpen && mobileSearchOpen && (
+            <div className="absolute top-full left-0 right-0 mt-1.5 bg-white rounded-md shadow-2xl border border-gray-200 z-50 overflow-hidden mx-4">
+              {results.length === 0 && !searchLoading ? (
+                <div className="px-4 py-6 text-center text-sm text-gray-400 font-mono">
+                  No patients found for &ldquo;{debouncedQuery}&rdquo;
+                </div>
+              ) : (
+                <>
+                  <ul className="divide-y divide-gray-100 max-h-72 overflow-y-auto">
+                    {results.map((p) => (
+                      <li key={p.id}>
+                        <button
+                          type="button"
+                          onClick={() => handleResultClick(p)}
+                          className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors text-left"
+                        >
+                          <div className="h-8 w-8 rounded-full bg-teal-100 flex items-center justify-center text-teal-700 text-xs font-bold shrink-0 border border-teal-200">
+                            {p.first_name.charAt(0)}{p.last_name.charAt(0)}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-semibold text-gray-900 truncate">
+                              {p.first_name} {p.last_name}
+                            </p>
+                            <p className="text-xs text-gray-400 font-mono">
+                              {p.hospital_number} · {p.gender}
+                            </p>
+                          </div>
+                          {!p.registration_completed_at && (
+                            <span className="text-[10px] font-bold text-amber-600 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded shrink-0">
+                              DRAFT
+                            </span>
+                          )}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                  <button
+                    type="button"
+                    onClick={handleViewAll}
+                    className="w-full px-4 py-2.5 text-xs font-bold text-clinical-primary hover:bg-gray-50 border-t border-gray-100 text-center uppercase tracking-wide transition-colors"
+                  >
+                    View all results →
+                  </button>
+                </>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Desktop: full search bar */}
+        <div ref={searchRef} className="relative w-full max-w-md hidden lg:block">
           <div className="relative">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               {searchLoading ? (
@@ -267,11 +404,11 @@ export default function Topbar({ onMenuToggle, sidebarCollapsed }: TopbarProps) 
       {/* Right: Actions */}
       <div className="flex items-center gap-3 shrink-0">
         <button
-          className="text-gray-400 hover:text-white relative p-1.5 rounded-full hover:bg-gray-800/50 transition-colors"
+          className="text-gray-400 hover:text-white relative p-2 rounded-full hover:bg-gray-800/50 transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
           aria-label="Notifications"
         >
           <Bell className="h-5 w-5" />
-          <span className="absolute top-1.5 right-1.5 block h-2 w-2 rounded-full bg-brand-green ring-2 ring-brand-dark" />
+          <span className="absolute top-2 right-2 block h-2 w-2 rounded-full bg-brand-green ring-2 ring-brand-dark" />
         </button>
 
         <div className="relative">

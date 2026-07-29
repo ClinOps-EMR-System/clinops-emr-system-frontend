@@ -1,99 +1,144 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useAuth } from "../../../store/RoleContext";
 import { useFetch } from "../../../lib/useFetch";
-import { api } from "../../../lib/api";
 import LoadingState from "../../../components/ui/LoadingState";
 import EmptyState from "../../../components/ui/EmptyState";
+import { AlertTriangle } from "lucide-react";
 
-interface QueueEntry {
-  id: number;
+interface EmergencyPatient {
   patient_id: number;
-  encounter_id: number;
-  priority: string;
-  position: number;
-  patient: {
-    hospital_number: string;
-    full_name: string;
-  };
-  entered_queue_at: string;
+  hospital_number: string;
+  full_name: string;
   chief_complaint: string;
+  arrived_at: string;
+  wait_minutes: number;
+  severity_level: number;
 }
 
-interface QueueData {
-  entries: QueueEntry[];
-  meta: {
-    waiting_count: number;
-    by_priority: Record<string, number>;
-    oldest_wait_time: number;
+interface CheckedInAppointment {
+  id: number;
+  patient_id: number;
+  patient: {
+    id: number;
+    first_name: string;
+    last_name: string;
+    hospital_number: string;
   };
+  encounter_id?: number;
+  scheduled_for: string;
+  reason: string | null;
+}
+
+interface TriageEntry {
+  id: string;
+  patient_id: number;
+  hospital_number: string;
+  full_name: string;
+  chief_complaint: string;
+  wait_minutes: number;
+  priority: number;
+  source: "emergency" | "appointment";
 }
 
 interface DashboardData {
   encounters: {
-    pending_triage: number;
+    awaiting_triage: number;
     in_consultation: number;
     discharged_today: number;
   };
 }
 
-function getWaitMinutes(enteredAt: string): number {
-  return Math.round((Date.now() - new Date(enteredAt).getTime()) / 60000);
+interface ResuscitationPatient {
+  patient_id: number;
+  hospital_number: string;
+  full_name: string;
+  severity_level: number;
+  chief_complaint: string;
+  triaged_at: string;
+  wait_minutes: number;
 }
 
 function getWaitColor(minutes: number): string {
-  if (minutes >= 30) return "text-red-600 font-bold";
   if (minutes >= 15) return "text-amber-600 font-semibold";
   return "text-emerald-600";
 }
 
-function getPriorityStyle(priority: string): string {
-  const p = priority?.toLowerCase();
-  if (p === "high" || p === "urgent" || p === "1") return "bg-red-50 border-l-4 border-red-500";
-  if (p === "medium" || p === "2") return "bg-amber-50 border-l-4 border-amber-500";
-  return "bg-emerald-50/50 border-l-4 border-emerald-400";
+function getPriorityLabel(priority: number): string {
+  if (priority <= 1) return "CRITICAL";
+  if (priority === 2) return "URGENT";
+  if (priority === 3) return "HIGH";
+  if (priority === 4) return "MEDIUM";
+  return "LOW";
 }
 
-function getPriorityBadge(priority: string): string {
-  const p = priority?.toLowerCase();
-  if (p === "high" || p === "urgent" || p === "1") return "bg-red-100 text-red-700";
-  if (p === "medium" || p === "2") return "bg-amber-100 text-amber-700";
-  return "bg-emerald-100 text-emerald-700";
+function getPriorityStyle(priority: number): string {
+  if (priority <= 2) return "bg-red-50 border-l-4 border-red-500";
+  if (priority === 3) return "bg-amber-50 border-l-4 border-amber-500";
+  return "bg-emerald-50 border-l-4 border-emerald-400";
+}
+
+function getPriorityBadge(priority: number): string {
+  if (priority <= 2) return "bg-red-100 text-red-800 border border-red-200";
+  if (priority === 3) return "bg-amber-100 text-amber-800 border border-amber-200";
+  return "bg-emerald-100 text-emerald-800 border border-emerald-200";
 }
 
 export default function NurseStationPage() {
-  const router = useRouter();
-  const { token, user } = useAuth();
-  const { data: queueData, loading: queueLoading } = useFetch<QueueData>("/queue", { interval: 20000 });
+  const { user } = useAuth();
   const { data: dashboard } = useFetch<DashboardData>("/dashboard", { interval: 30000 });
-  const [startingId, setStartingId] = useState<number | null>(null);
+  const { data: resuscitationData } = useFetch<{ data: ResuscitationPatient[] }>("/emergency/resuscitation", { interval: 15000 });
+  const { data: emergencyRaw, loading: emergLoading } = useFetch<{ data: EmergencyPatient[] }>("/emergency/waiting", { interval: 20000 });
+  const [now] = useState(() => Date.now());
+  const todayStr = useMemo(() => new Date().toLocaleDateString("en-CA"), []);
+  const { data: appointmentsRaw, loading: apptLoading } = useFetch<CheckedInAppointment[]>(
+    `/appointments?date=${todayStr}&status=Checked-in`, { interval: 20000 }
+  );
 
-  const entries = queueData?.entries || [];
-  const stats = queueData?.meta || null;
+  const loading = emergLoading || apptLoading;
+  const resuscitationPatients = resuscitationData?.data ?? [];
 
-  const handleStartTriage = async (entry: QueueEntry) => {
-    if (!token || startingId) return;
-    setStartingId(entry.id);
-    try {
-      await api.post(`/queue/${entry.id}/start`, {}, token);
-      router.push(`/patients/${entry.patient_id}/triage`);
-    } catch {
-      setStartingId(null);
+  const entries: TriageEntry[] = useMemo(() => {
+    const result: TriageEntry[] = [];
+
+    const emergencyPatients = emergencyRaw?.data ?? [];
+    for (const ep of emergencyPatients) {
+      const waitMinutes = ep.wait_minutes ?? Math.round((now - new Date(ep.arrived_at).getTime()) / 60000);
+      result.push({
+        id: `emergency-${ep.patient_id}`,
+        patient_id: ep.patient_id,
+        hospital_number: ep.hospital_number,
+        full_name: ep.full_name,
+        chief_complaint: ep.chief_complaint || "",
+        wait_minutes: waitMinutes,
+        priority: ep.severity_level || 3,
+        source: "emergency",
+      });
     }
-  };
 
-  const urgentEntries = entries.filter((e) => {
-    const p = e.priority?.toLowerCase();
-    return p === "high" || p === "urgent" || p === "1";
-  });
+    if (appointmentsRaw) {
+      for (const ap of appointmentsRaw) {
+        const waitMinutes = Math.round((now - new Date(ap.scheduled_for).getTime()) / 60000);
+        result.push({
+          id: `appt-${ap.id}`,
+          patient_id: ap.patient.id,
+          hospital_number: ap.patient.hospital_number,
+          full_name: `${ap.patient.first_name} ${ap.patient.last_name}`,
+          chief_complaint: ap.reason || "",
+          wait_minutes: Math.max(0, waitMinutes),
+          priority: 3,
+          source: "appointment",
+        });
+      }
+    }
 
-  const otherEntries = entries.filter((e) => {
-    const p = e.priority?.toLowerCase();
-    return p !== "high" && p !== "urgent" && p !== "1";
-  });
+    return result;
+  }, [emergencyRaw, appointmentsRaw, now]);
+
+  const urgentEntries = entries.filter((e) => e.priority <= 2);
+  const otherEntries = entries.filter((e) => e.priority > 2);
 
   const greeting = () => {
     const h = new Date().getHours();
@@ -115,42 +160,59 @@ export default function NurseStationPage() {
         </p>
       </section>
 
+      {/* Resuscitation Alert Banner */}
+      {resuscitationPatients.length > 0 && (
+        <section className="bg-red-600 text-white rounded-lg p-4 animate-pulse">
+          <div className="flex items-center gap-3 mb-2">
+            <AlertTriangle className="h-6 w-6" />
+            <h2 className="text-lg font-extrabold uppercase tracking-wider">
+              Resuscitation Alert — {resuscitationPatients.length} Patient{resuscitationPatients.length !== 1 ? "s" : ""}
+            </h2>
+          </div>
+          <div className="space-y-2">
+            {resuscitationPatients.map((p) => (
+              <div key={p.patient_id} className="flex items-center justify-between bg-red-700/50 rounded px-3 py-2">
+                <div className="flex items-center gap-3">
+                  <Link href={`/patients/${p.patient_id}`} className="text-sm font-bold hover:underline">
+                    {p.full_name}
+                  </Link>
+                  <span className="text-xs font-mono opacity-75">{p.hospital_number}</span>
+                  {p.chief_complaint && (
+                    <span className="text-xs opacity-75 hidden sm:inline">— {p.chief_complaint}</span>
+                  )}
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="text-xs font-mono font-bold">Lvl {p.severity_level}</span>
+                  <span className="text-xs font-mono">{p.wait_minutes}m</span>
+                  <Link
+                    href={`/patients/${p.patient_id}/emergency-triage`}
+                    className="text-xs font-bold bg-white text-red-700 px-3 py-1 rounded hover:bg-red-50 transition-colors"
+                  >
+                    Triage Now
+                  </Link>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
       {/* Stats Row */}
       <section className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          {
-            label: "Waiting",
-            value: stats?.waiting_count ?? entries.length,
-            color: "text-gray-900",
-            bg: "bg-white",
-          },
-          {
-            label: "Pending Triage",
-            value: dashboard?.encounters?.pending_triage ?? "—",
-            color: "text-amber-600",
-            bg: "bg-amber-50",
-          },
-          {
-            label: "In Consultation",
-            value: dashboard?.encounters?.in_consultation ?? "—",
-            color: "text-blue-600",
-            bg: "bg-blue-50",
-          },
-          {
-            label: "Discharged Today",
-            value: dashboard?.encounters?.discharged_today ?? "—",
-            color: "text-emerald-600",
-            bg: "bg-emerald-50",
-          },
+          { label: "Waiting for Triage", value: entries.length, color: "text-gray-900", bg: "bg-white", href: "/triage-queue" },
+          { label: "Awaiting Triage", value: dashboard?.encounters?.awaiting_triage ?? "—", color: "text-amber-600", bg: "bg-amber-50", href: "/triage-queue" },
+          { label: "In Consultation", value: dashboard?.encounters?.in_consultation ?? "—", color: "text-blue-600", bg: "bg-blue-50", href: "/queue" },
+          { label: "Discharged Today", value: dashboard?.encounters?.discharged_today ?? "—", color: "text-emerald-600", bg: "bg-emerald-50", href: "/admissions" },
         ].map((stat) => (
-          <div key={stat.label} className={`${stat.bg} rounded border border-[#becab7]/50 p-4`}>
+          <Link key={stat.label} href={stat.href} className={`${stat.bg} rounded border border-[#becab7]/50 p-4 hover:shadow-sm transition-all block`}>
             <p className="text-xs font-bold text-[#5f5e5e] uppercase tracking-wider">{stat.label}</p>
             <p className={`text-3xl font-extrabold font-mono mt-1 ${stat.color}`}>{stat.value}</p>
-          </div>
+          </Link>
         ))}
       </section>
 
-      {queueLoading ? (
+      {loading ? (
         <LoadingState message="Loading nurse station..." />
       ) : (
         <>
@@ -176,11 +238,14 @@ export default function NurseStationPage() {
                           href={`/patients/${entry.patient_id}`}
                           className="text-base font-bold text-gray-900 hover:text-red-600 hover:underline"
                         >
-                          {entry.patient.full_name}
+                          {entry.full_name}
                         </Link>
-                        <span className="text-xs font-mono text-gray-500">{entry.patient.hospital_number}</span>
+                        <span className="text-xs font-mono text-gray-500">{entry.hospital_number}</span>
                         <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${getPriorityBadge(entry.priority)}`}>
-                          {entry.priority?.toUpperCase()}
+                          {getPriorityLabel(entry.priority)}
+                        </span>
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-bold bg-red-100 text-red-700 border border-red-200`}>
+                          {entry.source === "emergency" ? "ER" : "Appt"}
                         </span>
                       </div>
                       {entry.chief_complaint && (
@@ -188,17 +253,16 @@ export default function NurseStationPage() {
                           <span className="font-semibold">CC:</span> {entry.chief_complaint}
                         </p>
                       )}
-                      <p className={`text-xs font-mono mt-1 ${getWaitColor(getWaitMinutes(entry.entered_queue_at))}`}>
-                        Waiting {getWaitMinutes(entry.entered_queue_at)} min
+                      <p className={`text-xs font-mono mt-1 ${getWaitColor(entry.wait_minutes)}`}>
+                        Waiting {entry.wait_minutes} min
                       </p>
                     </div>
-                    <button
-                      onClick={() => handleStartTriage(entry)}
-                      disabled={startingId === entry.id}
-                      className="px-4 py-2 bg-red-600 text-white text-sm font-bold rounded hover:bg-red-700 transition-colors disabled:opacity-50 whitespace-nowrap"
+                    <Link
+                      href={`/patients/${entry.patient_id}/triage`}
+                      className="px-4 py-2 bg-red-600 text-white text-sm font-bold rounded hover:bg-red-700 transition-colors whitespace-nowrap text-center"
                     >
-                      {startingId === entry.id ? "Starting..." : "Start Triage"}
-                    </button>
+                      Start Triage
+                    </Link>
                   </div>
                 ))}
               </div>
@@ -228,15 +292,16 @@ export default function NurseStationPage() {
               <p className="text-sm text-gray-500 italic">All waiting patients are urgent — see above</p>
             ) : (
               <div className="bg-white rounded border border-[#becab7]/50 overflow-hidden">
+                <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-[#fcf9f8] sticky top-0 z-10">
                     <tr>
-                      <th className="px-6 py-3 text-left text-xs font-bold text-[#5f5e5e] uppercase tracking-wider">Patient</th>
-                      <th className="px-6 py-3 text-left text-xs font-bold text-[#5f5e5e] uppercase tracking-wider">Hospital #</th>
-                      <th className="px-6 py-3 text-left text-xs font-bold text-[#5f5e5e] uppercase tracking-wider">Priority</th>
-                      <th className="px-6 py-3 text-left text-xs font-bold text-[#5f5e5e] uppercase tracking-wider">Chief Complaint</th>
-                      <th className="px-6 py-3 text-left text-xs font-bold text-[#5f5e5e] uppercase tracking-wider">Wait</th>
-                      <th className="px-6 py-3 text-left text-xs font-bold text-[#5f5e5e] uppercase tracking-wider">Action</th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-[#5f5e5e] uppercase tracking-wider">Patient</th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-[#5f5e5e] uppercase tracking-wider">Hospital #</th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-[#5f5e5e] uppercase tracking-wider">Priority</th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-[#5f5e5e] uppercase tracking-wider hidden lg:table-cell">Chief Complaint</th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-[#5f5e5e] uppercase tracking-wider">Wait</th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-[#5f5e5e] uppercase tracking-wider">Action</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
@@ -247,53 +312,35 @@ export default function NurseStationPage() {
                             href={`/patients/${entry.patient_id}`}
                             className="text-sm font-semibold text-gray-900 hover:text-clinical-primary hover:underline"
                           >
-                            {entry.patient.full_name}
+                            {entry.full_name}
                           </Link>
                         </td>
-                        <td className="px-6 py-4 text-xs font-mono text-gray-500">{entry.patient.hospital_number}</td>
+                        <td className="px-6 py-4 text-xs font-mono text-gray-500">{entry.hospital_number}</td>
                         <td className="px-6 py-4">
                           <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${getPriorityBadge(entry.priority)}`}>
-                            {entry.priority?.toUpperCase()}
+                            {getPriorityLabel(entry.priority)}
                           </span>
                         </td>
-                        <td className="px-6 py-4 text-sm text-gray-600 max-w-xs truncate">{entry.chief_complaint || "—"}</td>
-                        <td className={`px-6 py-4 text-xs font-mono ${getWaitColor(getWaitMinutes(entry.entered_queue_at))}`}>
-                          {getWaitMinutes(entry.entered_queue_at)}m
+                        <td className="px-6 py-4 text-sm text-gray-600 max-w-xs truncate hidden lg:table-cell">{entry.chief_complaint || "—"}</td>
+                        <td className={`px-6 py-4 text-xs font-mono ${getWaitColor(entry.wait_minutes)}`}>
+                          {entry.wait_minutes}m
                         </td>
                         <td className="px-6 py-4">
-                          <button
-                            onClick={() => handleStartTriage(entry)}
-                            disabled={startingId === entry.id}
-                            className="text-xs font-bold text-clinical-primary hover:text-clinical-primary-hover uppercase tracking-wider disabled:opacity-50"
+                          <Link
+                            href={`/patients/${entry.patient_id}/triage`}
+                            className="text-xs font-bold text-clinical-primary hover:text-clinical-primary-hover uppercase tracking-wider"
                           >
-                            {startingId === entry.id ? "Starting..." : "Start Triage"}
-                          </button>
+                            Start Triage
+                          </Link>
                         </td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
+                </div>
               </div>
             )}
           </section>
-
-          {/* Today's Summary */}
-          {stats && (
-            <section className="bg-[#fcf9f8] rounded border border-[#becab7]/50 p-4">
-              <h3 className="text-sm font-bold text-gray-700 mb-2">Queue Summary</h3>
-              <div className="flex flex-wrap gap-4 text-sm font-mono">
-                <span>Waiting: <strong>{stats.waiting_count}</strong></span>
-                {stats.by_priority && Object.entries(stats.by_priority).map(([key, val]) => (
-                  <span key={key} className="capitalize">
-                    {key}: <strong>{val}</strong>
-                  </span>
-                ))}
-                {stats.oldest_wait_time > 0 && (
-                  <span>Longest wait: <strong>{stats.oldest_wait_time}m</strong></span>
-                )}
-              </div>
-            </section>
-          )}
         </>
       )}
     </div>

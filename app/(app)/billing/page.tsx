@@ -221,11 +221,11 @@ export default function BillingPage() {
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-[#fcf9f8] sticky top-0 z-10">
                 <tr className="divide-x divide-gray-200/50">
-                  <th className="px-6 py-3 text-left text-xs font-bold text-[#5f5e5e] uppercase tracking-wider">Bill #</th>
+                  <th className="px-6 py-3 text-left text-xs font-bold text-[#5f5e5e] uppercase tracking-wider hidden sm:table-cell">Bill #</th>
                   <th className="px-6 py-3 text-left text-xs font-bold text-[#5f5e5e] uppercase tracking-wider">Patient</th>
                   <th className="px-6 py-3 text-left text-xs font-bold text-[#5f5e5e] uppercase tracking-wider">Total</th>
-                  <th className="px-6 py-3 text-left text-xs font-bold text-[#5f5e5e] uppercase tracking-wider">Paid</th>
-                  <th className="px-6 py-3 text-left text-xs font-bold text-[#5f5e5e] uppercase tracking-wider">Balance</th>
+                  <th className="px-6 py-3 text-left text-xs font-bold text-[#5f5e5e] uppercase tracking-wider hidden md:table-cell">Paid</th>
+                  <th className="px-6 py-3 text-left text-xs font-bold text-[#5f5e5e] uppercase tracking-wider hidden md:table-cell">Balance</th>
                   <th className="px-6 py-3 text-left text-xs font-bold text-[#5f5e5e] uppercase tracking-wider">Status</th>
                   <th className="px-6 py-3 text-left text-xs font-bold text-[#5f5e5e] uppercase tracking-wider">Actions</th>
                 </tr>
@@ -233,7 +233,7 @@ export default function BillingPage() {
               <tbody className="bg-white divide-y divide-gray-100">
                 {filteredBills.map((bill) => (
                   <tr key={bill.id} className="hover:bg-[#fcf9f8]/40 transition-colors">
-                    <td className="px-6 py-4 text-sm font-mono font-bold text-gray-900">{bill.bill_number}</td>
+                    <td className="px-6 py-4 text-sm font-mono font-bold text-gray-900 hidden sm:table-cell">{bill.bill_number}</td>
                     <td className="px-6 py-4">
                       <div className="text-sm font-semibold text-gray-900">
                         {bill.patient ? `${bill.patient.first_name} ${bill.patient.last_name}` : `Patient #${bill.patient_id}`}
@@ -241,8 +241,8 @@ export default function BillingPage() {
                       <div className="text-xs text-gray-400 font-mono">{bill.patient?.hospital_number}</div>
                     </td>
                     <td className="px-6 py-4 text-sm font-bold font-mono text-gray-900">MK {bill.total_amount?.toLocaleString()}</td>
-                    <td className="px-6 py-4 text-sm font-mono text-emerald-700">MK {bill.paid_amount?.toLocaleString()}</td>
-                    <td className="px-6 py-4 text-sm font-mono font-bold text-red-700">MK {bill.balance?.toLocaleString()}</td>
+                    <td className="px-6 py-4 text-sm font-mono text-emerald-700 hidden md:table-cell">MK {bill.paid_amount?.toLocaleString()}</td>
+                    <td className="px-6 py-4 text-sm font-mono font-bold text-red-700 hidden md:table-cell">MK {bill.balance?.toLocaleString()}</td>
                     <td className="px-6 py-4">
                       <PaymentStatusBadge status={bill.payment_status} />
                     </td>

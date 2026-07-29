@@ -59,10 +59,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!token && !isAuthPage) {
         router.push("/auth");
       } else if (token && isAuthPage) {
-        const roles = user?.roles || [];
-        const dept = user?.department?.name?.toLowerCase() || "";
-        const isReceptionist = roles.includes("Receptionist") || dept.includes("registration") || dept.includes("reception");
-        router.push(isReceptionist ? "/receptionist" : "/dashboard");
+        router.push(getLandingPage(user));
       }
     }
   }, [token, isLoading, pathname, router, user]);
@@ -82,6 +79,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       window.removeEventListener("clinops_unauthorized", handleUnauthorized);
     };
   }, [router]);
+
+  function getLandingPage(u: User | null): string {
+    const roles = (u?.roles || []).map((r) => r.toLowerCase());
+    const dept = u?.department?.name?.toLowerCase() || "";
+
+    if (roles.includes("receptionist") || dept.includes("registration") || dept.includes("reception")) return "/receptionist";
+    if (roles.includes("nurse") || dept.includes("nurse") || dept.includes("triage")) return "/nurse-station";
+    if (roles.includes("pharmacist") || dept.includes("pharm")) return "/pharmacy";
+    if (roles.includes("lab technician") || roles.includes("lab") || dept.includes("lab")) return "/lab";
+    if (roles.includes("billing officer") || roles.includes("billing") || dept.includes("bill") || dept.includes("finance")) return "/billing";
+    return "/dashboard";
+  }
 
   const login = async (newToken: string, newUser: User) => {
     localStorage.setItem("clinops_token", newToken);
@@ -106,11 +115,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(newUser);
     }
 
-    // Determine redirect: check roles OR department name
-    const roles = finalUser.roles || [];
-    const dept = finalUser.department?.name?.toLowerCase() || "";
-    const isReceptionist = roles.includes("Receptionist") || dept.includes("registration") || dept.includes("reception");
-    router.push(isReceptionist ? "/receptionist" : "/dashboard");
+    // Determine redirect based on role
+    router.push(getLandingPage(finalUser));
   };
 
   const logout = () => {
