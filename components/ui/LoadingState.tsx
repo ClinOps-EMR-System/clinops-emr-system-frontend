@@ -10,7 +10,7 @@ interface LoadingStateProps {
 export default function LoadingState({ message = "Loading...", fullPage = false }: LoadingStateProps) {
   if (fullPage) {
     return (
-      <div className="flex items-center justify-center h-64">
+      <div className="flex items-center justify-center h-64" role="status" aria-live="polite">
         <div className="text-center">
           <div className="h-8 w-8 animate-spin rounded-full border-4 border-brand-green border-t-transparent mx-auto" />
           <p className="mt-3 text-sm font-mono text-gray-500">{message}</p>
@@ -20,7 +20,7 @@ export default function LoadingState({ message = "Loading...", fullPage = false 
   }
 
   return (
-    <div className="flex items-center gap-3 p-4">
+    <div className="flex items-center gap-3 p-4" role="status" aria-live="polite">
       <div className="h-5 w-5 animate-spin rounded-full border-2 border-brand-green border-t-transparent" />
       <span className="text-sm font-mono text-gray-500">{message}</span>
     </div>

@@ -25,6 +25,14 @@
 :root {
   --background: #fcf9f8;
   --foreground: #1b1c1c;
+  --muted: #5f5e5e;
+  --outline: #becab7;
+  --surface: #ffffff;
+  --success: #00a651;
+  --success-hover: #048f47;
+  --clinical-bg: #fcf9f8;
+  --clinical-primary: #006e17;
+  --clinical-primary-hover: #00530f;
 }
 
 body {
@@ -54,19 +62,24 @@ textarea:focus-visible {
   outline-offset: 2px;
 }
 
-/* Minimum touch target size (44x44px) for all interactive elements */
-button, a, [role="button"] {
-  min-height: 44px;
-  min-width: 44px;
-}
+/* Minimum touch target size (44x44px) for interactive buttons/controls */
+@layer base {
+  button, a, [role="button"] {
+    min-height: 44px;
+    min-width: 44px;
+  }
 
-/* Allow inline text buttons to be smaller — they're not primary touch targets */
-button.text-xs, a.text-xs, [role="button"].text-xs,
-button.text-clinical-primary, a.text-clinical-primary {
-  min-height: auto;
-  min-width: auto;
-  padding-top: 0.5rem;
-  padding-bottom: 0.5rem;
+  /* Allow inline text links and small controls to collapse touch bounds */
+  button.text-xs, a.text-xs, [role="button"].text-xs,
+  button.text-clinical-primary, a.text-clinical-primary {
+    min-height: auto;
+    min-width: auto;
+  }
+
+  /* Sidebar nav links: keep vertical padding for touch targets but allow width to flex */
+  nav a {
+    min-width: auto;
+  }
 }
 
 /* Modern Web Guidance: Form field validation feedback after interaction */
@@ -100,4 +113,13 @@ button.text-clinical-primary, a.text-clinical-primary {
 
 ::-webkit-scrollbar-thumb:hover {
   background: #a3b29c;
+}
+
+/* Hide scrollbar but keep scroll functionality */
+.scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
 }

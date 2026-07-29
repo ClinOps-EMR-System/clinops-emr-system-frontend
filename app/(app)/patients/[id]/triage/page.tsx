@@ -150,6 +150,109 @@ export default function NurseTriageWorkbench() {
 
   // UI state: show additional measurements (GCS, BMI, glucose, pain)
   const [showAdditionalVitals, setShowAdditionalVitals] = useState(false);
+  const [undoingVitals, setUndoingVitals] = useState(false);
+
+  // Auto-save draft to localStorage every 30s
+  const DRAFT_KEY = `clinops_triage_draft_${patientId}`;
+  useEffect(() => {
+    const interval = setInterval(() => {
+      try {
+        const draft = {
+          temperature, bloodPressure, pulseRate, respiratoryRate, oxygenSaturation,
+          spo2Scale, supplementalOxygen, weight, height, painScore,
+          gcsEye, gcsVerbal, gcsMotor, bloodGlucose, consciousness, triageCategory,
+          allergen, allergyType, reaction, severity,
+          chiefComplaint, hpi,
+          isPregnant, lmp, gestationalWeeks,
+          hasFever, hasCough, hasContactHistory, hasTravelHistory, suspectedInfectionType,
+          showAdditionalVitals, activeTab,
+          savedAt: Date.now(),
+        };
+        localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+      } catch { /* quota exceeded */ }
+    }, 30000);
+
+    // Restore draft on mount
+    try {
+      const saved = localStorage.getItem(DRAFT_KEY);
+      if (saved) {
+        const d = JSON.parse(saved);
+        // Only restore if saved within the last 2 hours
+        if (d.savedAt && Date.now() - d.savedAt < 2 * 60 * 60 * 1000) {
+          /* eslint-disable react-hooks/set-state-in-effect */
+          setTemperature(d.temperature || "");
+          setBloodPressure(d.bloodPressure || "");
+          setPulseRate(d.pulseRate || "");
+          setRespiratoryRate(d.respiratoryRate || "");
+          setOxygenSaturation(d.oxygenSaturation || "");
+          if (d.spo2Scale) setSpo2Scale(d.spo2Scale);
+          setSupplementalOxygen(d.supplementalOxygen || false);
+          setWeight(d.weight || "");
+          setHeight(d.height || "");
+          setPainScore(d.painScore || "");
+          setGcsEye(d.gcsEye || "");
+          setGcsVerbal(d.gcsVerbal || "");
+          setGcsMotor(d.gcsMotor || "");
+          setBloodGlucose(d.bloodGlucose || "");
+          if (d.consciousness) setConsciousness(d.consciousness);
+          if (d.triageCategory) setTriageCategory(d.triageCategory);
+          setAllergen(d.allergen || "");
+          if (d.allergyType) setAllergyType(d.allergyType);
+          setReaction(d.reaction || "");
+          if (d.severity) setSeverity(d.severity);
+          setChiefComplaint(d.chiefComplaint || "");
+          setHpi(d.hpi || "");
+          setIsPregnant(d.isPregnant || false);
+          setLmp(d.lmp || "");
+          setGestationalWeeks(d.gestationalWeeks || "");
+          setHasFever(d.hasFever || false);
+          setHasCough(d.hasCough || false);
+          setHasContactHistory(d.hasContactHistory || false);
+          setHasTravelHistory(d.hasTravelHistory || false);
+          setSuspectedInfectionType(d.suspectedInfectionType || "");
+          setShowAdditionalVitals(d.showAdditionalVitals || false);
+          if (d.activeTab) setActiveTab(d.activeTab);
+        }
+      }
+    } catch { /* ignore */ }
+
+    return () => {
+      clearInterval(interval);
+      // Clear draft on unmount (user navigated away)
+      try { localStorage.removeItem(DRAFT_KEY); } catch { /* ignore */ }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [patientId, DRAFT_KEY]);
+
+  // Keyboard shortcuts for tab navigation
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Tab switching via number keys (only when not focused on an input)
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+
+      const tabMap: Record<string, "complaint" | "vitals" | "allergies" | "pregnancy" | "infection" | "trends"> = {
+        "1": "complaint",
+        "2": "vitals",
+        "3": "allergies",
+        "4": "pregnancy",
+        "5": "infection",
+        "6": "trends",
+      };
+
+      const tab = tabMap[e.key];
+      if (tab) {
+        e.preventDefault();
+        setActiveTab(tab);
+        setError(null);
+        setSuccessMsg(null);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
 
   // Fetch core patient data
   async function fetchSummaryData() {
@@ -189,7 +292,6 @@ export default function NurseTriageWorkbench() {
 
   useEffect(() => {
     if (token && patientId) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       fetchSummaryData();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -403,6 +505,7 @@ export default function NurseTriageWorkbench() {
 
   // Complete Triage — send patient to consultation queue
   const [completing, setCompleting] = useState(false);
+  const [showCompletionSummary, setShowCompletionSummary] = useState(false);
 
   const handleCompleteTriage = async () => {
     if (!token || completing) return;
@@ -411,13 +514,27 @@ export default function NurseTriageWorkbench() {
     setSuccessMsg(null);
     try {
       await api.post(`/patients/${patientId}/triage/complete`, {}, token);
-      setSuccessMsg("Triage completed. Patient sent to consultation queue.");
-      setTimeout(() => {
-        router.push("/nurse-station");
-      }, 1500);
+      setShowCompletionSummary(true);
     } catch (err: unknown) {
       setError(friendlyError(err, "complete triage"));
       setCompleting(false);
+    }
+  };
+
+  // Undo last vital signs
+  const handleUndoLastVitals = async () => {
+    if (!token || undoingVitals) return;
+    setUndoingVitals(true);
+    setError(null);
+    setSuccessMsg(null);
+    try {
+      await api.delete(`/patients/${patientId}/triage/vital-signs/last`, token);
+      setSuccessMsg("Last vital signs entry removed. You can re-enter them.");
+      fetchSummaryData();
+    } catch (err: unknown) {
+      setError(friendlyError(err, "undo vitals"));
+    } finally {
+      setUndoingVitals(false);
     }
   };
 
@@ -467,77 +584,107 @@ export default function NurseTriageWorkbench() {
       />
 
       {/* Triage Workspace Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        {/* Left Hand Tab Navigation */}
-        <div className="lg:col-span-1 flex flex-col gap-1 bg-white rounded border border-[#becab7]/50 p-3 h-fit">
-          <button
-            onClick={() => { setActiveTab("complaint"); setError(null); setSuccessMsg(null); }}
-            className={`w-full text-left px-4 py-2.5 text-sm rounded font-bold transition-all relative ${
-              activeTab === "complaint"
-                ? "bg-clinical-primary text-white border-l-4 border-brand-green"
-                : "text-gray-600 hover:bg-gray-50"
-            }`}
-          >
-            {hasComplaint ? "✓ " : ""}Chief Complaint
-            <span className="inline-block ml-1 text-[9px] font-mono text-amber-600 font-normal normal-case">(mandatory)</span>
-          </button>
-          <button
-            onClick={() => { setActiveTab("vitals"); setError(null); setSuccessMsg(null); }}
-            className={`w-full text-left px-4 py-2.5 text-sm rounded font-bold transition-all relative ${
-              activeTab === "vitals"
-                ? "bg-clinical-primary text-white border-l-4 border-brand-green"
-                : "text-gray-600 hover:bg-gray-50"
-            }`}
-          >
-            {hasVitals ? "✓ " : ""}Record Vitals & NEWS2
-            <span className="inline-block ml-1 text-[9px] font-mono text-amber-600 font-normal normal-case">(mandatory)</span>
-          </button>
-          <button
-            onClick={() => { setActiveTab("allergies"); setError(null); setSuccessMsg(null); }}
-            className={`w-full text-left px-4 py-2.5 text-sm rounded font-bold transition-all relative ${
-              activeTab === "allergies"
-                ? "bg-clinical-primary text-white border-l-4 border-brand-green"
-                : "text-gray-600 hover:bg-gray-50"
-            }`}
-          >
-            {hasAllergies ? "✓ " : ""}Allergy Check
-            <span className="inline-block ml-1 text-[9px] font-mono text-amber-600 font-normal normal-case">(mandatory)</span>
-          </button>
-          {patient.gender === "Female" && (
+      <div className="space-y-0 lg:space-y-0 lg:grid lg:grid-cols-4 lg:gap-6">
+        {/* Tab Navigation — horizontal sticky bar on mobile, vertical sidebar on desktop */}
+        <div className="lg:col-span-1 lg:flex lg:flex-col lg:gap-1 lg:bg-white lg:rounded lg:border lg:border-[#becab7]/50 lg:p-3 lg:h-fit">
+          {/* Mobile: horizontal sticky scroll */}
+          <div className="lg:hidden sticky top-0 z-20 bg-white border border-[#becab7]/50 rounded -mx-4 -mt-2 px-2 py-2 mb-4 shadow-sm">
+            <div className="flex gap-1 overflow-x-auto scrollbar-none">
+              {([
+                { key: "complaint", label: "Complaint", mandatory: true, done: hasComplaint },
+                { key: "vitals", label: "Vitals", mandatory: true, done: hasVitals },
+                { key: "allergies", label: "Allergies", mandatory: true, done: hasAllergies },
+                ...(patient.gender === "Female" ? [{ key: "pregnancy", label: "Pregnancy", mandatory: false, done: false }] : []),
+                { key: "infection", label: "Infection", mandatory: false, done: false },
+                { key: "trends", label: "Trends", mandatory: false, done: false },
+              ] as const).map((tab) => (
+                <button
+                  key={tab.key}
+                  onClick={() => { setActiveTab(tab.key as typeof activeTab); setError(null); setSuccessMsg(null); }}
+                  className={`flex-shrink-0 px-3 py-2 text-xs font-bold rounded transition-all min-h-[40px] whitespace-nowrap ${
+                    activeTab === tab.key
+                      ? "bg-clinical-primary text-white"
+                      : "text-gray-600 hover:bg-gray-50 bg-gray-50"
+                  }`}
+                >
+                  {tab.done ? "✓ " : ""}{tab.label}
+                  {tab.mandatory && <span className="ml-1 text-[8px] font-mono text-amber-500 font-normal">*</span>}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Desktop: vertical sidebar */}
+          <div className="hidden lg:flex lg:flex-col lg:gap-1">
             <button
-              onClick={() => { setActiveTab("pregnancy"); setError(null); setSuccessMsg(null); }}
+              onClick={() => { setActiveTab("complaint"); setError(null); setSuccessMsg(null); }}
               className={`w-full text-left px-4 py-2.5 text-sm rounded font-bold transition-all relative ${
-                activeTab === "pregnancy"
+                activeTab === "complaint"
                   ? "bg-clinical-primary text-white border-l-4 border-brand-green"
                   : "text-gray-600 hover:bg-gray-50"
               }`}
             >
-              Pregnancy Assessment
-            <span className="inline-block ml-1 text-[9px] font-mono text-gray-400 font-normal normal-case">(optional)</span>
+              {hasComplaint ? "✓ " : ""}Chief Complaint
+              <span className="inline-block ml-1 text-[9px] font-mono text-amber-600 font-normal normal-case">(mandatory)</span>
             </button>
-          )}
-          <button
-            onClick={() => { setActiveTab("infection"); setError(null); setSuccessMsg(null); }}
-            className={`w-full text-left px-4 py-2.5 text-sm rounded font-bold transition-all relative ${
-              activeTab === "infection"
-                ? "bg-clinical-primary text-white border-l-4 border-brand-green"
-                : "text-gray-600 hover:bg-gray-50"
-            }`}
-          >
-            Infection Screening
-            <span className="inline-block ml-1 text-[9px] font-mono text-gray-400 font-normal normal-case">(optional)</span>
-          </button>
-          <button
-            onClick={() => { setActiveTab("trends"); setError(null); setSuccessMsg(null); }}
-            className={`w-full text-left px-4 py-2.5 text-sm rounded font-bold transition-all relative ${
-              activeTab === "trends"
-                ? "bg-clinical-primary text-white border-l-4 border-brand-green"
-                : "text-gray-600 hover:bg-gray-50"
-            }`}
-          >
-            Physiological Trends
-            <span className="inline-block ml-1 text-[9px] font-mono text-gray-400 font-normal normal-case">(optional)</span>
-          </button>
+            <button
+              onClick={() => { setActiveTab("vitals"); setError(null); setSuccessMsg(null); }}
+              className={`w-full text-left px-4 py-2.5 text-sm rounded font-bold transition-all relative ${
+                activeTab === "vitals"
+                  ? "bg-clinical-primary text-white border-l-4 border-brand-green"
+                  : "text-gray-600 hover:bg-gray-50"
+              }`}
+            >
+              {hasVitals ? "✓ " : ""}Record Vitals &amp; NEWS2
+              <span className="inline-block ml-1 text-[9px] font-mono text-amber-600 font-normal normal-case">(mandatory)</span>
+            </button>
+            <button
+              onClick={() => { setActiveTab("allergies"); setError(null); setSuccessMsg(null); }}
+              className={`w-full text-left px-4 py-2.5 text-sm rounded font-bold transition-all relative ${
+                activeTab === "allergies"
+                  ? "bg-clinical-primary text-white border-l-4 border-brand-green"
+                  : "text-gray-600 hover:bg-gray-50"
+              }`}
+            >
+              {hasAllergies ? "✓ " : ""}Allergy Check
+              <span className="inline-block ml-1 text-[9px] font-mono text-amber-600 font-normal normal-case">(mandatory)</span>
+            </button>
+            {patient.gender === "Female" && (
+              <button
+                onClick={() => { setActiveTab("pregnancy"); setError(null); setSuccessMsg(null); }}
+                className={`w-full text-left px-4 py-2.5 text-sm rounded font-bold transition-all relative ${
+                  activeTab === "pregnancy"
+                    ? "bg-clinical-primary text-white border-l-4 border-brand-green"
+                    : "text-gray-600 hover:bg-gray-50"
+                }`}
+              >
+                Pregnancy Assessment
+              <span className="inline-block ml-1 text-[9px] font-mono text-gray-400 font-normal normal-case">(optional)</span>
+              </button>
+            )}
+            <button
+              onClick={() => { setActiveTab("infection"); setError(null); setSuccessMsg(null); }}
+              className={`w-full text-left px-4 py-2.5 text-sm rounded font-bold transition-all relative ${
+                activeTab === "infection"
+                  ? "bg-clinical-primary text-white border-l-4 border-brand-green"
+                  : "text-gray-600 hover:bg-gray-50"
+              }`}
+            >
+              Infection Screening
+              <span className="inline-block ml-1 text-[9px] font-mono text-gray-400 font-normal normal-case">(optional)</span>
+            </button>
+            <button
+              onClick={() => { setActiveTab("trends"); setError(null); setSuccessMsg(null); }}
+              className={`w-full text-left px-4 py-2.5 text-sm rounded font-bold transition-all relative ${
+                activeTab === "trends"
+                  ? "bg-clinical-primary text-white border-l-4 border-brand-green"
+                  : "text-gray-600 hover:bg-gray-50"
+              }`}
+            >
+              Physiological Trends
+              <span className="inline-block ml-1 text-[9px] font-mono text-gray-400 font-normal normal-case">(optional)</span>
+            </button>
+          </div>
         </div>
 
         {/* Right Hand Active Tab Form Content */}
@@ -860,7 +1007,19 @@ export default function NurseTriageWorkbench() {
                 </div>
                   )}
 
-                <div className="border-t border-gray-100 pt-6 flex justify-end">
+                <div className="border-t border-gray-100 pt-6 flex items-center justify-between">
+                  <div>
+                    {hasVitals && (
+                      <button
+                        type="button"
+                        onClick={handleUndoLastVitals}
+                        disabled={undoingVitals}
+                        className="text-xs font-bold text-red-600 hover:text-red-800 uppercase tracking-wider transition-colors cursor-pointer disabled:opacity-50"
+                      >
+                        {undoingVitals ? "Removing..." : "Undo Last Vitals Entry"}
+                      </button>
+                    )}
+                  </div>
                   <button
                     type="submit"
                     disabled={submitLoading}
@@ -1370,6 +1529,36 @@ export default function NurseTriageWorkbench() {
           }
         </button>
       </div>
+
+      {/* Completion Summary Modal */}
+      {showCompletionSummary && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" role="dialog" aria-modal="true">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-6 text-center space-y-4">
+            <div className="h-16 w-16 rounded-full bg-emerald-100 flex items-center justify-center mx-auto">
+              <svg className="h-8 w-8 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <h2 className="text-xl font-bold text-gray-900">Triage Complete</h2>
+            <div className="text-sm text-gray-600 space-y-1">
+              <p><span className="font-semibold text-gray-900">{patient?.first_name} {patient?.last_name}</span> has been sent to the consultation queue.</p>
+              {news2.score > 0 && (
+                <p className="font-mono text-xs">NEWS2 Score: <span className={`font-bold ${
+                  news2.score >= 7 ? "text-red-600" : news2.score >= 5 ? "text-amber-600" : "text-emerald-600"
+                }`}>{news2.score}</span> · {news2.riskLevel} Risk</p>
+              )}
+            </div>
+            <div className="flex gap-3 justify-center pt-2">
+              <button
+                onClick={() => { router.push("/nurse-station"); }}
+                className="px-6 py-2 bg-clinical-primary hover:bg-clinical-primary-hover text-white font-bold text-sm rounded shadow-sm transition-all cursor-pointer"
+              >
+                Back to Nurse Station
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

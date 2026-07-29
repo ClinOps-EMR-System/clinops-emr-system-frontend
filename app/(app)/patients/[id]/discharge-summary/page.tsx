@@ -133,7 +133,7 @@ export default function DischargeSummaryPage() {
         token
       );
       setSuccessMsg("Patient discharged successfully");
-      setTimeout(() => router.push("/patients"), 2000);
+      setTimeout(() => router.push(`/patients/${patientId}`), 2000);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to discharge patient");
     } finally {

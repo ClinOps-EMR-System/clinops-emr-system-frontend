@@ -55,16 +55,14 @@ export function FormActions({ onCancel, onSubmit, submitLabel, loading, loadingL
       >
         Cancel
       </button>
-      {onSubmit && (
-        <button
-          type="submit"
-          disabled={loading}
-          onClick={onSubmit}
-          className="px-6 py-2 bg-clinical-primary hover:bg-clinical-primary-hover text-white rounded font-bold text-sm shadow-sm transition-all focus:outline-none disabled:opacity-70 disabled:cursor-not-allowed"
-        >
-          {loading ? (loadingLabel || "Saving...") : submitLabel}
-        </button>
-      )}
+      <button
+        type={onSubmit ? "button" : "submit"}
+        disabled={loading}
+        onClick={onSubmit}
+        className="px-6 py-2 bg-clinical-primary hover:bg-clinical-primary-hover text-white rounded font-bold text-sm shadow-sm transition-all focus:outline-none disabled:opacity-70 disabled:cursor-not-allowed"
+      >
+        {loading ? (loadingLabel || "Saving...") : submitLabel}
+      </button>
     </div>
   );
 }

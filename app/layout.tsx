@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { AuthProvider } from "../store/RoleContext";
 import OfflineIndicator from "../components/ui/OfflineIndicator";
+import KeyboardShortcutsOverlay from "../components/ui/KeyboardShortcutsOverlay";
 
 const fontClassName = "font-sans";
 
@@ -27,6 +28,7 @@ export default function RootLayout({
       >
         <AuthProvider>
           <OfflineIndicator />
+          <KeyboardShortcutsOverlay />
           {children}
         </AuthProvider>
       </body>

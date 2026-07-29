@@ -47,7 +47,7 @@ export default function AdmissionsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [tab, setTab] = useState<"active" | "discharged" | "wards">("active");
   const [admitModalOpen, setAdmitModalOpen] = useState(false);
-  const [form, setForm] = useState({ patient_id: "", ward_id: "", bed_id: "", admission_diagnosis: "", acuity_level: "standard", isolation_required: false });
+  const [form, setForm] = useState({ patient_id: "", encounter_id: "", ward_id: "", bed_id: "", admission_diagnosis: "", acuity_level: "Medium", isolation_required: false });
   const [submitting, setSubmitting] = useState(false);
 
   async function fetchData() {
@@ -58,8 +58,14 @@ export default function AdmissionsPage() {
         api.get("/admissions", token),
         api.get("/wards", token),
       ]);
-      if (admRes && admRes.data) setAdmissions(admRes.data);
-      if (wardsRes && wardsRes.data) setWards(wardsRes.data);
+      if (admRes && admRes.data) {
+        const items = admRes.data.data || admRes.data;
+        setAdmissions(Array.isArray(items) ? items : []);
+      }
+      if (wardsRes && wardsRes.data) {
+        const items = wardsRes.data.data || wardsRes.data;
+        setWards(Array.isArray(items) ? items : []);
+      }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to load admissions data");
     } finally {
@@ -84,14 +90,15 @@ export default function AdmissionsPage() {
     try {
       await api.post("/admissions", {
         patient_id: parseInt(form.patient_id),
-        ward_id: form.ward_id ? parseInt(form.ward_id) : null,
-        bed_id: form.bed_id ? parseInt(form.bed_id) : null,
+        encounter_id: parseInt(form.encounter_id),
+        ward_id: parseInt(form.ward_id),
+        bed_id: parseInt(form.bed_id),
         admission_diagnosis: form.admission_diagnosis || null,
         acuity_level: form.acuity_level,
         isolation_required: form.isolation_required,
       }, token);
       setAdmitModalOpen(false);
-      setForm({ patient_id: "", ward_id: "", bed_id: "", admission_diagnosis: "", acuity_level: "standard", isolation_required: false });
+      setForm({ patient_id: "", encounter_id: "", ward_id: "", bed_id: "", admission_diagnosis: "", acuity_level: "Medium", isolation_required: false });
       fetchData();
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to admit patient");
@@ -257,21 +264,27 @@ export default function AdmissionsPage() {
         </>
       }>
         <form onSubmit={handleAdmit} className="space-y-4">
-          <div>
-            <label className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">Patient ID *</label>
-            <input type="number" required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary" value={form.patient_id} onChange={(e) => setForm({ ...form, patient_id: e.target.value })} />
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">Patient ID *</label>
+              <input type="number" required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary" value={form.patient_id} onChange={(e) => setForm({ ...form, patient_id: e.target.value })} />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">Encounter ID *</label>
+              <input type="number" required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary" value={form.encounter_id} onChange={(e) => setForm({ ...form, encounter_id: e.target.value })} />
+            </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">Ward</label>
-              <select className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded bg-white text-sm focus:outline-none focus:border-clinical-primary" value={form.ward_id} onChange={(e) => setForm({ ...form, ward_id: e.target.value })}>
+              <label className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">Ward *</label>
+              <select required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded bg-white text-sm focus:outline-none focus:border-clinical-primary" value={form.ward_id} onChange={(e) => setForm({ ...form, ward_id: e.target.value })}>
                 <option value="">Select ward</option>
                 {wards.map((w) => <option key={w.id} value={w.id}>{w.name} ({w.code})</option>)}
               </select>
             </div>
             <div>
-              <label className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">Bed ID</label>
-              <input type="number" className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary" value={form.bed_id} onChange={(e) => setForm({ ...form, bed_id: e.target.value })} placeholder="Optional" />
+              <label className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">Bed ID *</label>
+              <input type="number" required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary" value={form.bed_id} onChange={(e) => setForm({ ...form, bed_id: e.target.value })} />
             </div>
           </div>
           <div>
@@ -282,9 +295,10 @@ export default function AdmissionsPage() {
             <div>
               <label className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">Acuity Level</label>
               <select className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded bg-white text-sm focus:outline-none focus:border-clinical-primary" value={form.acuity_level} onChange={(e) => setForm({ ...form, acuity_level: e.target.value })}>
-                <option value="standard">Standard</option>
-                <option value="high">High</option>
-                <option value="critical">Critical</option>
+                <option value="Low">Low</option>
+                <option value="Medium">Medium</option>
+                <option value="High">High</option>
+                <option value="Critical">Critical</option>
               </select>
             </div>
             <div className="flex items-end pb-1">

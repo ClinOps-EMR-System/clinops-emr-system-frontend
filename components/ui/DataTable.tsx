@@ -11,6 +11,7 @@ export interface Column<T> {
   header: string;
   sortable?: boolean;
   className?: string;
+  mobileHidden?: boolean;
   render: (row: T, index: number) => React.ReactNode;
 }
 
@@ -116,6 +117,7 @@ export default function DataTable<T>({
                   className={clsx(
                     "px-6 py-3.5 text-left text-xs font-bold text-[#5f5e5e] uppercase tracking-wider",
                     col.sortable && "cursor-pointer select-none hover:text-gray-900 transition-colors",
+                    col.mobileHidden && "hidden md:table-cell",
                     col.className
                   )}
                   onClick={col.sortable ? () => handleSort(col.key) : undefined}
@@ -152,7 +154,7 @@ export default function DataTable<T>({
                 )}
               >
                 {columns.map((col) => (
-                  <td key={col.key} className={clsx("px-6 py-4 whitespace-nowrap text-sm", col.className)}>
+                  <td key={col.key} className={clsx("px-6 py-4 whitespace-nowrap text-sm", col.mobileHidden && "hidden md:table-cell", col.className)}>
                     {col.render(row, index)}
                   </td>
                 ))}

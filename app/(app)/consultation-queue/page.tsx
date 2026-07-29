@@ -13,7 +13,7 @@ interface QueueEntry {
   id: number;
   patient_id: number;
   encounter_id: number;
-  priority: string;
+  priority: number; // backend sends integer 1–5
   position: number;
   patient: {
     hospital_number: string;
@@ -42,17 +42,23 @@ function getWaitColor(minutes: number): string {
   return "text-emerald-600";
 }
 
-function getPriorityBadge(priority: string): string {
-  const p = priority?.toLowerCase();
-  if (p === "high" || p === "urgent" || p === "1") return "bg-red-100 text-red-700";
-  if (p === "medium" || p === "2") return "bg-amber-100 text-amber-700";
+function getPriorityLabel(priority: number): string {
+  if (priority <= 1) return "CRITICAL";
+  if (priority === 2) return "URGENT";
+  if (priority === 3) return "HIGH";
+  if (priority === 4) return "MEDIUM";
+  return "LOW";
+}
+
+function getPriorityBadge(priority: number): string {
+  if (priority <= 2) return "bg-red-100 text-red-700";
+  if (priority === 3) return "bg-amber-100 text-amber-700";
   return "bg-emerald-100 text-emerald-700";
 }
 
-function getPriorityBorder(priority: string): string {
-  const p = priority?.toLowerCase();
-  if (p === "high" || p === "urgent" || p === "1") return "border-red-200 bg-red-50/30";
-  if (p === "medium" || p === "2") return "border-amber-200 bg-amber-50/30";
+function getPriorityBorder(priority: number): string {
+  if (priority <= 2) return "border-red-200 bg-red-50/30";
+  if (priority === 3) return "border-amber-200 bg-amber-50/30";
   return "border-gray-200 bg-white";
 }
 
@@ -61,12 +67,12 @@ type FilterType = "all" | "high" | "medium" | "low";
 export default function ConsultationQueuePage() {
   const router = useRouter();
   const { token } = useAuth();
-  const { data: queueData, loading } = useFetch<QueueData>("/queue", { interval: 20000 });
+  const { data: queueRaw, loading } = useFetch<QueueData>("/queue", { interval: 20000 });
   const [filter, setFilter] = useState<FilterType>("all");
   const [startingId, setStartingId] = useState<number | null>(null);
 
-  const entries = queueData?.entries || [];
-  const stats = queueData?.meta || null;
+  const entries = queueRaw?.entries || [];
+  const stats = queueRaw?.meta || null;
 
   const handleStartConsultation = async (entry: QueueEntry) => {
     if (!token || startingId) return;
@@ -81,23 +87,20 @@ export default function ConsultationQueuePage() {
 
   const getFilteredEntries = () => {
     const sorted = [...entries].sort((a, b) => {
-      const priorityOrder: Record<string, number> = { high: 0, urgent: 0, medium: 1, low: 2 };
-      const aVal = priorityOrder[a.priority?.toLowerCase()] ?? 2;
-      const bVal = priorityOrder[b.priority?.toLowerCase()] ?? 2;
-      if (aVal !== bVal) return aVal - bVal;
+      if (a.priority !== b.priority) return Number(a.priority) - Number(b.priority);
       return getWaitMinutes(b.entered_queue_at) - getWaitMinutes(a.entered_queue_at);
     });
 
     if (filter === "all") return sorted;
-    if (filter === "high") return sorted.filter((e) => ["high", "urgent"].includes(e.priority?.toLowerCase()));
-    if (filter === "medium") return sorted.filter((e) => e.priority?.toLowerCase() === "medium");
-    return sorted.filter((e) => e.priority?.toLowerCase() === "low");
+    if (filter === "high") return sorted.filter((e) => Number(e.priority) <= 2);
+    if (filter === "medium") return sorted.filter((e) => Number(e.priority) === 3);
+    return sorted.filter((e) => Number(e.priority) >= 4);
   };
 
   const filtered = getFilteredEntries();
-  const highCount = entries.filter((e) => ["high", "urgent"].includes(e.priority?.toLowerCase())).length;
-  const medCount = entries.filter((e) => e.priority?.toLowerCase() === "medium").length;
-  const lowCount = entries.filter((e) => e.priority?.toLowerCase() === "low").length;
+  const highCount = entries.filter((e) => Number(e.priority) <= 2).length;
+  const medCount = entries.filter((e) => Number(e.priority) === 3).length;
+  const lowCount = entries.filter((e) => Number(e.priority) >= 4).length;
 
   return (
     <div className="max-w-7xl mx-auto space-y-6 font-sans">
@@ -173,7 +176,7 @@ export default function ConsultationQueuePage() {
                   </Link>
                   <span className="text-xs font-mono text-gray-500">{entry.patient.hospital_number}</span>
                   <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${getPriorityBadge(entry.priority)}`}>
-                    {entry.priority?.toUpperCase()}
+                    {getPriorityLabel(entry.priority)}
                   </span>
                   <span className={`text-xs font-mono ${getWaitColor(getWaitMinutes(entry.entered_queue_at))}`}>
                     {getWaitMinutes(entry.entered_queue_at)}m wait

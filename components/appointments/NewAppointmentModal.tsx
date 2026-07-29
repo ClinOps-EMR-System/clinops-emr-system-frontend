@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Modal from "@/components/ui/Modal";
 import { useAuth } from "@/store/RoleContext";
 import { api } from "@/lib/api";
@@ -18,17 +18,39 @@ interface Patient {
   hospital_number: string;
 }
 
+interface Provider {
+  id: number;
+  name: string;
+  email: string;
+  department?: { id: number; name: string };
+}
+
+interface Department {
+  id: number;
+  name: string;
+  code: string | null;
+}
+
 export function NewAppointmentModal({ open, onClose, onCreated }: NewAppointmentModalProps) {
   const { token } = useAuth();
   const [patientQuery, setPatientQuery] = useState("");
   const [patientResults, setPatientResults] = useState<Patient[]>([]);
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
-  const [formData, setFormData] = useState({
-    appointment_type: "Consultation",
-    scheduled_date: new Date().toISOString().split("T")[0],
-    scheduled_time: "09:00",
-    reason: "",
-    notes: "",
+  const [providerQuery, setProviderQuery] = useState("");
+  const [providerResults, setProviderResults] = useState<Provider[]>([]);
+  const [selectedProvider, setSelectedProvider] = useState<Provider | null>(null);
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [formData, setFormData] = useState(() => {
+    const now = new Date();
+    const defaultTime = new Date(now.getTime() + 60 * 60 * 1000);
+    return {
+      appointment_type: "Consultation",
+      scheduled_date: now.toISOString().split("T")[0],
+      scheduled_time: `${String(defaultTime.getHours()).padStart(2, "0")}:${String(defaultTime.getMinutes()).padStart(2, "0")}`,
+      reason: "",
+      notes: "",
+      department_id: "",
+    };
   });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -47,6 +69,34 @@ export function NewAppointmentModal({ open, onClose, onCreated }: NewAppointment
     }
   }
 
+  async function searchProviders(query: string) {
+    setProviderQuery(query);
+    if (query.length < 2) {
+      setProviderResults([]);
+      return;
+    }
+    try {
+      const res = await api.get(`/users?search=${encodeURIComponent(query)}&is_active=true`, token);
+      const data = res?.data ?? [];
+      setProviderResults(Array.isArray(data) ? data : data.data || []);
+    } catch {
+      setProviderResults([]);
+    }
+  }
+
+  async function fetchDepartments() {
+    try {
+      const res = await api.get("/departments", token);
+      const data = res?.data ?? [];
+      setDepartments(Array.isArray(data) ? data : data.data || []);
+    } catch {
+      setDepartments([]);
+    }
+  }
+
+  // eslint-disable-next-line react-hooks/set-state-in-effect, react-hooks/exhaustive-deps
+  useEffect(() => { if (open) fetchDepartments(); }, [open]);
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!selectedPatient) {
@@ -58,6 +108,8 @@ export function NewAppointmentModal({ open, onClose, onCreated }: NewAppointment
     try {
       await api.post("/appointments", {
         patient_id: selectedPatient.id,
+        provider_id: selectedProvider?.id ?? undefined,
+        department_id: formData.department_id || undefined,
         appointment_type: formData.appointment_type,
         scheduled_for: `${formData.scheduled_date}T${formData.scheduled_time}:00`,
         reason: formData.reason,
@@ -67,7 +119,11 @@ export function NewAppointmentModal({ open, onClose, onCreated }: NewAppointment
       onClose();
       setPatientQuery("");
       setSelectedPatient(null);
-      setFormData({ appointment_type: "Consultation", scheduled_date: new Date().toISOString().split("T")[0], scheduled_time: "09:00", reason: "", notes: "" });
+      setProviderQuery("");
+      setSelectedProvider(null);
+      const now = new Date();
+      const defaultTime = new Date(now.getTime() + 60 * 60 * 1000);
+      setFormData({ appointment_type: "Consultation", scheduled_date: now.toISOString().split("T")[0], scheduled_time: `${String(defaultTime.getHours()).padStart(2, "0")}:${String(defaultTime.getMinutes()).padStart(2, "0")}`, reason: "", notes: "", department_id: "" });
     } catch (err: unknown) {
       const apiErr = err as { message?: string; errors?: Record<string, string[]> };
       if (apiErr.errors && Object.keys(apiErr.errors).length > 0) {
@@ -157,6 +213,64 @@ export function NewAppointmentModal({ open, onClose, onCreated }: NewAppointment
             <option value="Follow-up">Follow-up</option>
             <option value="Lab Review">Lab Review</option>
             <option value="Emergency">Emergency</option>
+          </select>
+        </div>
+
+        {/* Provider */}
+        <div>
+          <label className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">Provider</label>
+          {selectedProvider ? (
+            <div className="mt-1 flex items-center gap-2 p-2 bg-[#fcf9f8] border border-brand-green/30 rounded">
+              <span className="text-sm font-semibold text-gray-900">{selectedProvider.name}</span>
+              {selectedProvider.department && (
+                <span className="text-xs text-gray-400">{selectedProvider.department.name}</span>
+              )}
+              <button type="button" onClick={() => { setSelectedProvider(null); setProviderQuery(""); }} className="ml-auto text-xs text-red-600 hover:text-red-800">
+                Clear
+              </button>
+            </div>
+          ) : (
+            <>
+              <input
+                type="text"
+                value={providerQuery}
+                onChange={(e) => searchProviders(e.target.value)}
+                placeholder="Search by provider name..."
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary"
+              />
+              {providerResults.length > 0 && (
+                <div className="mt-1 border border-gray-200 rounded bg-white max-h-40 overflow-y-auto">
+                  {providerResults.map((p) => (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => { setSelectedProvider(p); setProviderResults([]); setProviderQuery(""); }}
+                      className="w-full text-left px-3 py-2 text-sm hover:bg-[#fcf9f8] flex items-center justify-between"
+                    >
+                      <span className="font-semibold">{p.name}</span>
+                      <span className="text-xs text-gray-400">{p.department?.name ?? ""}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+        </div>
+
+        {/* Department */}
+        <div>
+          <label className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">Department</label>
+          <select
+            value={formData.department_id}
+            onChange={(e) => setFormData({ ...formData, department_id: e.target.value })}
+            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded text-sm bg-white focus:outline-none focus:border-clinical-primary"
+          >
+            <option value="">Select department (optional)</option>
+            {departments.map((d) => (
+              <option key={d.id} value={d.id}>
+                {d.name}{d.code ? ` (${d.code})` : ""}
+              </option>
+            ))}
           </select>
         </div>
 
