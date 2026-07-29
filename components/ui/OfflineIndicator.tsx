@@ -3,10 +3,11 @@
 import { useEffect, useState } from "react";
 
 export default function OfflineIndicator() {
-  const [online, setOnline] = useState(() => typeof navigator !== "undefined" ? navigator.onLine : true);
+  const [online, setOnline] = useState(true);
   const [pendingSaves, setPendingSaves] = useState(0);
 
   useEffect(() => {
+    setOnline(navigator.onLine);
     const handleOnline = () => setOnline(true);
     const handleOffline = () => setOnline(false);
 
