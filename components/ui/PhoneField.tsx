@@ -43,7 +43,7 @@ export default function PhoneField({
         {required && <span className="text-clinical-error ml-0.5">*</span>}
       </label>
       <div className="flex">
-        <span className="inline-flex items-center px-3 border border-r-0 border-gray-300 rounded-l bg-gray-50 text-gray-500 text-sm font-mono select-none">
+        <span className="inline-flex items-center px-2.5 border border-r-0 border-gray-300 rounded-l bg-gray-50 text-gray-500 text-xs font-mono select-none tracking-tight">
           +265
         </span>
         <input
@@ -54,7 +54,7 @@ export default function PhoneField({
           aria-describedby={hasError ? `${fieldId}-error` : hint ? `${fieldId}-hint` : undefined}
           aria-invalid={hasError}
           className={clsx(
-            "flex-1 px-3 py-2 border rounded-r text-sm font-medium text-gray-900 font-mono",
+            "flex-1 px-2.5 py-2 border rounded-r text-sm font-medium text-gray-900 font-mono",
             "focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary",
             "transition-colors duration-150",
             hasError ? "border-clinical-error bg-red-50" : "border-gray-300",

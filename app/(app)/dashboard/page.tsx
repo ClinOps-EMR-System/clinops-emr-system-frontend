@@ -161,6 +161,7 @@ export default function Dashboard() {
         </div>
         <div className="flex gap-3">
           <Button
+            nativeButton={false}
             render={<Link href="/patients/register" />}
           >
             <Plus data-icon="inline-start" />
@@ -168,6 +169,7 @@ export default function Dashboard() {
           </Button>
           <Button
             variant="outline"
+            nativeButton={false}
             render={<Link href="/patients/register?emergency=true" />}
           >
             <Ambulance data-icon="inline-start" />
@@ -323,6 +325,7 @@ export default function Dashboard() {
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
               <Button
                 variant="outline"
+                nativeButton={false}
                 className="h-auto flex-col gap-1.5 p-4"
                 render={<Link href="/pharmacy" />}
               >
@@ -331,6 +334,7 @@ export default function Dashboard() {
               </Button>
               <Button
                 variant="outline"
+                nativeButton={false}
                 className="h-auto flex-col gap-1.5 p-4"
                 render={<Link href="/lab" />}
               >
@@ -341,6 +345,7 @@ export default function Dashboard() {
               </Button>
               <Button
                 variant="outline"
+                nativeButton={false}
                 className="h-auto flex-col gap-1.5 p-4"
                 render={<Link href="/billing" />}
               >
@@ -351,6 +356,7 @@ export default function Dashboard() {
               </Button>
               <Button
                 variant="outline"
+                nativeButton={false}
                 className="h-auto flex-col gap-1.5 p-4"
                 render={<Link href="/admin" />}
               >
@@ -431,6 +437,7 @@ export default function Dashboard() {
                               <Button
                                 size="xs"
                                 variant="link"
+                                nativeButton={false}
                                 render={<Link href={`/patients/register?complete=${patient.id}`} />}
                               >
                                 Complete
@@ -440,6 +447,7 @@ export default function Dashboard() {
                                 <Button
                                   size="xs"
                                   variant="link"
+                                  nativeButton={false}
                                   render={<Link href={`/patients/${patient.id}/triage`} />}
                                 >
                                   Triage
@@ -447,6 +455,7 @@ export default function Dashboard() {
                                 <Button
                                   size="xs"
                                   variant="link"
+                                  nativeButton={false}
                                   render={<Link href={`/patients/${patient.id}/consultation`} />}
                                 >
                                   Consult

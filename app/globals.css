@@ -14,14 +14,19 @@
 
   /* Clinical Precision Palette */
   --color-clinical-bg: #fcf9f8;
-  --color-clinical-primary: #006e17;
-  --color-clinical-primary-hover: #00530f;
+  --color-clinical-primary: #0d7c3f;
+  --color-clinical-primary-hover: #0a6332;
   --color-clinical-surface: #ffffff;
   --color-clinical-outline: #becab7;
   --color-clinical-text: #1b1c1c;
   --color-clinical-muted: #5f5e5e;
   --color-clinical-error: #ba1a1a;
 
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 :root {
