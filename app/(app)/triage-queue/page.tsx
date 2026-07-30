@@ -53,28 +53,32 @@ function getWaitColor(minutes: number): string {
 }
 
 function getPriorityLabel(priority: number): string {
-  if (priority <= 1) return "CRITICAL";
-  if (priority === 2) return "URGENT";
-  if (priority === 3) return "HIGH";
-  if (priority === 4) return "MEDIUM";
-  return "LOW";
+  if (priority === 1) return "L1 - RED (IMMEDIATE)";
+  if (priority === 2) return "L2 - ORANGE (VERY URGENT)";
+  if (priority === 3) return "L3 - YELLOW (URGENT)";
+  if (priority === 4) return "L4 - GREEN (STANDARD)";
+  return "L5 - BLUE (NON-URGENT)";
 }
 
 function getEwsBadgeStyle(priority: number): string {
-  if (priority <= 2) return "bg-red-100 text-red-800 border-red-200";
-  if (priority === 3) return "bg-amber-100 text-amber-800 border-amber-200";
-  return "bg-emerald-100 text-emerald-800 border-emerald-200";
+  if (priority === 1) return "bg-red-600 text-white border-red-700 font-bold animate-pulse";
+  if (priority === 2) return "bg-orange-500 text-white border-orange-600 font-bold";
+  if (priority === 3) return "bg-amber-400 text-amber-950 border-amber-500 font-semibold";
+  if (priority === 4) return "bg-emerald-500 text-white border-emerald-600";
+  return "bg-blue-500 text-white border-blue-600";
 }
 
 function getRowBorder(priority: number): string {
-  if (priority <= 2) return "border-l-4 border-l-red-500";
+  if (priority === 1) return "border-l-4 border-l-red-600 bg-red-50/20";
+  if (priority === 2) return "border-l-4 border-l-orange-500 bg-orange-50/20";
   if (priority === 3) return "border-l-4 border-l-amber-400";
-  return "border-l-4 border-l-emerald-400";
+  if (priority === 4) return "border-l-4 border-l-emerald-500";
+  return "border-l-4 border-l-blue-500";
 }
 
 function getSourceBadge(source: "emergency" | "appointment"): string {
   return source === "emergency"
-    ? "bg-red-100 text-red-700 border-red-200"
+    ? "bg-red-100 text-red-700 border-red-300 font-extrabold"
     : "bg-sky-100 text-sky-700 border-sky-200";
 }
 
@@ -84,7 +88,7 @@ export default function TriageQueuePage() {
 
   const today = useMemo(() => new Date().toLocaleDateString("en-CA"), []);
 
-  const { data: emergencyRaw, loading: emergLoading } = useFetch<{ data: EmergencyPatient[] }>(
+  const { data: emergencyRaw, loading: emergLoading } = useFetch<EmergencyPatient[]>(
     "/emergency/waiting", { interval: 20000 }
   );
   const { data: appointmentsRaw, loading: apptLoading } = useFetch<CheckedInAppointment[]>(
@@ -96,7 +100,7 @@ export default function TriageQueuePage() {
   const entries: TriageEntry[] = useMemo(() => {
     const result: TriageEntry[] = [];
 
-    const emergencyPatients = emergencyRaw?.data ?? [];
+    const emergencyPatients = emergencyRaw ?? [];
     for (const ep of emergencyPatients) {
       const waitMinutes = ep.wait_minutes ?? Math.round((now - new Date(ep.arrived_at).getTime()) / 60000);
       result.push({
@@ -107,7 +111,7 @@ export default function TriageQueuePage() {
         full_name: ep.full_name,
         chief_complaint: ep.chief_complaint || "",
         wait_minutes: waitMinutes,
-        priority: ep.severity_level || 3,
+        priority: ep.severity_level || 2, // Default ER walk-in to L2 (Orange/Urgent) unless specified
         source: "emergency",
       });
     }
@@ -123,7 +127,7 @@ export default function TriageQueuePage() {
           full_name: `${ap.patient.first_name} ${ap.patient.last_name}`,
           chief_complaint: ap.reason || "",
           wait_minutes: Math.max(0, waitMinutes),
-          priority: 3,
+          priority: 4, // Regular appointments default to L4 Green
           source: "appointment",
         });
       }
@@ -290,10 +294,18 @@ export default function TriageQueuePage() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <Link
-                        href={`/patients/${entry.patient_id}/triage`}
-                        className="text-xs font-bold text-clinical-primary hover:text-clinical-primary-hover uppercase tracking-wider"
+                        href={
+                          entry.source === "emergency"
+                            ? `/patients/${entry.patient_id}/emergency-triage`
+                            : `/patients/${entry.patient_id}/triage`
+                        }
+                        className={`text-xs font-bold uppercase tracking-wider ${
+                          entry.source === "emergency"
+                            ? "text-red-600 hover:text-red-800"
+                            : "text-clinical-primary hover:text-clinical-primary-hover"
+                        }`}
                       >
-                        Start Triage
+                        {entry.source === "emergency" ? "Rapid Triage" : "Start Triage"}
                       </Link>
                     </td>
                   </tr>

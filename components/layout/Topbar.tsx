@@ -132,6 +132,7 @@ export default function Topbar() {
       "ward-round": "Ward Round",
       "discharge-summary": "Discharge Summary",
       "triage-queue": "Triage Queue",
+      "emergency-queue": "Triage Queue",
       "chronic-care": "Chronic Care",
     };
     if (labelMap[label.toLowerCase()]) label = labelMap[label.toLowerCase()];
