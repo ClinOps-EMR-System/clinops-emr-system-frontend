@@ -33,7 +33,7 @@ interface UserRecord {
   username: string;
   email: string;
   is_active: boolean;
-  roles?: string[];
+  roles?: { id: number; name: string }[];
   department?: { id: number; name: string };
   created_at: string;
 }
@@ -242,7 +242,7 @@ export default function AdminPage() {
 
   const openAssignRole = (u: UserRecord) => {
     setSelectedUser(u);
-    setAssignRoleForm({ role: u.roles?.[0] ?? "" });
+    setAssignRoleForm({ role: u.roles?.[0]?.name ?? "" });
     setAssignRoleModal(true);
   };
 
@@ -285,9 +285,9 @@ export default function AdminPage() {
       {activeTab === "users" && (
         <>
           <div className="flex flex-col sm:flex-row justify-between gap-3">
-            <div className="relative flex-1">
+            <div className="relative flex-1 max-w-sm">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-              <Input placeholder="Search users by name or email..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-9" />
+              <Input placeholder="Search users..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-9 h-9 bg-background border-input/60 focus:border-primary focus:ring-1 focus:ring-primary/20 transition-colors" />
             </div>
             <Button onClick={() => setCreateUserModal(true)}>
               <Plus className="size-4" data-icon="inline-start" />
@@ -351,7 +351,7 @@ export default function AdminPage() {
                         <TableCell>
                           <div className="flex flex-wrap gap-1">
                             {u.roles && u.roles.length > 0 ? (
-                              u.roles.map((r) => <StatusBadge key={r} label={r} variant="info" />)
+                              u.roles.map((r) => <StatusBadge key={r.id} label={r.name} variant="info" />)
                             ) : (
                               <StatusBadge label="No Role" variant="neutral" />
                             )}
