@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { useFetch } from "../../../../lib/useFetch";
 import { api } from "../../../../lib/api";
 import { useAuth } from "../../../../store/RoleContext";
@@ -42,16 +42,6 @@ interface Drug {
   reorder_level: number;
 }
 
-interface PaginatedResponse {
-  data: Drug[];
-  meta: {
-    current_page: number;
-    last_page: number;
-    per_page: number;
-    total: number;
-  };
-}
-
 interface StockAlert {
   low_stock: Array<{ id: number }>;
   expiring_soon: Array<{ id: number }>;
@@ -74,6 +64,9 @@ export default function InventoryPage() {
   const [editingDrug, setEditingDrug] = useState<Drug | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [drugs, setDrugs] = useState<Drug[]>([]);
+  const [meta, setMeta] = useState<{ current_page: number; last_page: number; per_page: number; total: number } | null>(null);
+  const [loading, setLoading] = useState(true);
 
   const queryParams = useMemo(() => {
     const params = new URLSearchParams({ page: String(page), per_page: "20" });
@@ -82,11 +75,23 @@ export default function InventoryPage() {
     return params.toString();
   }, [page, search, controlledFilter]);
 
-  const { data: drugsRaw, loading, refetch } = useFetch<PaginatedResponse>(`/drugs?${queryParams}`, { interval: 30000 });
-  const { data: alerts } = useFetch<StockAlert>("/stock/alerts", { interval: 30000 });
+  const fetchDrugs = useCallback(async () => {
+    if (!token) return;
+    setLoading(true);
+    try {
+      const res = await api.get(`/drugs?${queryParams}`, token);
+      setDrugs(res.data ?? []);
+      setMeta(res.meta ?? null);
+    } catch {
+      setDrugs([]);
+      setMeta(null);
+    } finally {
+      setLoading(false);
+    }
+  }, [token, queryParams]);
 
-  const drugs = drugsRaw?.data ?? [];
-  const meta = drugsRaw?.meta;
+  useEffect(() => { fetchDrugs(); }, [fetchDrugs]);
+  const { data: alerts } = useFetch<StockAlert>("/stock/alerts", { interval: 30000 });
 
   const [form, setForm] = useState({
     name: "",
@@ -151,7 +156,7 @@ export default function InventoryPage() {
       }
       setAddModalOpen(false);
       resetForm();
-      refetch();
+      fetchDrugs();
     } catch (err: unknown) {
       const apiError = err as { message?: string; errors?: Record<string, string[]> };
       setError(apiError.message || Object.values(apiError.errors ?? {})[0]?.[0] || "Failed to save drug");

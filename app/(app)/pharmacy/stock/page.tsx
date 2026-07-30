@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { useFetch } from "../../../../lib/useFetch";
 import { api } from "../../../../lib/api";
 import { useAuth } from "../../../../store/RoleContext";
@@ -51,16 +51,6 @@ interface Drug {
   current_stock: number;
 }
 
-interface PaginatedResponse<T = StockBatch> {
-  data: T[];
-  meta: {
-    current_page: number;
-    last_page: number;
-    per_page: number;
-    total: number;
-  };
-}
-
 type ExpiryFilter = "all" | "active" | "expiring_soon" | "expired";
 
 const expiryOptions = [
@@ -81,6 +71,10 @@ export default function StockPage() {
   const [selectedBatch, setSelectedBatch] = useState<StockBatch | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [batches, setBatches] = useState<StockBatch[]>([]);
+  const [meta, setMeta] = useState<{ current_page: number; last_page: number; per_page: number; total: number } | null>(null);
+  const [drugs, setDrugs] = useState<Drug[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const queryParams = useMemo(() => {
     const params = new URLSearchParams({ page: String(page), per_page: "20" });
@@ -90,12 +84,33 @@ export default function StockPage() {
     return params.toString();
   }, [page, expiryFilter]);
 
-  const { data: batchesRaw, loading, refetch } = useFetch<PaginatedResponse<StockBatch>>(`/stock?${queryParams}`, { interval: 30000 });
-  const { data: drugsRaw } = useFetch<PaginatedResponse<Drug>>("/drugs?per_page=100", { interval: 60000 });
+  const fetchBatches = useCallback(async () => {
+    if (!token) return;
+    setLoading(true);
+    try {
+      const res = await api.get(`/stock?${queryParams}`, token);
+      setBatches(res.data ?? []);
+      setMeta(res.meta ?? null);
+    } catch {
+      setBatches([]);
+      setMeta(null);
+    } finally {
+      setLoading(false);
+    }
+  }, [token, queryParams]);
 
-  const batches = batchesRaw?.data ?? [];
-  const meta = batchesRaw?.meta;
-  const drugs = drugsRaw?.data ?? [];
+  const fetchDrugs = useCallback(async () => {
+    if (!token) return;
+    try {
+      const res = await api.get("/drugs?per_page=100", token);
+      setDrugs(res.data ?? []);
+    } catch {
+      setDrugs([]);
+    }
+  }, [token]);
+
+  useEffect(() => { fetchBatches(); }, [fetchBatches]);
+  useEffect(() => { fetchDrugs(); }, [fetchDrugs]);
 
   const [receiveForm, setReceiveForm] = useState({
     drug_id: "",
@@ -164,7 +179,7 @@ export default function StockPage() {
       }, token);
       setModalType(null);
       resetForms();
-      refetch();
+      fetchBatches();
     } catch (err: unknown) {
       const apiError = err as { message?: string; errors?: Record<string, string[]> };
       setError(apiError.message || Object.values(apiError.errors ?? {})[0]?.[0] || "Failed to receive stock");
@@ -189,7 +204,7 @@ export default function StockPage() {
       }, token);
       setModalType(null);
       resetForms();
-      refetch();
+      fetchBatches();
     } catch (err: unknown) {
       const apiError = err as { message?: string; errors?: Record<string, string[]> };
       setError(apiError.message || Object.values(apiError.errors ?? {})[0]?.[0] || "Failed to adjust stock");
@@ -214,7 +229,7 @@ export default function StockPage() {
       }, token);
       setModalType(null);
       resetForms();
-      refetch();
+      fetchBatches();
     } catch (err: unknown) {
       const apiError = err as { message?: string; errors?: Record<string, string[]> };
       setError(apiError.message || Object.values(apiError.errors ?? {})[0]?.[0] || "Failed to record waste");
