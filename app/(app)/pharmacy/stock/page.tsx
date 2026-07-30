@@ -74,6 +74,7 @@ export default function StockPage() {
   const [batches, setBatches] = useState<StockBatch[]>([]);
   const [meta, setMeta] = useState<{ current_page: number; last_page: number; per_page: number; total: number } | null>(null);
   const [drugs, setDrugs] = useState<Drug[]>([]);
+  const [adjustBatches, setAdjustBatches] = useState<StockBatch[]>([]);
   const [loading, setLoading] = useState(true);
 
   const queryParams = useMemo(() => {
@@ -106,6 +107,16 @@ export default function StockPage() {
       setDrugs(res.data ?? []);
     } catch {
       setDrugs([]);
+    }
+  }, [token]);
+
+  const fetchAdjustBatches = useCallback(async (drugId: string) => {
+    if (!token || !drugId) { setAdjustBatches([]); return; }
+    try {
+      const res = await api.get(`/stock/${drugId}/batches`, token);
+      setAdjustBatches(Array.isArray(res) ? res : res.data ?? []);
+    } catch {
+      setAdjustBatches([]);
     }
   }, [token]);
 
@@ -150,6 +161,7 @@ export default function StockPage() {
     if (batch) {
       setSelectedBatch(batch);
       setAdjustForm({ drug_id: String(batch.drug_id), stock_batch_id: String(batch.id), quantity: "", reason: "" });
+      fetchAdjustBatches(String(batch.drug_id));
     }
     setModalType("adjust");
   };
@@ -537,12 +549,24 @@ export default function StockPage() {
               label=""
               options={drugs.map((d) => ({ value: String(d.id), label: d.name }))}
               value={adjustForm.drug_id}
-              onChange={(e) => setAdjustForm({ ...adjustForm, drug_id: e.target.value })}
+              onChange={(e) => {
+                setAdjustForm({ ...adjustForm, drug_id: e.target.value, stock_batch_id: "" });
+                fetchAdjustBatches(e.target.value);
+              }}
             />
           </div>
           <div>
             <label className="block text-xs font-medium text-muted-foreground mb-1">Batch (optional)</label>
-            <Input value={adjustForm.stock_batch_id} onChange={(e) => setAdjustForm({ ...adjustForm, stock_batch_id: e.target.value })} placeholder="Leave empty for general adjustment" />
+            <SelectField
+              label=""
+              options={adjustBatches.map((b) => ({
+                value: String(b.id),
+                label: `${b.batch_number} — ${b.quantity_remaining} units (exp: ${new Date(b.expiry_date).toLocaleDateString()})`,
+              }))}
+              value={adjustForm.stock_batch_id}
+              onChange={(e) => setAdjustForm({ ...adjustForm, stock_batch_id: e.target.value })}
+              placeholder="Leave empty for general adjustment"
+            />
           </div>
           <div>
             <label className="block text-xs font-medium text-muted-foreground mb-1">Quantity * (positive to add, negative to subtract)</label>
