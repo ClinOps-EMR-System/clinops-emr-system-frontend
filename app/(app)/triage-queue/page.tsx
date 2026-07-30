@@ -95,12 +95,15 @@ export default function TriageQueuePage() {
     `/appointments?date=${today}&status=Checked-in`, { interval: 20000 }
   );
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const unwrap = (val: any): any[] => (Array.isArray(val) ? val : val?.data) ?? [];
+
   const loading = emergLoading || apptLoading;
 
   const entries: TriageEntry[] = useMemo(() => {
     const result: TriageEntry[] = [];
 
-    const emergencyPatients = emergencyRaw ?? [];
+    const emergencyPatients = unwrap(emergencyRaw);
     for (const ep of emergencyPatients) {
       const waitMinutes = ep.wait_minutes ?? Math.round((now - new Date(ep.arrived_at).getTime()) / 60000);
       result.push({
