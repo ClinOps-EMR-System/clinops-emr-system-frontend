@@ -89,8 +89,8 @@ function getPriorityBadge(priority: number): string {
 export default function NurseStationPage() {
   const { user } = useAuth();
   const { data: dashboard } = useFetch<DashboardData>("/dashboard", { interval: 30000 });
-  const { data: resuscitationData } = useFetch<{ data: ResuscitationPatient[] }>("/emergency/resuscitation", { interval: 15000 });
-  const { data: emergencyRaw, loading: emergLoading } = useFetch<{ data: EmergencyPatient[] }>("/emergency/waiting", { interval: 20000 });
+  const { data: resuscitationData } = useFetch<ResuscitationPatient[]>("/emergency/resuscitation", { interval: 15000 });
+  const { data: emergencyRaw, loading: emergLoading } = useFetch<EmergencyPatient[]>("/emergency/waiting", { interval: 20000 });
   const [now] = useState(() => Date.now());
   const todayStr = useMemo(() => new Date().toLocaleDateString("en-CA"), []);
   const { data: appointmentsRaw, loading: apptLoading } = useFetch<CheckedInAppointment[]>(
@@ -98,12 +98,12 @@ export default function NurseStationPage() {
   );
 
   const loading = emergLoading || apptLoading;
-  const resuscitationPatients = resuscitationData?.data ?? [];
+  const resuscitationPatients = resuscitationData ?? [];
 
   const entries: TriageEntry[] = useMemo(() => {
     const result: TriageEntry[] = [];
 
-    const emergencyPatients = emergencyRaw?.data ?? [];
+    const emergencyPatients = emergencyRaw ?? [];
     for (const ep of emergencyPatients) {
       const waitMinutes = ep.wait_minutes ?? Math.round((now - new Date(ep.arrived_at).getTime()) / 60000);
       result.push({

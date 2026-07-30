@@ -80,7 +80,7 @@ export function QueuePreview({ queue, emergencyWaiting }: { queue: QueuePatient[
                 {emergencyWaiting.length}
               </span>
             </div>
-            <Link href="/emergency-queue" className="text-xs font-bold text-clinical-primary hover:text-clinical-primary-hover uppercase tracking-wider">
+            <Link href="/triage-queue" className="text-xs font-bold text-clinical-primary hover:text-clinical-primary-hover uppercase tracking-wider">
               View All
             </Link>
           </div>
