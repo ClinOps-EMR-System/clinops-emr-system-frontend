@@ -157,7 +157,7 @@ export default function ClinicianSOAPConsultation() {
   const [certainty, setCertainty] = useState("confirmed");
 
   const [orders, setOrders] = useState<Order[]>([]);
-  const [orderForm, setOrderForm] = useState({ clinical_indication: "", priority: "Routine" });
+  const [orderForm, setOrderForm] = useState({ test_name: "", clinical_indication: "", priority: "routine" });
 
   const [prescriptions] = useState<Prescription[]>([]);
   const [drugQuery, setDrugQuery] = useState("");
@@ -385,11 +385,12 @@ export default function ClinicianSOAPConsultation() {
       await api.post(`/encounters/${summary.encounter.id}/orders`, {
         patient_id: parseInt(patientId),
         order_type: "lab",
+        test_name: orderForm.test_name || null,
         clinical_indication: orderForm.clinical_indication || null,
         priority: orderForm.priority,
       }, token);
       setSuccessMsg("Order placed.");
-      setOrderForm({ clinical_indication: "", priority: "Routine" });
+      setOrderForm({ test_name: "", clinical_indication: "", priority: "routine" });
       fetchConsultationData();
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to place order.");
@@ -847,11 +848,23 @@ export default function ClinicianSOAPConsultation() {
                       <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Place New Order</h4>
                       <div>
                         <label className="block text-xs font-semibold text-foreground uppercase tracking-wide mb-1.5">
-                          Clinical Indication <span className="text-destructive">*</span>
+                          Test Name <span className="text-destructive">*</span>
                         </label>
                         <input
                           type="text"
                           required
+                          className="block w-full rounded-lg border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                          placeholder="e.g. CBC, Basic Metabolic Panel"
+                          value={orderForm.test_name}
+                          onChange={(e) => setOrderForm({ ...orderForm, test_name: e.target.value })}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-foreground uppercase tracking-wide mb-1.5">
+                          Clinical Indication
+                        </label>
+                        <input
+                          type="text"
                           className="block w-full rounded-lg border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                           placeholder="Reason for test"
                           value={orderForm.clinical_indication}
@@ -865,13 +878,13 @@ export default function ClinicianSOAPConsultation() {
                           value={orderForm.priority}
                           onChange={(e) => setOrderForm({ ...orderForm, priority: e.target.value })}
                         >
-                          <option value="Routine">Routine</option>
-                          <option value="Urgent">Urgent</option>
-                          <option value="Stat">STAT</option>
+                          <option value="routine">Routine</option>
+                          <option value="urgent">Urgent</option>
+                          <option value="stat">STAT</option>
                         </select>
                       </div>
                       <div className="flex justify-end">
-                        <Button type="submit" disabled={submitLoading || !orderForm.clinical_indication.trim()}>
+                        <Button type="submit" disabled={submitLoading || !orderForm.test_name.trim()}>
                           {submitLoading && <Loader2 className="h-4 w-4 animate-spin" />}
                           Place Order
                         </Button>

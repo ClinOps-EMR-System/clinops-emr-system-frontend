@@ -41,6 +41,13 @@ interface Prescription {
   };
 }
 
+interface StockBatch {
+  id: number;
+  batch_number: string;
+  expiry_date: string;
+  quantity_remaining: number;
+}
+
 export default function PharmacyPage() {
   const { token } = useAuth();
   const [prescriptions, setPrescriptions] = useState<Prescription[]>([]);
@@ -51,6 +58,11 @@ export default function PharmacyPage() {
   const [dispenseModalOpen, setDispenseModalOpen] = useState(false);
   const [selectedPrescription, setSelectedPrescription] = useState<Prescription | null>(null);
   const [dispensing, setDispensing] = useState(false);
+
+  const [stockBatches, setStockBatches] = useState<StockBatch[]>([]);
+  const [selectedBatchId, setSelectedBatchId] = useState<number | null>(null);
+  const [dispenseQuantity, setDispenseQuantity] = useState<number>(1);
+  const [batchesLoading, setBatchesLoading] = useState(false);
 
   async function fetchPrescriptions() {
     try {
@@ -89,14 +101,48 @@ export default function PharmacyPage() {
   });
 
   const pendingCount = prescriptions.filter((rx) => rx.status?.toLowerCase() === "prescribed" || rx.status?.toLowerCase() === "active").length;
+  const verifiedCount = prescriptions.filter((rx) => rx.status?.toLowerCase() === "verified").length;
   const dispensedCount = prescriptions.filter((rx) => rx.status?.toLowerCase() === "dispensed").length;
   const controlledCount = prescriptions.filter((rx) => rx.drug?.is_controlled && rx.status?.toLowerCase() !== "dispensed").length;
 
+  const openDispenseModal = async (rx: Prescription) => {
+    setSelectedPrescription(rx);
+    setSelectedBatchId(null);
+    setDispenseQuantity(1);
+    setDispenseModalOpen(true);
+
+    if (rx.drug_id) {
+      setBatchesLoading(true);
+      try {
+        const res = await api.get(`/stock/${rx.drug_id}/batches`, token);
+        const batches = res?.data?.data ?? res?.data ?? [];
+        setStockBatches(Array.isArray(batches) ? batches : []);
+        if (batches.length > 0) {
+          setSelectedBatchId(batches[0].id);
+        }
+      } catch {
+        setStockBatches([]);
+      } finally {
+        setBatchesLoading(false);
+      }
+    }
+  };
+
   const handleDispense = async () => {
-    if (!selectedPrescription) return;
+    if (!selectedPrescription || !selectedBatchId) return;
     setDispensing(true);
     try {
-      await api.post(`/prescriptions/${selectedPrescription.id}/dispense`, {}, token);
+      if (selectedPrescription.status?.toLowerCase() === "prescribed") {
+        await api.post(`/prescriptions/${selectedPrescription.id}/verify`, {}, token);
+      }
+      await api.post(`/prescriptions/${selectedPrescription.id}/dispense`, {
+        items: [
+          {
+            stock_batch_id: selectedBatchId,
+            quantity: dispenseQuantity,
+          },
+        ],
+      }, token);
       setDispenseModalOpen(false);
       setSelectedPrescription(null);
       fetchPrescriptions();
@@ -112,6 +158,17 @@ export default function PharmacyPage() {
     }
   };
 
+  const handleVerify = async (rx: Prescription) => {
+    try {
+      setError(null);
+      await api.post(`/prescriptions/${rx.id}/verify`, {}, token);
+      fetchPrescriptions();
+    } catch (err: unknown) {
+      const apiError = err as { status?: number; message?: string };
+      setError(apiError.message || "Failed to verify");
+    }
+  };
+
   return (
     <div className="max-w-7xl mx-auto space-y-6 font-sans">
       <section className="flex flex-col sm:flex-row justify-between sm:items-end gap-4">
@@ -122,8 +179,12 @@ export default function PharmacyPage() {
         </div>
       </section>
 
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded text-sm">{error}</div>
+      )}
+
       {/* Metric Cards */}
-      <section className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <section className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="bg-white rounded border border-[#becab7]/50 p-5 flex items-center gap-4">
           <div className="h-10 w-10 rounded bg-amber-100 flex items-center justify-center">
             <Clock className="h-5 w-5 text-amber-600" />
@@ -131,6 +192,15 @@ export default function PharmacyPage() {
           <div>
             <p className="text-xs font-bold text-[#5f5e5e] uppercase tracking-wider">Pending</p>
             <p className="text-2xl font-extrabold text-[#1b1c1c] font-mono">{loading ? "..." : pendingCount}</p>
+          </div>
+        </div>
+        <div className="bg-white rounded border border-[#becab7]/50 p-5 flex items-center gap-4">
+          <div className="h-10 w-10 rounded bg-blue-100 flex items-center justify-center">
+            <CheckCircle className="h-5 w-5 text-blue-600" />
+          </div>
+          <div>
+            <p className="text-xs font-bold text-[#5f5e5e] uppercase tracking-wider">Verified</p>
+            <p className="text-2xl font-extrabold text-[#1b1c1c] font-mono">{loading ? "..." : verifiedCount}</p>
           </div>
         </div>
         <div className="bg-white rounded border border-[#becab7]/50 p-5 flex items-center gap-4">
@@ -174,6 +244,7 @@ export default function PharmacyPage() {
           >
             <option value="all">All Status</option>
             <option value="prescribed">Prescribed</option>
+            <option value="verified">Verified</option>
             <option value="active">Active</option>
             <option value="dispensed">Dispensed</option>
             <option value="cancelled">Cancelled</option>
@@ -231,14 +302,23 @@ export default function PharmacyPage() {
                     <td className="px-6 py-4">
                       <StatusBadge label={rx.status} variant={
                         rx.status?.toLowerCase() === "dispensed" ? "success" :
+                        rx.status?.toLowerCase() === "verified" ? "info" :
                         rx.status?.toLowerCase() === "prescribed" || rx.status?.toLowerCase() === "active" ? "warning" : "neutral"
                       } />
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
-                        {(rx.status?.toLowerCase() === "prescribed" || rx.status?.toLowerCase() === "active") && (
+                        {rx.status?.toLowerCase() === "prescribed" && (
                           <button
-                            onClick={() => { setSelectedPrescription(rx); setDispenseModalOpen(true); }}
+                            onClick={() => handleVerify(rx)}
+                            className="text-xs font-bold text-blue-600 hover:text-blue-800 uppercase tracking-wider cursor-pointer"
+                          >
+                            Verify
+                          </button>
+                        )}
+                        {(rx.status?.toLowerCase() === "verified" || rx.status?.toLowerCase() === "prescribed") && (
+                          <button
+                            onClick={() => openDispenseModal(rx)}
                             className="text-xs font-bold text-clinical-primary hover:text-clinical-primary-hover uppercase tracking-wider cursor-pointer"
                           >
                             Dispense
@@ -260,12 +340,12 @@ export default function PharmacyPage() {
         )}
       </section>
 
-      {/* Dispense Confirmation Modal */}
+      {/* Dispense Modal */}
       <Modal
         open={dispenseModalOpen}
         onClose={() => { setDispenseModalOpen(false); setSelectedPrescription(null); }}
         title="Confirm Dispensing"
-        subtitle="Verify prescription details before dispensing"
+        subtitle="Select stock batch and quantity to dispense"
         footer={
           <>
             <button
@@ -276,7 +356,7 @@ export default function PharmacyPage() {
             </button>
             <button
               onClick={handleDispense}
-              disabled={dispensing}
+              disabled={dispensing || !selectedBatchId || dispenseQuantity < 1}
               className="px-4 py-2 text-sm font-bold text-white bg-clinical-primary rounded hover:bg-clinical-primary-hover transition-colors disabled:opacity-50"
             >
               {dispensing ? "Dispensing..." : "Confirm Dispense"}
@@ -315,16 +395,50 @@ export default function PharmacyPage() {
                   <span className="text-gray-400 text-xs">Duration:</span>
                   <p className="font-semibold text-gray-900">{selectedPrescription.duration}</p>
                 </div>
-                <div>
-                  <span className="text-gray-400 text-xs">Quantity:</span>
-                  <p className="font-semibold text-gray-900 font-mono">{selectedPrescription.quantity_dispensed ?? "—"}</p>
-                </div>
-                {selectedPrescription.drug?.is_controlled && (
-                  <div className="col-span-2">
-                    <StatusBadge label="Controlled Substance - Audit Trail Required" variant="error" size="md" />
-                  </div>
+              </div>
+            </div>
+
+            <div className="border border-gray-200/50 rounded p-4 space-y-4">
+              <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Dispense Details</h4>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">Stock Batch</label>
+                {batchesLoading ? (
+                  <div className="text-sm text-gray-400">Loading batches...</div>
+                ) : stockBatches.length === 0 ? (
+                  <div className="text-sm text-red-500">No stock batches available for this drug.</div>
+                ) : (
+                  <select
+                    className="w-full px-3 py-2 border border-gray-300 rounded text-sm bg-white focus:outline-none focus:border-clinical-primary"
+                    value={selectedBatchId ?? ""}
+                    onChange={(e) => setSelectedBatchId(Number(e.target.value))}
+                  >
+                    {stockBatches.map((batch) => (
+                      <option key={batch.id} value={batch.id}>
+                        {batch.batch_number} — {batch.quantity_remaining} units
+                        {new Date(batch.expiry_date) < new Date() ? " (EXPIRED)" : ` (exp: ${new Date(batch.expiry_date).toLocaleDateString()})`}
+                      </option>
+                    ))}
+                  </select>
                 )}
               </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">Quantity to Dispense</label>
+                <input
+                  type="number"
+                  min={1}
+                  className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-clinical-primary"
+                  value={dispenseQuantity}
+                  onChange={(e) => setDispenseQuantity(Math.max(1, parseInt(e.target.value) || 1))}
+                />
+              </div>
+
+              {selectedPrescription.drug?.is_controlled && (
+                <div>
+                  <StatusBadge label="Controlled Substance — Audit Trail Required" variant="error" size="md" />
+                </div>
+              )}
             </div>
           </div>
         )}
