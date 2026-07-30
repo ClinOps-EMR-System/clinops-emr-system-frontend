@@ -5,7 +5,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import Logo from "@/assets/logo/logo";
 import { NavItem, NavMain } from "@/components/shadcn-space/blocks/sidebar-01/nav-main";
 import { useAuth } from "@/store/RoleContext";
-import { LayoutDashboard, Calendar, Users, Stethoscope, ClipboardList, Pill, FlaskConical, DollarSign, CreditCard, ArrowRightLeft, DoorOpen, List, Shield } from "lucide-react";
+import { LayoutDashboard, Calendar, Users, Stethoscope, ClipboardList, Pill, FlaskConical, DollarSign, CreditCard, ArrowRightLeft, DoorOpen, List, Shield, Package, Bell } from "lucide-react";
 
 const ROLE_NAV_MAP: Record<string, string[]> = {
   receptionist: ["receptionist", "appointments", "queue", "patients"],
@@ -30,7 +30,18 @@ const ALL_NAV_ITEMS: NavItem[] = [
   { title: "Consultation Queue", icon: ClipboardList, href: "/consultation-queue" },
 
   { label: "Services", isSection: true },
-  { title: "Pharmacy", icon: Pill, href: "/pharmacy" },
+  {
+    title: "Pharmacy",
+    icon: Pill,
+    href: "/pharmacy",
+    children: [
+      { title: "Overview", href: "/pharmacy" },
+      { title: "Dispensing", href: "/pharmacy/dispensing" },
+      { title: "Inventory", href: "/pharmacy/inventory" },
+      { title: "Stock Management", href: "/pharmacy/stock" },
+      { title: "Stock Alerts", href: "/pharmacy/alerts" },
+    ],
+  },
   { title: "Laboratory", icon: FlaskConical, href: "/lab" },
 
   { label: "Finance", isSection: true },
@@ -118,7 +129,7 @@ function filterNavItems(items: NavItem[], allowed: string[]): NavItem[] {
         i++;
       }
       const visibleItems = sectionItems.filter((item) => {
-        const segment = item.href?.replace("/app/", "").replace("/", "") || "";
+        const segment = item.href?.split("/")[1] || "";
         return allowed.includes(segment);
       });
       if (visibleItems.length > 0) {
@@ -126,7 +137,7 @@ function filterNavItems(items: NavItem[], allowed: string[]): NavItem[] {
         result.push(...visibleItems);
       }
     } else {
-      const segment = items[i].href?.replace("/app/", "").replace("/", "") || "";
+      const segment = items[i].href?.split("/")[1] || "";
       if (allowed.includes(segment)) {
         result.push(items[i]);
       }
