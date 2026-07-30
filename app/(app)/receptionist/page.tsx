@@ -143,7 +143,7 @@ export default function ReceptionistDashboard() {
     { label: "Awaiting Triage", value: awaitingTriageCount, icon: Clock, color: "bg-amber-500", href: "/triage-queue" },
     { label: "Awaiting Doctor", value: awaitingDoctorCount, icon: Users, color: "bg-brand-green", href: "/queue" },
     { label: "In Consultation", value: queueStats?.in_consultation_count ?? dashboard?.encounters?.in_consultation ?? 0, icon: CheckCircle, color: "bg-emerald-500", href: "/queue" },
-    { label: "Emergency", value: dashboard?.encounters?.emergency ?? 0, icon: XCircle, color: "bg-red-500", href: "/emergency-queue" },
+    { label: "Emergency", value: dashboard?.encounters?.emergency ?? 0, icon: XCircle, color: "bg-red-500", href: "/triage-queue" },
     { label: "Registered Today", value: dashboard?.patients?.today_registrations ?? 0, icon: ClipboardPlus, color: "bg-purple-500", href: "/patients/register" },
   ];
 

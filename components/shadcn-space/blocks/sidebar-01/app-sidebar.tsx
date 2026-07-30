@@ -5,13 +5,13 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import Logo from "@/assets/logo/logo";
 import { NavItem, NavMain } from "@/components/shadcn-space/blocks/sidebar-01/nav-main";
 import { useAuth } from "@/store/RoleContext";
-import { LayoutDashboard, Calendar, Users, Stethoscope, ClipboardList, Ambulance, Pill, FlaskConical, DollarSign, CreditCard, ArrowRightLeft, DoorOpen, List, Shield } from "lucide-react";
+import { LayoutDashboard, Calendar, Users, Stethoscope, ClipboardList, Pill, FlaskConical, DollarSign, CreditCard, ArrowRightLeft, DoorOpen, List, Shield } from "lucide-react";
 
 const ROLE_NAV_MAP: Record<string, string[]> = {
   receptionist: ["receptionist", "appointments", "queue", "patients"],
-  nurse: ["nurse-station", "triage-queue", "consultation-queue", "patients", "admissions", "emergency-queue"],
-  doctor: ["patients", "lab", "referrals", "emergency-queue"],
-  "clinical officer": ["patients", "lab", "referrals", "emergency-queue"],
+  nurse: ["nurse-station", "triage-queue", "consultation-queue", "patients", "admissions"],
+  doctor: ["patients", "triage-queue", "consultation-queue", "lab", "referrals"],
+  "clinical officer": ["patients", "triage-queue", "consultation-queue", "lab", "referrals"],
   pharmacist: ["pharmacy"],
   "lab technician": ["lab"],
   "billing officer": ["billing", "patients"],
@@ -28,7 +28,6 @@ const ALL_NAV_ITEMS: NavItem[] = [
   { title: "Nurse Station", icon: Stethoscope, href: "/nurse-station" },
   { title: "Triage Queue", icon: List, href: "/triage-queue" },
   { title: "Consultation Queue", icon: ClipboardList, href: "/consultation-queue" },
-  { title: "Emergency Queue", icon: Ambulance, href: "/emergency-queue" },
 
   { label: "Services", isSection: true },
   { title: "Pharmacy", icon: Pill, href: "/pharmacy" },

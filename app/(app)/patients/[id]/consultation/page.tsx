@@ -17,8 +17,15 @@ import { cn } from "@/lib/utils";
 import {
   ArrowLeft, Loader2, Check, TriangleAlert, HeartPulse, Stethoscope,
   ClipboardList, ClipboardPen, FlaskConical, Pill, LogOut, DoorOpen,
-  Search, Plus, X,
+  Search, Plus, X, History, Clock, Activity,
 } from "lucide-react";
+
+interface TimelineEvent {
+  timestamp: string;
+  title: string;
+  category: string;
+  detail: string;
+}
 
 interface TriageSummary {
   encounter: {
@@ -37,6 +44,7 @@ interface TriageSummary {
     pulse_rate: number | null;
     oxygen_saturation: number | null;
   }[];
+  timeline?: TimelineEvent[];
 }
 
 interface Icd11Result {
@@ -92,7 +100,7 @@ interface Drug {
   strength: string | null;
 }
 
-type SubTab = "subjective" | "objective" | "assessment" | "plan" | "orders" | "prescriptions";
+type SubTab = "subjective" | "objective" | "assessment" | "plan" | "orders" | "prescriptions" | "timeline";
 
 const subTabs: { key: SubTab; label: string; icon: React.ReactNode }[] = [
   { key: "subjective", label: "Subjective (S)", icon: <ClipboardPen className="h-4 w-4" /> },
@@ -101,6 +109,7 @@ const subTabs: { key: SubTab; label: string; icon: React.ReactNode }[] = [
   { key: "plan", label: "Plan (P)", icon: <ClipboardPen className="h-4 w-4" /> },
   { key: "orders", label: "Orders", icon: <FlaskConical className="h-4 w-4" /> },
   { key: "prescriptions", label: "Rx", icon: <Pill className="h-4 w-4" /> },
+  { key: "timeline", label: "Case Timeline", icon: <History className="h-4 w-4" /> },
 ];
 
 function VitalsCard({ label, value, unit }: { label: string; value: string | null | undefined; unit?: string }) {
@@ -1027,38 +1036,102 @@ export default function ClinicianSOAPConsultation() {
                     </form>
                   </div>
                 )}
+
+                {activeSubTab === "timeline" && (
+                  <div className="space-y-6">
+                    <div>
+                      <h3 className="text-lg font-bold">Chronological Case Timeline</h3>
+                      <p className="text-sm text-muted-foreground">Event-driven log of all clinical interactions and care decisions.</p>
+                    </div>
+
+                    {summary?.timeline && summary.timeline.length > 0 ? (
+                      <div className="relative pl-6 border-l-2 border-primary/30 space-y-6">
+                        {summary.timeline.map((event, idx) => {
+                          const date = new Date(event.timestamp);
+                          const timeStr = date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+                          const dateStr = date.toLocaleDateString([], { month: "short", day: "numeric" });
+                          return (
+                            <div key={idx} className="relative group">
+                              <div className="absolute -left-[31px] top-0.5 w-4 h-4 rounded-full bg-primary border-4 border-background" />
+                              <div className="bg-muted/30 rounded-lg p-4 border border-border/60 hover:border-primary/40 transition-colors">
+                                <div className="flex items-center justify-between gap-2 flex-wrap mb-1">
+                                  <span className="font-bold text-sm text-foreground">{event.title}</span>
+                                  <span className="flex items-center gap-1 text-xs font-mono text-muted-foreground">
+                                    <Clock className="h-3 w-3" />
+                                    {dateStr} {timeStr}
+                                  </span>
+                                </div>
+                                <p className="text-xs text-muted-foreground font-mono leading-relaxed">{event.detail}</p>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div className="text-center py-12 text-muted-foreground">
+                        <History className="h-8 w-8 mx-auto mb-2 opacity-40" />
+                        <p>No timeline events recorded for this encounter yet.</p>
+                      </div>
+                    )}
+                  </div>
+                )}
               </CardContent>
             </Card>
 
             {activeEncounterId && (
-              <Card className="mt-6">
+              <Card className="mt-6 border-l-4 border-l-primary">
                 <CardHeader className="pb-3">
                   <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                    Disposition
+                    Patient Case Disposition & Sign-Off
                   </CardTitle>
                 </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    Decide the patient&apos;s next step after consultation.
+                <CardContent className="space-y-4">
+                  <p className="text-sm text-muted-foreground">
+                    Select clinical disposition to complete consultation and transfer the case to the appropriate destination.
                   </p>
-                  <div className="flex flex-wrap gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                     <Button
+                      variant="default"
+                      className="h-auto py-3 flex flex-col items-center justify-center gap-1.5"
                       onClick={() => handleCompleteConsultation("discharge")}
                       disabled={completingConsultation}
                     >
-                      {completingConsultation ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogOut className="h-4 w-4" />}
-                      Discharge Home
+                      <LogOut className="h-5 w-5" />
+                      <span className="font-bold">Discharge Home</span>
+                      <span className="text-[10px] opacity-80 font-normal">Patient sent home with instructions</span>
                     </Button>
-                    <Button variant="secondary" nativeButton={false} render={<Link href={`/patients/${patientId}/consultation?admit=true`} />}>
-                      <DoorOpen className="h-4 w-4" />
-                      Admit to Ward
+
+                    <Button
+                      variant="secondary"
+                      className="h-auto py-3 flex flex-col items-center justify-center gap-1.5"
+                      onClick={() => router.push(`/admissions?patient_id=${patientId}`)}
+                      disabled={completingConsultation}
+                    >
+                      <DoorOpen className="h-5 w-5 text-purple-600" />
+                      <span className="font-bold text-purple-950">Admit to Ward</span>
+                      <span className="text-[10px] text-purple-700 font-normal">Transfer to Inpatient Ward</span>
                     </Button>
+
                     <Button
                       variant="outline"
+                      className="h-auto py-3 flex flex-col items-center justify-center gap-1.5 border-sky-300 bg-sky-50/50 hover:bg-sky-100"
+                      onClick={() => router.push(`/referrals?patient_id=${patientId}`)}
+                      disabled={completingConsultation}
+                    >
+                      <Stethoscope className="h-5 w-5 text-sky-600" />
+                      <span className="font-bold text-sky-950">Refer Patient</span>
+                      <span className="text-[10px] text-sky-700 font-normal">Specialty or External Hospital</span>
+                    </Button>
+
+                    <Button
+                      variant="outline"
+                      className="h-auto py-3 flex flex-col items-center justify-center gap-1.5 border-amber-300 bg-amber-50/50 hover:bg-amber-100"
                       onClick={() => handleCompleteConsultation("admit")}
                       disabled={completingConsultation}
                     >
-                      Complete & Keep
+                      <HeartPulse className="h-5 w-5 text-amber-600" />
+                      <span className="font-bold text-amber-950">Short-Stay Observation</span>
+                      <span className="text-[10px] text-amber-700 font-normal">Retain for ED serial vitals</span>
                     </Button>
                   </div>
                 </CardContent>

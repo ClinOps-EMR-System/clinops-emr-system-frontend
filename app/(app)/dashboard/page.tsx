@@ -245,7 +245,7 @@ export default function Dashboard() {
           </Card>
         </Link>
 
-        <Link href="/emergency-queue" className="block">
+        <Link href="/triage-queue" className="block">
           <Card className={cn(
             "transition-all hover:shadow-sm",
             stats.emergency > 0 && "ring-1 ring-red-500/20"

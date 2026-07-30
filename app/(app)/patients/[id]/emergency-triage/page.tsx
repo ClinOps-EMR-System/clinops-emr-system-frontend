@@ -55,12 +55,12 @@ export default function EmergencyTriagePage() {
         setLoading(true);
         const res = await api.get(`/patients/${patientId}`, token);
         if (res?.data) {
-          setPatient(res.data);
+          setPatient(res.data.patient || res.data);
         }
 
         const waitingRes = await api.get("/emergency/waiting", token);
-        if (waitingRes?.data?.data) {
-          const waiting = waitingRes.data.data as WaitingPatient[];
+        if (waitingRes?.data) {
+          const waiting = (Array.isArray(waitingRes.data) ? waitingRes.data : (waitingRes.data as { data?: WaitingPatient[] }).data ?? []) as WaitingPatient[];
           const match = waiting.find((w) => w.patient_id === parseInt(patientId));
           if (match) {
             setForm((f) => ({ ...f, chief_complaint: match.chief_complaint || "" }));
@@ -88,16 +88,6 @@ export default function EmergencyTriagePage() {
     setError(null);
 
     try {
-      const waitingRes = await api.get("/emergency/waiting", token);
-      const waiting = waitingRes?.data?.data as WaitingPatient[];
-      const match = waiting?.find((w) => w.patient_id === parseInt(patientId));
-
-      if (!match) {
-        setError("Patient is not in the emergency waiting queue.");
-        setSubmitting(false);
-        return;
-      }
-
       const triageRes = await api.post(`/emergency/${patientId}/rapid-triage`, {
         consciousness: form.consciousness,
         airway_patent: form.airway_patent,
@@ -319,24 +309,24 @@ export default function EmergencyTriagePage() {
               <p className="text-xs text-gray-400 mb-1">Leave blank to auto-calculate from EWS score</p>
               <div className="grid grid-cols-5 gap-2">
                 {[
-                  { value: "1", label: "1", desc: "Resuscitation", color: "border-red-400 bg-red-50 text-red-700" },
-                  { value: "2", label: "2", desc: "Immediate", color: "border-red-300 bg-red-50 text-red-600" },
-                  { value: "3", label: "3", desc: "Urgent", color: "border-amber-300 bg-amber-50 text-amber-700" },
-                  { value: "4", label: "4", desc: "Semi-Urgent", color: "border-amber-200 bg-amber-50 text-amber-600" },
-                  { value: "5", label: "5", desc: "Non-Urgent", color: "border-emerald-200 bg-emerald-50 text-emerald-700" },
+                  { value: "1", label: "L1", desc: "Red (Immediate)", color: "border-red-600 bg-red-600 text-white font-bold" },
+                  { value: "2", label: "L2", desc: "Orange (Very Urgent)", color: "border-orange-500 bg-orange-500 text-white font-bold" },
+                  { value: "3", label: "L3", desc: "Yellow (Urgent)", color: "border-amber-400 bg-amber-400 text-amber-950 font-bold" },
+                  { value: "4", label: "L4", desc: "Green (Standard)", color: "border-emerald-500 bg-emerald-500 text-white font-bold" },
+                  { value: "5", label: "L5", desc: "Blue (Non-Urgent)", color: "border-blue-500 bg-blue-500 text-white font-bold" },
                 ].map((opt) => (
                   <button
                     key={opt.value}
                     type="button"
                     onClick={() => handleChange("severity_level", opt.value)}
-                    className={`p-2 rounded border-2 text-center transition-all ${
+                    className={`p-2.5 rounded-lg border-2 text-center transition-all ${
                       form.severity_level === opt.value
                         ? opt.color
-                        : "border-gray-200 text-gray-500 hover:border-gray-300"
+                        : "border-gray-200 bg-white text-gray-700 hover:border-gray-300"
                     }`}
                   >
                     <span className="text-lg font-extrabold font-mono block">{opt.label}</span>
-                    <span className="text-[9px] font-bold uppercase">{opt.desc}</span>
+                    <span className="text-[10px] font-bold uppercase block leading-tight">{opt.desc}</span>
                   </button>
                 ))}
               </div>
