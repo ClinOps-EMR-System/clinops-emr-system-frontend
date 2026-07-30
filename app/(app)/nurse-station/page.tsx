@@ -276,19 +276,86 @@ export default function NurseStationPage() {
       )}
 
       {/* Stats Row */}
-      <section className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {[
-          { label: "Waiting for Triage", value: entries.length, color: "text-gray-900", bg: "bg-white", href: "/triage-queue" },
-          { label: "Awaiting Triage", value: dashboard?.encounters?.awaiting_triage ?? "\u2014", color: "text-amber-600", bg: "bg-amber-50", href: "/triage-queue" },
-          { label: "In Consultation", value: dashboard?.encounters?.in_consultation ?? "\u2014", color: "text-blue-600", bg: "bg-blue-50", href: "/queue" },
-          { label: "Discharged Today", value: dashboard?.encounters?.discharged_today ?? "\u2014", color: "text-emerald-600", bg: "bg-emerald-50", href: "/admissions" },
-        ].map((stat) => (
-          <Link key={stat.label} href={stat.href} className={`${stat.bg} rounded border border-[#becab7]/50 p-4 hover:shadow-sm transition-all block`}>
-            <p className="text-xs font-bold text-[#5f5e5e] uppercase tracking-wider">{stat.label}</p>
-            <p className={`text-3xl font-extrabold font-mono mt-1 ${stat.color}`}>{stat.value}</p>
-          </Link>
-        ))}
-      </section>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <Link href="/triage-queue" className="block">
+          <Card className="transition-all hover:shadow-sm">
+            <CardHeader className="flex-row items-center justify-between gap-4">
+              <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Waiting for Triage
+              </CardTitle>
+              <Stethoscope className="size-4 text-muted-foreground/60" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-semibold tabular-nums tracking-tight text-foreground">
+                {loading ? <Skeleton className="h-8 w-16" /> : entries.length}
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
+
+        <Link href="/triage-queue" className="block">
+          <Card className={cn(
+            "transition-all hover:shadow-sm",
+            (dashboard?.encounters?.awaiting_triage ?? 0) > 0 && "ring-1 ring-amber-500/20"
+          )}>
+            <CardHeader className="flex-row items-center justify-between gap-4">
+              <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Awaiting Triage
+              </CardTitle>
+              <Clock className={cn(
+                "size-4",
+                (dashboard?.encounters?.awaiting_triage ?? 0) > 0 ? "text-amber-500" : "text-muted-foreground/60"
+              )} />
+            </CardHeader>
+            <CardContent>
+              <div className={cn(
+                "text-3xl font-semibold tabular-nums tracking-tight",
+                (dashboard?.encounters?.awaiting_triage ?? 0) > 0 ? "text-amber-600" : "text-foreground"
+              )}>
+                {loading ? <Skeleton className="h-8 w-16" /> : dashboard?.encounters?.awaiting_triage ?? "\u2014"}
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
+
+        <Link href="/consultation-queue" className="block">
+          <Card className="transition-all hover:shadow-sm">
+            <CardHeader className="flex-row items-center justify-between gap-4">
+              <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                In Consultation
+              </CardTitle>
+              <Users className={cn(
+                "size-4",
+                (dashboard?.encounters?.in_consultation ?? 0) > 0 ? "text-blue-500" : "text-muted-foreground/60"
+              )} />
+            </CardHeader>
+            <CardContent>
+              <div className={cn(
+                "text-3xl font-semibold tabular-nums tracking-tight",
+                (dashboard?.encounters?.in_consultation ?? 0) > 0 ? "text-blue-600" : "text-foreground"
+              )}>
+                {loading ? <Skeleton className="h-8 w-16" /> : dashboard?.encounters?.in_consultation ?? "\u2014"}
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
+
+        <Link href="/admissions" className="block">
+          <Card className="transition-all hover:shadow-sm">
+            <CardHeader className="flex-row items-center justify-between gap-4">
+              <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Discharged Today
+              </CardTitle>
+              <Users className="size-4 text-muted-foreground/60" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-semibold tabular-nums tracking-tight text-foreground">
+                {loading ? <Skeleton className="h-8 w-16" /> : dashboard?.encounters?.discharged_today ?? "\u2014"}
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
+      </div>
 
       {/* Toolbar */}
       <Card>
