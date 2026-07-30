@@ -2,10 +2,27 @@
 
 import { useState, useMemo } from "react";
 import Link from "next/link";
+import { Search, X, Stethoscope, Users, AlertTriangle, Clock } from "lucide-react";
+
 import { useFetch } from "@/lib/useFetch";
+import { cn } from "@/lib/utils";
+
+import { SectionHeader } from "@/components/ui/PageLayout";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import SelectField from "@/components/ui/SelectField";
+import StatusBadge from "@/components/ui/StatusBadge";
 import EmptyState from "@/components/ui/EmptyState";
-import LoadingState from "@/components/ui/LoadingState";
-import { AlertTriangle, Clock } from "lucide-react";
 
 interface EmergencyPatient {
   patient_id: number;
@@ -44,46 +61,66 @@ interface TriageEntry {
   source: "emergency" | "appointment";
 }
 
-type CategoryFilter = "all" | "high" | "medium" | "low";
+type SourceFilter = "all" | "emergency" | "appointment";
+type PriorityFilter = "all" | "critical" | "high" | "medium" | "low";
+
+const sourceOptions = [
+  { value: "all", label: "All Sources" },
+  { value: "emergency", label: "Emergency" },
+  { value: "appointment", label: "Appointment" },
+];
+
+const priorityOptions = [
+  { value: "all", label: "All Priorities" },
+  { value: "critical", label: "Critical" },
+  { value: "high", label: "High" },
+  { value: "medium", label: "Medium" },
+  { value: "low", label: "Low" },
+];
 
 function getWaitColor(minutes: number): string {
   if (minutes >= 30) return "text-red-600 font-bold";
   if (minutes >= 15) return "text-amber-600 font-semibold";
-  return "text-emerald-600";
+  return "text-muted-foreground";
 }
 
-function getPriorityLabel(priority: number): string {
-  if (priority === 1) return "L1 - RED (IMMEDIATE)";
-  if (priority === 2) return "L2 - ORANGE (VERY URGENT)";
-  if (priority === 3) return "L3 - YELLOW (URGENT)";
-  if (priority === 4) return "L4 - GREEN (STANDARD)";
-  return "L5 - BLUE (NON-URGENT)";
+function formatWaitTime(minutes: number): string {
+  if (minutes >= 60) {
+    const h = Math.floor(minutes / 60);
+    const m = minutes % 60;
+    return m > 0 ? `${h}h ${m}m` : `${h}h`;
+  }
+  return `${minutes}m`;
 }
 
-function getEwsBadgeStyle(priority: number): string {
-  if (priority === 1) return "bg-red-600 text-white border-red-700 font-bold animate-pulse";
-  if (priority === 2) return "bg-orange-500 text-white border-orange-600 font-bold";
-  if (priority === 3) return "bg-amber-400 text-amber-950 border-amber-500 font-semibold";
-  if (priority === 4) return "bg-emerald-500 text-white border-emerald-600";
-  return "bg-blue-500 text-white border-blue-600";
+function getPriorityBadge(priority: number) {
+  if (priority === 1) return { label: "L1 Immediate", variant: "error" as const, pulse: true };
+  if (priority === 2) return { label: "L2 Very Urgent", variant: "error" as const };
+  if (priority === 3) return { label: "L3 Urgent", variant: "warning" as const };
+  if (priority === 4) return { label: "L4 Standard", variant: "success" as const };
+  return { label: "L5 Non-Urgent", variant: "info" as const };
 }
 
-function getRowBorder(priority: number): string {
-  if (priority === 1) return "border-l-4 border-l-red-600 bg-red-50/20";
-  if (priority === 2) return "border-l-4 border-l-orange-500 bg-orange-50/20";
-  if (priority === 3) return "border-l-4 border-l-amber-400";
-  if (priority === 4) return "border-l-4 border-l-emerald-500";
-  return "border-l-4 border-l-blue-500";
+function getSourceBadge(source: "emergency" | "appointment") {
+  if (source === "emergency") return { label: "ER", variant: "error" as const, pulse: true };
+  return { label: "Appt", variant: "info" as const };
 }
 
-function getSourceBadge(source: "emergency" | "appointment"): string {
-  return source === "emergency"
-    ? "bg-red-100 text-red-700 border-red-300 font-extrabold"
-    : "bg-sky-100 text-sky-700 border-sky-200";
+function matchesPriorityFilter(priority: number, filter: PriorityFilter): boolean {
+  if (filter === "all") return true;
+  if (filter === "critical") return priority <= 2;
+  if (filter === "high") return priority === 3;
+  if (filter === "medium") return priority === 4;
+  return priority === 5;
 }
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const unwrap = (val: any): any[] => (Array.isArray(val) ? val : val?.data) ?? [];
 
 export default function TriageQueuePage() {
-  const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>("all");
+  const [search, setSearch] = useState("");
+  const [sourceFilter, setSourceFilter] = useState<SourceFilter>("all");
+  const [priorityFilter, setPriorityFilter] = useState<PriorityFilter>("all");
   const [now] = useState(() => Date.now());
 
   const today = useMemo(() => new Date().toLocaleDateString("en-CA"), []);
@@ -94,9 +131,6 @@ export default function TriageQueuePage() {
   const { data: appointmentsRaw, loading: apptLoading } = useFetch<CheckedInAppointment[]>(
     `/appointments?date=${today}&status=Checked-in`, { interval: 20000 }
   );
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const unwrap = (val: any): any[] => (Array.isArray(val) ? val : val?.data) ?? [];
 
   const loading = emergLoading || apptLoading;
 
@@ -114,7 +148,7 @@ export default function TriageQueuePage() {
         full_name: ep.full_name,
         chief_complaint: ep.chief_complaint || "",
         wait_minutes: waitMinutes,
-        priority: ep.severity_level || 2, // Default ER walk-in to L2 (Orange/Urgent) unless specified
+        priority: ep.severity_level || 2,
         source: "emergency",
       });
     }
@@ -130,7 +164,7 @@ export default function TriageQueuePage() {
           full_name: `${ap.patient.first_name} ${ap.patient.last_name}`,
           chief_complaint: ap.reason || "",
           wait_minutes: Math.max(0, waitMinutes),
-          priority: 4, // Regular appointments default to L4 Green
+          priority: 4,
           source: "appointment",
         });
       }
@@ -139,185 +173,259 @@ export default function TriageQueuePage() {
     return result;
   }, [emergencyRaw, appointmentsRaw, now]);
 
-  const sortedEntries = useMemo(() => {
-    return [...entries].sort((a, b) => {
+  const hasFilters = search !== "" || sourceFilter !== "all" || priorityFilter !== "all";
+
+  const filteredEntries = useMemo(() => {
+    let result = [...entries];
+
+    // Search filter
+    if (search) {
+      const q = search.toLowerCase();
+      result = result.filter(
+        (e) =>
+          e.full_name.toLowerCase().includes(q) ||
+          e.hospital_number.toLowerCase().includes(q)
+      );
+    }
+
+    // Source filter
+    if (sourceFilter !== "all") {
+      result = result.filter((e) => e.source === sourceFilter);
+    }
+
+    // Priority filter
+    if (priorityFilter !== "all") {
+      result = result.filter((e) => matchesPriorityFilter(e.priority, priorityFilter));
+    }
+
+    // Sort: priority ascending, then wait time descending
+    result.sort((a, b) => {
       if (a.priority !== b.priority) return a.priority - b.priority;
       return b.wait_minutes - a.wait_minutes;
     });
-  }, [entries]);
 
-  const filteredEntries = useMemo(() => {
-    if (categoryFilter === "all") return sortedEntries;
-    if (categoryFilter === "high") return sortedEntries.filter((e) => e.priority <= 2);
-    if (categoryFilter === "medium") return sortedEntries.filter((e) => e.priority === 3);
-    return sortedEntries.filter((e) => e.priority >= 4);
-  }, [sortedEntries, categoryFilter]);
+    return result;
+  }, [entries, search, sourceFilter, priorityFilter]);
 
-  const highCount = entries.filter((e) => e.priority <= 2).length;
-  const medCount = entries.filter((e) => e.priority === 3).length;
-  const lowCount = entries.filter((e) => e.priority >= 4).length;
-  const oldestWait = entries.length > 0 ? Math.max(...entries.map((e) => e.wait_minutes)) : 0;
-  const emergCount = entries.filter((e) => e.source === "emergency").length;
+  const clearFilters = () => {
+    setSearch("");
+    setSourceFilter("all");
+    setPriorityFilter("all");
+  };
+
+  const emergencyCount = entries.filter((e) => e.source === "emergency").length;
 
   return (
     <div className="max-w-7xl mx-auto space-y-6 font-sans">
-      {/* Header */}
-      <section className="flex flex-col sm:flex-row justify-between sm:items-end gap-4">
-        <div>
-          <span className="text-xs font-bold text-brand-green tracking-widest uppercase">Triage</span>
-          <h1 className="text-3xl font-bold text-[#1b1c1c] mt-1">Triage Queue</h1>
-          <p className="text-sm text-[#5f5e5e] mt-1 font-mono">
-            Patients waiting for triage, sorted by clinical urgency
-          </p>
-        </div>
+      <SectionHeader
+        title="Triage Queue"
+        description="Patients waiting for triage, sorted by clinical urgency"
+      />
 
-        {/* Category Filter */}
-        <div className="flex items-center gap-1 bg-gray-100 rounded p-0.5" role="radiogroup" aria-label="Filter by triage category">
-          {([["all", "All"], ["high", "High"], ["medium", "Med"], ["low", "Low"]] as const).map(([key, label]) => (
-            <button
-              key={key}
-              role="radio"
-              aria-checked={categoryFilter === key}
-              onClick={() => setCategoryFilter(key)}
-              className={`px-3 py-2 text-xs font-bold rounded transition-colors min-h-[40px] ${
-                categoryFilter === key
-                  ? "bg-white text-gray-900 shadow-sm"
-                  : "text-gray-500 hover:text-gray-700"
-              }`}
-            >
-              {label}
-              {key !== "all" && (
-                <span className="ml-1 font-mono text-[10px]">
-                  {key === "high" ? highCount : key === "medium" ? medCount : lowCount}
-                </span>
-              )}
-            </button>
-          ))}
-        </div>
-      </section>
+      {/* Toolbar */}
+      <Card>
+        <CardContent className="pt-6 space-y-4">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+            <Input
+              placeholder="Search by name or hospital number..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-9"
+            />
+          </div>
 
-      {/* Summary Line */}
-      <section className="flex items-center gap-4 text-sm font-mono flex-wrap">
-        <span className="text-gray-500">
-          {entries.length} patient{entries.length !== 1 ? "s" : ""} waiting for triage
+          <div className="flex flex-wrap items-end gap-3">
+            <div className="min-w-[160px]">
+              <SelectField
+                label="Source"
+                options={sourceOptions}
+                value={sourceFilter}
+                onChange={(e) => setSourceFilter(e.target.value as SourceFilter)}
+              />
+            </div>
+
+            <div className="min-w-[160px]">
+              <SelectField
+                label="Priority"
+                options={priorityOptions}
+                value={priorityFilter}
+                onChange={(e) => setPriorityFilter(e.target.value as PriorityFilter)}
+              />
+            </div>
+
+            {hasFilters && (
+              <Button
+                variant="ghost"
+                onClick={clearFilters}
+                className="text-destructive hover:text-destructive/80 h-9 mt-5"
+              >
+                <X className="h-4 w-4" />
+                Clear Filters
+              </Button>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Summary */}
+      <div className="flex items-center gap-4 text-sm font-mono flex-wrap">
+        <span className="text-muted-foreground">
+          {entries.length} patient{entries.length !== 1 ? "s" : ""} waiting
         </span>
-        {emergCount > 0 && (
+        {emergencyCount > 0 && (
           <>
             <span className="text-gray-300">·</span>
             <span className="text-red-600 font-semibold flex items-center gap-1">
               <AlertTriangle className="h-3.5 w-3.5" />
-              {emergCount} emergency
+              {emergencyCount} emergency
             </span>
           </>
         )}
-        <span className="text-gray-300">·</span>
-        <span className="text-red-600 font-semibold">{highCount} high priority</span>
-        <span className="text-gray-300">·</span>
-        <span className="text-amber-600 font-semibold">{medCount} medium</span>
-        <span className="text-gray-300">·</span>
-        <span className="text-emerald-600 font-semibold">{lowCount} low</span>
-        {oldestWait > 0 && (
-          <>
-            <span className="text-gray-300">·</span>
-            <span className="text-gray-500 flex items-center gap-1">
-              <Clock className="h-3.5 w-3.5" />
-              Longest wait: <strong>{oldestWait}m</strong>
-            </span>
-          </>
-        )}
-      </section>
+      </div>
 
-      {/* Queue Table */}
-      <section className="bg-white rounded border border-[#becab7]/50 overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-100 flex items-center">
-          <div className="w-1.5 h-6 bg-brand-green rounded-full mr-3"></div>
-          <h2 className="text-lg font-bold text-gray-900">Waiting List</h2>
-        </div>
+      {/* Table */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            Waiting List
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="px-0">
+          {loading ? (
+            <div className="px-(--card-spacing) py-4">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Patient</TableHead>
+                    <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Source</TableHead>
+                    <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Priority</TableHead>
+                    <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Chief Complaint</TableHead>
+                    <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Wait Time</TableHead>
+                    <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Action</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {Array.from({ length: 5 }, (_, i) => (
+                    <TableRow key={`skeleton-${i}`}>
+                      <TableCell>
+                        <Skeleton className="h-4 w-32" />
+                        <Skeleton className="h-3 w-20 mt-1" />
+                      </TableCell>
+                      <TableCell><Skeleton className="h-5 w-16 rounded-full" /></TableCell>
+                      <TableCell><Skeleton className="h-5 w-24 rounded-full" /></TableCell>
+                      <TableCell><Skeleton className="h-4 w-40" /></TableCell>
+                      <TableCell><Skeleton className="h-4 w-12" /></TableCell>
+                      <TableCell><Skeleton className="h-8 w-24 rounded-md" /></TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          ) : filteredEntries.length === 0 ? (
+            <div className="py-12">
+              <EmptyState
+                icon={entries.length === 0 ? <Users className="h-6 w-6 text-gray-400" /> : <Search className="h-6 w-6 text-gray-400" />}
+                title={entries.length === 0 ? "No patients waiting for triage" : "No patients match your filters"}
+                description={
+                  entries.length === 0
+                    ? "Check reception for new arrivals or register a new patient."
+                    : "Try adjusting your search or filter criteria."
+                }
+                action={
+                  entries.length === 0 ? (
+                    <Link href="/patients/register" className="inline-flex items-center px-4 py-2 bg-clinical-primary text-white text-sm font-bold rounded hover:bg-clinical-primary-hover transition-colors">
+                      Register Patient
+                    </Link>
+                  ) : undefined
+                }
+              />
+            </div>
+          ) : (
+            <>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Patient</TableHead>
+                    <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Source</TableHead>
+                    <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Priority</TableHead>
+                    <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Chief Complaint</TableHead>
+                    <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Wait Time</TableHead>
+                    <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Action</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredEntries.map((entry) => {
+                    const priorityBadge = getPriorityBadge(entry.priority);
+                    const sourceBadge = getSourceBadge(entry.source);
+                    const waitMinutes = entry.wait_minutes;
 
-        {loading ? (
-          <LoadingState message="Loading triage queue..." />
-        ) : filteredEntries.length === 0 ? (
-          <EmptyState
-            title="No patients waiting for triage"
-            description="Check reception for new arrivals or register a new patient"
-            action={
-              <Link href="/patients/register" className="inline-flex items-center px-4 py-2 bg-clinical-primary text-white text-sm font-bold rounded hover:bg-clinical-primary-hover transition-colors">
-                Register Patient
-              </Link>
-            }
-          />
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-[#fcf9f8] sticky top-0 z-10">
-                <tr className="divide-x divide-gray-200/50">
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-[#5f5e5e] uppercase tracking-wider">Patient Name</th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-[#5f5e5e] uppercase tracking-wider">Hospital #</th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-[#5f5e5e] uppercase tracking-wider hidden md:table-cell">Source</th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-[#5f5e5e] uppercase tracking-wider">Priority</th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-[#5f5e5e] uppercase tracking-wider hidden lg:table-cell">Chief Complaint</th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-[#5f5e5e] uppercase tracking-wider">Time Waiting</th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-[#5f5e5e] uppercase tracking-wider">Action</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-100">
-                {filteredEntries.map((entry) => (
-                  <tr
-                    key={entry.id}
-                    className={`${getRowBorder(entry.priority)} hover:bg-[#fcf9f8]/40 transition-all divide-x divide-gray-100`}
-                  >
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <Link
-                        href={`/patients/${entry.patient_id}`}
-                        className="text-sm font-semibold text-gray-900 hover:text-clinical-primary hover:underline"
-                      >
-                        {entry.full_name}
-                      </Link>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-xs font-mono text-gray-500">
-                      {entry.hospital_number}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap hidden md:table-cell">
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded border text-xs font-bold ${getSourceBadge(entry.source)}`}>
-                        {entry.source === "emergency" ? "ER" : "Appt"}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span
-                        className={`inline-flex items-center px-2.5 py-0.5 rounded border text-sm font-extrabold font-mono ${getEwsBadgeStyle(entry.priority)}`}
-                      >
-                        {getPriorityLabel(entry.priority)}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-600 max-w-xs truncate hidden lg:table-cell">
-                      {entry.chief_complaint || "—"}
-                    </td>
-                    <td className={`px-6 py-4 whitespace-nowrap text-xs font-mono ${getWaitColor(entry.wait_minutes)}`}>
-                      {entry.wait_minutes}m
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <Link
-                        href={
-                          entry.source === "emergency"
-                            ? `/patients/${entry.patient_id}/emergency-triage`
-                            : `/patients/${entry.patient_id}/triage`
-                        }
-                        className={`text-xs font-bold uppercase tracking-wider ${
-                          entry.source === "emergency"
-                            ? "text-red-600 hover:text-red-800"
-                            : "text-clinical-primary hover:text-clinical-primary-hover"
-                        }`}
-                      >
-                        {entry.source === "emergency" ? "Rapid Triage" : "Start Triage"}
-                      </Link>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
+                    return (
+                      <TableRow key={entry.id}>
+                        <TableCell>
+                          <Link
+                            href={`/patients/${entry.patient_id}`}
+                            className="font-medium text-foreground hover:text-clinical-primary hover:underline"
+                          >
+                            {entry.full_name}
+                          </Link>
+                          <div className="text-xs text-muted-foreground font-mono">
+                            {entry.hospital_number}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <StatusBadge
+                            label={sourceBadge.label}
+                            variant={sourceBadge.variant}
+                            pulse={sourceBadge.pulse}
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <StatusBadge
+                            label={priorityBadge.label}
+                            variant={priorityBadge.variant}
+                            pulse={priorityBadge.pulse}
+                          />
+                        </TableCell>
+                        <TableCell className="text-muted-foreground max-w-[200px] truncate">
+                          {entry.chief_complaint || "\u2014"}
+                        </TableCell>
+                        <TableCell>
+                          <span className={cn("tabular-nums font-medium text-sm flex items-center gap-1", getWaitColor(waitMinutes))}>
+                            <Clock className="h-3.5 w-3.5" />
+                            {formatWaitTime(waitMinutes)}
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          <Button
+                            size="sm"
+                            variant={entry.source === "emergency" ? "destructive" : "default"}
+                            render={
+                              <Link
+                                href={
+                                  entry.source === "emergency"
+                                    ? `/patients/${entry.patient_id}/emergency-triage`
+                                    : `/patients/${entry.patient_id}/triage`
+                                }
+                              />
+                            }
+                          >
+                            <Stethoscope className="h-4 w-4 mr-1" />
+                            {entry.source === "emergency" ? "Rapid Triage" : "Start Triage"}
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+              <div className="px-(--card-spacing) py-3 border-t text-xs text-muted-foreground font-mono">
+                Showing {filteredEntries.length} of {entries.length} patients
+              </div>
+            </>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
