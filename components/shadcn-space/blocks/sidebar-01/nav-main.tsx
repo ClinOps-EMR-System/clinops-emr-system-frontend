@@ -30,9 +30,10 @@ export type NavItem = {
   children?: NavItem[];
 };
 
-function routeMatches(pathname: string, href?: string): boolean {
+function routeMatches(pathname: string, href?: string, exact = false): boolean {
   if (!href) return false;
   if (href === "/") return pathname === "/";
+  if (exact) return pathname === href;
   return pathname === href || pathname.startsWith(href + "/");
 }
 
@@ -40,7 +41,7 @@ function anyChildMatches(pathname: string, children?: NavItem[]): boolean {
   if (!children) return false;
   return children.some(
     (child) =>
-      routeMatches(pathname, child.href) ||
+      routeMatches(pathname, child.href, true) ||
       anyChildMatches(pathname, child.children)
   );
 }
@@ -54,6 +55,7 @@ export function NavMain({ items }: { items: NavItem[] }) {
 
   // Sync activeParent with current route
   React.useEffect(() => {
+    // Check top-level items without children
     const matchingItem = items.find(
       (item) => !item.isSection && !item.children && item.href && routeMatches(pathname, item.href)
     );
@@ -61,6 +63,27 @@ export function NavMain({ items }: { items: NavItem[] }) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setActiveParent(matchingItem.title);
       setActiveChild(null);
+      return;
+    }
+
+    // Check children of items with children
+    for (const item of items) {
+      if (item.children) {
+        const matchingChild = item.children.find(
+          (child) => child.href && routeMatches(pathname, child.href, true)
+        );
+        if (matchingChild?.title) {
+          if (item.title !== activeParent) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect
+            setActiveParent(item.title!);
+          }
+          if (matchingChild.title !== activeChild) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect
+            setActiveChild(matchingChild.title);
+          }
+          return;
+        }
+      }
     }
     // Only sync on pathname changes, not when activeParent changes (that would be circular)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -283,11 +306,11 @@ function NavMainSubItem({
           id={`nav-sub-button-${item.title.toLowerCase().replace(/\s+/g, '-')}`}
           className={cn(
             "w-full rounded-md transition-colors",
-            activeChild === item.title || routeMatches(pathname, item.href)
+            activeChild === item.title || routeMatches(pathname, item.href, true)
               ? "bg-muted! text-foreground!"
               : ""
           )}
-          isActive={activeChild === item.title || routeMatches(pathname, item.href)}
+          isActive={activeChild === item.title || routeMatches(pathname, item.href, true)}
           onClick={() => {
             setActiveParent(parentTitle || "");
             setActiveChild(item.title!);
