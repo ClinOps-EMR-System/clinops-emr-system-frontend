@@ -15,6 +15,7 @@ export interface User {
     name: string;
   };
   roles?: string[];
+  permissions?: string[];
 }
 
 interface AuthContextType {
@@ -83,6 +84,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   function getLandingPage(u: User | null): string {
     const roles = (u?.roles || []).map((r) => r.toLowerCase());
     const dept = u?.department?.name?.toLowerCase() || "";
+    const perms = u?.permissions || [];
+
+    if (
+      roles.includes("admin") ||
+      perms.some((p) =>
+        [
+          "user.manage",
+          "role.manage",
+          "audit.view",
+          "department.manage",
+          "settings.manage",
+        ].includes(p),
+      )
+    ) {
+      return "/system";
+    }
 
     if (roles.includes("receptionist") || dept.includes("registration") || dept.includes("reception")) return "/receptionist";
     if (roles.includes("nurse") || dept.includes("nurse") || dept.includes("triage")) return "/nurse-station";

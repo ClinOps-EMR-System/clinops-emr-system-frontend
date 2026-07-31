@@ -6,6 +6,7 @@ import Logo from "@/assets/logo/logo";
 import { NavItem, NavMain } from "@/components/shadcn-space/blocks/sidebar-01/nav-main";
 import { useAuth } from "@/store/RoleContext";
 import { LayoutDashboard, Calendar, Users, Stethoscope, ClipboardList, Pill, FlaskConical, DollarSign, CreditCard, ArrowRightLeft, DoorOpen, List, Shield, Package, Bell } from "lucide-react";
+import { usePermissions } from "@/lib/hooks/usePermissions";
 
 const ROLE_NAV_MAP: Record<string, string[]> = {
   receptionist: ["receptionist", "appointments", "queue", "patients"],
@@ -54,11 +55,12 @@ const ALL_NAV_ITEMS: NavItem[] = [
   { title: "Admissions", icon: DoorOpen, href: "/admissions" },
 
   { label: "Admin", isSection: true },
-  { title: "Admin", icon: Shield, href: "/admin" },
+  { title: "System Admin", icon: Shield, href: "/system" },
 ];
 
 export function AppSidebar() {
   const { user } = useAuth();
+  const { canAccessAdmin } = usePermissions();
 
   const departmentName = user?.department?.name || "Clinical Operations";
   const userRoles = (user?.roles || []).map((r) => r.toLowerCase());
@@ -74,9 +76,25 @@ export function AppSidebar() {
   const matchedRole = displayRole || userRoles.find((r) => ROLE_NAV_MAP[r]);
   const allowedHrefs = isAdmin ? null : matchedRole ? ROLE_NAV_MAP[matchedRole] : null;
 
-  const filteredItems = allowedHrefs
+  let filteredItems = allowedHrefs
     ? filterNavItems(ALL_NAV_ITEMS, allowedHrefs)
     : ALL_NAV_ITEMS;
+
+  // Non-admins with admin permissions still get System Admin; pure clinical roles do not.
+  if (!isAdmin && !canAccessAdmin) {
+    filteredItems = filteredItems.filter(
+      (item) => item.href !== "/system" && item.label !== "Admin",
+    );
+  } else if (!isAdmin && canAccessAdmin) {
+    const hasSystem = filteredItems.some((i) => i.href === "/system");
+    if (!hasSystem) {
+      filteredItems = [
+        ...filteredItems,
+        { label: "Admin", isSection: true },
+        { title: "System Admin", icon: Shield, href: "/system" },
+      ];
+    }
+  }
 
   return (
     <Sidebar className="px-0 h-full **:data-[slot=sidebar-inner]:h-full">

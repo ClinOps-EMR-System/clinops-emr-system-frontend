@@ -366,12 +366,12 @@ export default function Dashboard() {
                 variant="outline"
                 nativeButton={false}
                 className="h-auto flex-col gap-1.5 p-4"
-                render={<Link href="/admin" />}
+                render={<Link href="/system" />}
               >
                 <span className="flex size-5 items-center justify-center text-sm font-bold text-purple-600">
                   Ad
                 </span>
-                <span className="text-xs font-medium">Administration</span>
+                <span className="text-xs font-medium">System Admin</span>
               </Button>
             </div>
           </CardContent>
