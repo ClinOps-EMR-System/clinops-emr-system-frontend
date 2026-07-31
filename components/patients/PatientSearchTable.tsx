@@ -56,12 +56,18 @@ function getClinicalStatus(
   switch (encounter.status) {
     case "Checked-in":
     case "Emergency":
+    case "awaiting_triage":
       return { label: "In Triage", variant: "warning", pulse: true };
+    case "resuscitation":
+      return { label: "Resuscitation", variant: "error", pulse: true };
+    case "waiting_for_clinician":
     case "Triage Complete":
       return { label: "Triaged", variant: "info" };
     case "In Consultation":
+    case "in_consultation":
       return { label: "In Consult", variant: "purple", pulse: true };
     case "Completed":
+    case "discharged":
       return { label: "Completed", variant: "success" };
     case "Discharged":
       return { label: "Discharged", variant: "success" };
@@ -100,12 +106,15 @@ function getPrimaryAction(patient: Patient): ActionConfig {
   switch (encounter.status) {
     case "Checked-in":
     case "Emergency":
+    case "awaiting_triage":
+    case "resuscitation":
       return {
         href: `/patients/${patient.id}/triage`,
         label: "Resume Triage",
         icon: Stethoscope,
         iconColor: "text-clinical-primary",
       };
+    case "waiting_for_clinician":
     case "Triage Complete":
       return {
         href: `/patients/${patient.id}/consultation`,
@@ -114,6 +123,7 @@ function getPrimaryAction(patient: Patient): ActionConfig {
         iconColor: "text-teal-600",
       };
     case "In Consultation":
+    case "in_consultation":
       return {
         href: `/patients/${patient.id}/consultation`,
         label: "Resume Consult",
@@ -122,6 +132,7 @@ function getPrimaryAction(patient: Patient): ActionConfig {
       };
     case "Completed":
     case "Discharged":
+    case "discharged":
     default:
       return {
         href: `/patients/${patient.id}`,

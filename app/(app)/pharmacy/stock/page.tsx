@@ -120,8 +120,14 @@ export default function StockPage() {
     }
   }, [token]);
 
-  useEffect(() => { fetchBatches(); }, [fetchBatches]);
-  useEffect(() => { fetchDrugs(); }, [fetchDrugs]);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    fetchBatches();
+  }, [fetchBatches]);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    fetchDrugs();
+  }, [fetchDrugs]);
 
   const [receiveForm, setReceiveForm] = useState({
     drug_id: "",

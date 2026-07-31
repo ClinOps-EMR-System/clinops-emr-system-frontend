@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
-import Link from "next/link";
 import { useAuth } from "../../../store/RoleContext";
 import { api } from "../../../lib/api";
 import { SectionHeader } from "../../../components/ui/PageLayout";
@@ -45,11 +44,6 @@ interface Role {
   permissions?: { id: number; name: string }[];
 }
 
-interface Permission {
-  id: number;
-  name: string;
-}
-
 function cn(...classes: (string | boolean | undefined)[]) {
   return classes.filter(Boolean).join(" ");
 }
@@ -59,7 +53,6 @@ export default function AdminPage() {
   const [activeTab, setActiveTab] = useState<"users" | "roles">("users");
   const [users, setUsers] = useState<UserRecord[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
-  const [permissions, setPermissions] = useState<Permission[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -82,10 +75,9 @@ export default function AdminPage() {
     setLoading(true);
     setError(null);
     try {
-      const [usersRes, rolesRes, permsRes] = await Promise.allSettled([
+      const [usersRes, rolesRes] = await Promise.allSettled([
         api.get("/users", token),
         api.get("/roles", token),
-        api.get("/permissions", token),
       ]);
       if (usersRes.status === "fulfilled") {
         const d = usersRes.value;
@@ -95,10 +87,6 @@ export default function AdminPage() {
         const d = rolesRes.value;
         setRoles(Array.isArray(d) ? d : d.data ?? []);
       }
-      if (permsRes.status === "fulfilled") {
-        const d = permsRes.value;
-        setPermissions(Array.isArray(d) ? d : d.data ?? []);
-      }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to load admin data");
     } finally {
@@ -106,7 +94,10 @@ export default function AdminPage() {
     }
   }, [token]);
 
-  useEffect(() => { fetchData(); }, [fetchData]);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    fetchData();
+  }, [fetchData]);
 
   const filteredUsers = users.filter((u) =>
     !searchQuery || u.name?.toLowerCase().includes(searchQuery.toLowerCase()) || u.email?.toLowerCase().includes(searchQuery.toLowerCase())

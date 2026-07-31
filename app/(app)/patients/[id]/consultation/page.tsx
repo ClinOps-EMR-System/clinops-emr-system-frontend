@@ -375,7 +375,8 @@ export default function ClinicianSOAPConsultation() {
     setError(null);
     setSuccessMsg(null);
     try {
-      await api.post(`/encounters/${summary.encounter.id}/complete`, {}, token);
+      const targetStatus = disposition === "discharge" ? "discharged" : "admitted";
+      await api.post(`/encounters/${summary.encounter.id}/transition`, { status: targetStatus }, token);
       setSuccessMsg(disposition === "discharge" ? "Patient discharged." : "Consultation completed.");
       setTimeout(() => router.push(`/patients/${patientId}`), 1500);
     } catch (err: unknown) {
