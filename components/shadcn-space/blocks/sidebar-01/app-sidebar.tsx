@@ -10,8 +10,8 @@ import { LayoutDashboard, Calendar, Users, Stethoscope, ClipboardList, Pill, Fla
 const ROLE_NAV_MAP: Record<string, string[]> = {
   receptionist: ["receptionist", "appointments", "queue", "patients"],
   nurse: ["nurse-station", "triage-queue", "consultation-queue", "patients", "admissions"],
-  doctor: ["patients", "triage-queue", "consultation-queue", "lab", "referrals"],
-  "clinical officer": ["patients", "triage-queue", "consultation-queue", "lab", "referrals"],
+  doctor: ["patients", "triage-queue", "consultation-queue", "lab", "referrals", "admissions"],
+  "clinical officer": ["patients", "triage-queue", "consultation-queue", "lab", "referrals", "admissions"],
   pharmacist: ["pharmacy"],
   "lab technician": ["lab"],
   "billing officer": ["billing", "patients"],
@@ -54,8 +54,11 @@ const ALL_NAV_ITEMS: NavItem[] = [
   { title: "Admissions", icon: DoorOpen, href: "/admissions" },
 
   { label: "Admin", isSection: true },
-  { title: "Admin", icon: Shield, href: "/admin" },
+  { title: "User Management", icon: Shield, href: "/admin" },
+  { title: "Audit Logs", icon: Shield, href: "/admin/audit-logs" },
 ];
+
+
 
 export function AppSidebar() {
   const { user } = useAuth();

@@ -369,7 +369,7 @@ export default function ClinicianSOAPConsultation() {
     }
   };
 
-  const handleCompleteConsultation = async (disposition: "discharge" | "admit") => {
+  const handleCompleteConsultation = async (disposition: "discharge" | "admit", redirectPath?: string) => {
     if (!summary?.encounter?.id || completingConsultation) return;
     setCompletingConsultation(true);
     setError(null);
@@ -377,7 +377,7 @@ export default function ClinicianSOAPConsultation() {
     try {
       await api.post(`/encounters/${summary.encounter.id}/complete`, {}, token);
       setSuccessMsg(disposition === "discharge" ? "Patient discharged." : "Consultation completed.");
-      setTimeout(() => router.push(`/patients/${patientId}`), 1500);
+      setTimeout(() => router.push(redirectPath || `/patients/${patientId}`), 1500);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to complete.");
       setCompletingConsultation(false);
@@ -1104,8 +1104,7 @@ export default function ClinicianSOAPConsultation() {
                     <Button
                       variant="secondary"
                       className="h-auto py-3 flex flex-col items-center justify-center gap-1.5"
-                      onClick={() => router.push(`/admissions?patient_id=${patientId}`)}
-                      disabled={completingConsultation}
+                      onClick={() => router.push(`/admissions/new?patient_id=${patientId}&encounter_id=${summary?.encounter?.id}`)}
                     >
                       <DoorOpen className="h-5 w-5 text-purple-600" />
                       <span className="font-bold text-purple-950">Admit to Ward</span>

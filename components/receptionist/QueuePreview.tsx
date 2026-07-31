@@ -1,6 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import StatusBadge from "@/components/ui/StatusBadge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 
 interface QueuePatient {
   id?: number;
@@ -23,6 +26,8 @@ interface EmergencyWaitingPatient {
   wait_minutes: number;
 }
 
+type PriorityVariant = "error" | "warning" | "success";
+
 function getWaitTime(enteredAt: string): string {
   const diff = Date.now() - new Date(enteredAt).getTime();
   const mins = Math.floor(diff / 60000);
@@ -40,110 +45,156 @@ function getWaitColor(enteredAt: string): string {
   return "text-emerald-600";
 }
 
-function getPriorityColor(priority: number | string): string {
-  const p = typeof priority === "string" ? (priority === "high" ? 1 : priority === "medium" ? 3 : 5) : priority;
-  if (p <= 2) return "bg-red-100 text-red-800 border-red-200";
-  if (p <= 3) return "bg-amber-100 text-amber-800 border-amber-200";
-  return "bg-emerald-100 text-emerald-800 border-emerald-200";
+function getPriorityLevel(priority: number | string): number {
+  if (typeof priority === "string") {
+    return priority === "high" ? 1 : priority === "medium" ? 3 : 5;
+  }
+  return priority;
+}
+
+function getPriorityVariant(priority: number | string): PriorityVariant {
+  const p = getPriorityLevel(priority);
+  if (p <= 2) return "error";
+  if (p <= 3) return "warning";
+  return "success";
 }
 
 function getPriorityLabel(priority: number | string): string {
-  const p = typeof priority === "string" ? (priority === "high" ? 1 : priority === "medium" ? 3 : 5) : priority;
+  const p = getPriorityLevel(priority);
   if (p <= 2) return "HIGH";
   if (p <= 3) return "MED";
   return "LOW";
+}
+
+function SectionHeading({
+  title,
+  count,
+  tone,
+  href,
+}: {
+  title: string;
+  count: number;
+  tone: "red" | "amber";
+  href: string;
+}) {
+  return (
+    <div className="flex items-center justify-between">
+      <h4 className="flex items-center gap-2 text-sm font-semibold text-foreground">
+        <span
+          className={cn(
+            "size-1.5 rounded-full",
+            tone === "red" ? "bg-red-500 animate-pulse" : "bg-amber-500"
+          )}
+        />
+        <span className={cn("text-xs font-semibold uppercase tracking-wider", tone === "red" ? "text-red-700" : "text-amber-700")}>
+          {title}
+        </span>
+        <span
+          className={cn(
+            "inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-bold",
+            tone === "red" ? "bg-red-100 text-red-700" : "bg-amber-100 text-amber-700"
+          )}
+        >
+          {count}
+        </span>
+      </h4>
+      <Link
+        href={href}
+        className="text-xs font-semibold text-clinical-primary hover:text-clinical-primary-hover"
+      >
+        View all
+      </Link>
+    </div>
+  );
 }
 
 export function QueuePreview({ queue, emergencyWaiting }: { queue: QueuePatient[]; emergencyWaiting?: EmergencyWaitingPatient[] }) {
   const hasEmergencyWaiting = emergencyWaiting && emergencyWaiting.length > 0;
   const hasQueue = queue && queue.length > 0;
 
-  if (!hasEmergencyWaiting && !hasQueue) {
-    return (
-      <div className="bg-white rounded border border-[#becab7]/50 p-6">
-        <h3 className="text-sm font-bold text-[#5f5e5e] uppercase tracking-wider mb-3">Queue</h3>
-        <p className="text-sm text-gray-400">No patients waiting</p>
-      </div>
-    );
-  }
-
   return (
-    <div className="bg-white rounded border border-[#becab7]/50 overflow-hidden">
-      {/* Emergency Waiting Section */}
-      {hasEmergencyWaiting && (
-        <>
-          <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-red-50/50">
-            <div className="flex items-center">
-              <div className="w-1.5 h-6 bg-red-500 rounded-full mr-3"></div>
-              <h3 className="text-sm font-bold text-red-700 uppercase tracking-wider">Awaiting Triage</h3>
-              <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-red-100 text-red-700">
-                {emergencyWaiting.length}
-              </span>
-            </div>
-            <Link href="/triage-queue" className="text-xs font-bold text-clinical-primary hover:text-clinical-primary-hover uppercase tracking-wider">
-              View All
-            </Link>
-          </div>
-          <div className="divide-y divide-gray-100">
-            {emergencyWaiting.slice(0, 3).map((patient) => (
-              <div key={patient.patient_id} className="px-6 py-3 flex items-center justify-between hover:bg-red-50/30 transition-colors">
-                <div className="flex items-center gap-3">
-                  <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-extrabold border bg-red-100 text-red-800 border-red-200">
-                    ER
-                  </span>
-                  <div>
-                    <Link href={`/patients/${patient.patient_id}`} className="text-sm font-semibold text-gray-900 hover:text-clinical-primary hover:underline">
-                      {patient.full_name}
-                    </Link>
-                    <p className="text-xs text-gray-400 font-mono">{patient.hospital_number}</p>
-                  </div>
-                </div>
-                <span className={`text-xs font-mono font-semibold ${patient.wait_minutes > 10 ? "text-red-600" : "text-emerald-600"}`}>
-                  {patient.wait_minutes}m
-                </span>
-              </div>
-            ))}
-          </div>
-        </>
-      )}
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          Queue
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-6">
+        {!hasEmergencyWaiting && !hasQueue && (
+          <p className="text-sm text-muted-foreground">No patients waiting right now.</p>
+        )}
 
-      {/* Regular Queue Section */}
-      {hasQueue && (
-        <>
-          <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-            <div className="flex items-center">
-              <div className="w-1.5 h-6 bg-brand-green rounded-full mr-3"></div>
-              <h3 className="text-sm font-bold text-[#5f5e5e] uppercase tracking-wider">Awaiting Doctor</h3>
-              <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-brand-green/10 text-brand-green">
-                {queue.length}
-              </span>
-            </div>
-            <Link href="/queue" className="text-xs font-bold text-clinical-primary hover:text-clinical-primary-hover uppercase tracking-wider">
-              View All
-            </Link>
-          </div>
-          <div className="divide-y divide-gray-100">
-            {queue.slice(0, 5).map((entry, idx) => (
-              <div key={entry.id ?? entry.patient?.id ?? idx} className="px-6 py-3 flex items-center justify-between hover:bg-[#fcf9f8]/40 transition-colors">
-                <div className="flex items-center gap-3">
-                  <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-extrabold border ${getPriorityColor(entry.priority)}`}>
-                    {getPriorityLabel(entry.priority)}
-                  </span>
-                  <div>
-                    <Link href={`/patients/${entry.patient.id}`} className="text-sm font-semibold text-gray-900 hover:text-clinical-primary hover:underline">
-                      {entry.patient.first_name} {entry.patient.last_name}
-                    </Link>
-                    <p className="text-xs text-gray-400 font-mono">{entry.patient.hospital_number}</p>
+        {hasEmergencyWaiting && (
+          <section className="flex flex-col gap-2">
+            <SectionHeading title="Awaiting Triage" count={emergencyWaiting.length} tone="red" href="/triage-queue" />
+            <div className="flex flex-col overflow-hidden rounded-lg ring-1 ring-foreground/10">
+              {emergencyWaiting.slice(0, 3).map((patient) => (
+                <div
+                  key={patient.patient_id}
+                  className="flex items-center justify-between gap-3 border-b border-border px-3 py-2.5 last:border-b-0"
+                >
+                  <div className="flex min-w-0 items-center gap-3">
+                    <span className="inline-flex shrink-0 items-center rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-bold text-red-700">
+                      ER
+                    </span>
+                    <div className="min-w-0">
+                      <Link
+                        href={`/patients/${patient.patient_id}`}
+                        className="block truncate text-sm font-medium text-foreground hover:text-clinical-primary"
+                      >
+                        {patient.full_name}
+                      </Link>
+                      <p className="truncate font-mono text-xs text-muted-foreground">
+                        {patient.hospital_number}
+                      </p>
+                    </div>
                   </div>
+                  <span
+                    className={cn(
+                      "shrink-0 font-mono text-xs font-semibold",
+                      patient.wait_minutes > 10 ? "text-red-600" : "text-emerald-600"
+                    )}
+                  >
+                    {patient.wait_minutes}m
+                  </span>
                 </div>
-                <span className={`text-xs font-mono font-semibold ${getWaitColor(entry.entered_queue_at)}`}>
-                  {getWaitTime(entry.entered_queue_at)}
-                </span>
-              </div>
-            ))}
-          </div>
-        </>
-      )}
-    </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {hasQueue && (
+          <section className="flex flex-col gap-2">
+            <SectionHeading title="Awaiting Doctor" count={queue.length} tone="amber" href="/queue" />
+            <div className="flex flex-col overflow-hidden rounded-lg ring-1 ring-foreground/10">
+              {queue.slice(0, 5).map((entry, idx) => (
+                <div
+                  key={entry.id ?? entry.patient?.id ?? idx}
+                  className="flex items-center justify-between gap-3 border-b border-border px-3 py-2.5 last:border-b-0"
+                >
+                  <div className="flex min-w-0 items-center gap-3">
+                    <StatusBadge label={getPriorityLabel(entry.priority)} variant={getPriorityVariant(entry.priority)} className="shrink-0" />
+                    <div className="min-w-0">
+                      <Link
+                        href={`/patients/${entry.patient.id}`}
+                        className="block truncate text-sm font-medium text-foreground hover:text-clinical-primary"
+                      >
+                        {entry.patient.first_name} {entry.patient.last_name}
+                      </Link>
+                      <p className="truncate font-mono text-xs text-muted-foreground">
+                        {entry.patient.hospital_number}
+                      </p>
+                    </div>
+                  </div>
+                  <span className={cn("shrink-0 font-mono text-xs font-semibold", getWaitColor(entry.entered_queue_at))}>
+                    {getWaitTime(entry.entered_queue_at)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+      </CardContent>
+    </Card>
   );
 }
