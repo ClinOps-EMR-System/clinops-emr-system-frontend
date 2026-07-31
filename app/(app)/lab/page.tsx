@@ -2,129 +2,99 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useAuth } from "../../../store/RoleContext";
-import { api } from "../../../lib/api";
-import StatusBadge from "../../../components/ui/StatusBadge";
-import EmptyState from "../../../components/ui/EmptyState";
-import LoadingState from "../../../components/ui/LoadingState";
-import Modal from "../../../components/ui/Modal";
-import { FlaskConical, Search, Clock, AlertTriangle, Plus } from "lucide-react";
+import { useAuth } from "@/store/RoleContext";
+import { api } from "@/lib/api";
+import StatusBadge from "@/components/ui/StatusBadge";
+import EmptyState from "@/components/ui/EmptyState";
+import LoadingState from "@/components/ui/LoadingState";
+import Modal from "@/components/ui/Modal";
+import { FlaskConical, Search, Clock, AlertTriangle, CheckCircle2, TestTube } from "lucide-react";
 
-interface LabOrder {
-  id: number;
-  patient_id: number;
-  encounter_id: number;
-  order_type: string;
-  clinical_indication: string | null;
-  priority: string;
-  status: string;
-  created_at: string;
-  patient?: {
-    first_name: string;
-    last_name: string;
-    hospital_number: string;
-  };
-  lab_request?: {
-    id: number;
-    test_name: string;
-    loinc_code: string | null;
-    specimen_type: string | null;
-    status: string;
-  };
-}
-
-interface LabResult {
-  id: number;
+interface LabWorklistItem {
   lab_request_id: number;
-  result_value_text: string | null;
-  result_value_numeric: number | null;
-  unit: string | null;
-  reference_range: string | null;
-  is_abnormal: boolean;
-  is_critical: boolean;
-  verified_by: number | null;
-  verified_at: string | null;
-  created_at: string;
-  lab_request?: {
-    id: number;
-    test_name: string;
-    patient_id: number;
-    patient?: {
-      first_name: string;
-      last_name: string;
-      hospital_number: string;
-    };
-  };
+  patient: { id: number; hospital_number: string; full_name: string };
+  encounter_id: number;
+  test_name: string;
+  loinc_code: string | null;
+  specimen_type: string | null;
+  status: string;
+  ordered_by: string | null;
+  ordered_at: string;
+  specimen_collected_at: string | null;
 }
+
+type TabKey = "ordered" | "collected" | "in_progress" | "released";
+
+const tabs: { key: TabKey; label: string; apiStatus: string; icon: React.ReactNode; color: string }[] = [
+  { key: "ordered", label: "Awaiting Collection", apiStatus: "Ordered", icon: <Clock className="h-4 w-4" />, color: "amber" },
+  { key: "collected", label: "Results Entry", apiStatus: "Collected", icon: <TestTube className="h-4 w-4" />, color: "sky" },
+  { key: "in_progress", label: "Verify Results", apiStatus: "In-Progress", icon: <AlertTriangle className="h-4 w-4" />, color: "purple" },
+  { key: "released", label: "Released", apiStatus: "Released", icon: <CheckCircle2 className="h-4 w-4" />, color: "emerald" },
+];
 
 export default function LabPage() {
   const { token } = useAuth();
-  const [activeTab, setActiveTab] = useState<"pending" | "results" | "verified">("pending");
-  const [orders, setOrders] = useState<LabOrder[]>([]);
-  const [results, setResults] = useState<LabResult[]>([]);
+  const [activeTab, setActiveTab] = useState<TabKey>("ordered");
+  const [items, setItems] = useState<LabWorklistItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [resultModalOpen, setResultModalOpen] = useState(false);
-  const [selectedOrder, setSelectedOrder] = useState<LabOrder | null>(null);
-  const [resultForm, setResultForm] = useState({ result_value_text: "", result_value_numeric: "", unit: "", reference_range: "", interpretation: "", is_abnormal: false, is_critical: false });
   const [submitting, setSubmitting] = useState(false);
 
-  async function fetchData() {
+  // Result entry modal
+  const [resultModalOpen, setResultModalOpen] = useState(false);
+  const [selectedItem, setSelectedItem] = useState<LabWorklistItem | null>(null);
+  const [resultForm, setResultForm] = useState({ result_value_text: "", result_value_numeric: "", unit: "", reference_range: "", is_abnormal: false, is_critical: false });
+  const currentTab = tabs.find((t) => t.key === activeTab)!;
+
+  async function fetchWorklist() {
     try {
       setLoading(true);
       setError(null);
-      const [ordersRes, resultsRes] = await Promise.all([
-        api.get("/orders", token),
-        api.get("/lab-results", token),
-      ]);
-      if (ordersRes && ordersRes.data) {
-        const allOrders = ordersRes.data.data || ordersRes.data;
-        const labOrders = (Array.isArray(allOrders) ? allOrders : []).filter(
-          (o: LabOrder) => o.order_type?.toLowerCase() === "lab"
-        );
-        setOrders(labOrders);
-      }
-      if (resultsRes && resultsRes.data) {
-        const allResults = resultsRes.data.data || resultsRes.data;
-        setResults(Array.isArray(allResults) ? allResults : []);
-      }
+      const res = await api.get(`/worklist/lab?status=${encodeURIComponent(currentTab.apiStatus)}`, token);
+      const data = res?.data?.data ?? res?.data ?? [];
+      setItems(Array.isArray(data) ? data : []);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to load lab data");
+      setError(err instanceof Error ? err.message : "Failed to load lab worklist");
     } finally {
       setLoading(false);
     }
   }
 
-  /* eslint-disable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
   useEffect(() => {
-    if (token) fetchData();
-  }, [token]);
-  /* eslint-enable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
+    if (token) fetchWorklist(); // eslint-disable-line react-hooks/set-state-in-effect
+  }, [token, activeTab]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const filteredOrders = orders.filter((o) => {
-    const matchesSearch = !searchQuery ||
-      o.lab_request?.test_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      o.patient?.hospital_number?.includes(searchQuery) ||
-      o.patient?.first_name?.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesSearch;
+  const filteredItems = items.filter((item) => {
+    if (!searchQuery) return true;
+    const q = searchQuery.toLowerCase();
+    return (
+      item.test_name?.toLowerCase().includes(q) ||
+      item.patient?.full_name?.toLowerCase().includes(q) ||
+      item.patient?.hospital_number?.includes(q)
+    );
   });
 
-  const pendingOrders = filteredOrders.filter((o) => o.status?.toLowerCase() === "pending" || o.status?.toLowerCase() === "ordered");
-  const inProgressOrders = filteredOrders.filter((o) => o.status?.toLowerCase() === "in_progress" || o.status?.toLowerCase() === "collected");
-
-  const handleSubmitResult = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedOrder) return;
-    const labRequestId = selectedOrder.lab_request?.id;
-    if (!labRequestId) {
-      setError("No lab request found for this order.");
-      return;
+  // ── Collect Specimen ──
+  const handleCollectSpecimen = async (item: LabWorklistItem) => {
+    setSubmitting(true);
+    try {
+      await api.post(`/lab-requests/${item.lab_request_id}/collect-specimen`, {}, token);
+      fetchWorklist();
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to collect specimen");
+    } finally {
+      setSubmitting(false);
     }
+  };
+
+  // ── Enter Result ──
+  const handleSubmitResult = async () => {
+    if (!selectedItem) return;
     setSubmitting(true);
     try {
       const payload: Record<string, unknown> = {
-        lab_request_id: labRequestId,
+        lab_request_id: selectedItem.lab_request_id,
         unit: resultForm.unit || null,
         reference_range: resultForm.reference_range || null,
         is_abnormal: resultForm.is_abnormal,
@@ -137,9 +107,9 @@ export default function LabPage() {
       }
       await api.post("/lab-results", payload, token);
       setResultModalOpen(false);
-      setSelectedOrder(null);
-      setResultForm({ result_value_text: "", result_value_numeric: "", unit: "", reference_range: "", interpretation: "", is_abnormal: false, is_critical: false });
-      fetchData();
+      setSelectedItem(null);
+      setResultForm({ result_value_text: "", result_value_numeric: "", unit: "", reference_range: "", is_abnormal: false, is_critical: false });
+      fetchWorklist();
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to submit result");
     } finally {
@@ -147,68 +117,123 @@ export default function LabPage() {
     }
   };
 
+  // ── Load results for verify tab ──
+  const [verifyResults, setVerifyResults] = useState<{ id: number; status: string; result_value_numeric: number | null; result_value_text: string | null; unit: string | null; is_abnormal: boolean; is_critical: boolean; lab_request: { test_name: string; patient: { full_name: string; hospital_number: string } } }[]>([]);
+
+  async function fetchEnteredResults() {
+    try {
+      setLoading(true);
+      const res = await api.get("/lab-results", token);
+      const data = res?.data?.data ?? res?.data ?? [];
+      const allResults = Array.isArray(data) ? data : [];
+      setVerifyResults(allResults.filter((r: { status: string }) => r.status === "entered" || r.status === "verified"));
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to load results");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    if (activeTab === "in_progress" || activeTab === "released") {
+      fetchEnteredResults(); // eslint-disable-line react-hooks/set-state-in-effect
+    }
+  }, [activeTab]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Verify / Release ──
+  const handleVerify = async (resultId: number) => {
+    setSubmitting(true);
+    try {
+      await api.post(`/lab-results/${resultId}/verify`, {}, token);
+      fetchEnteredResults();
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to verify result");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleRelease = async (resultId: number) => {
+    setSubmitting(true);
+    try {
+      await api.post(`/lab-results/${resultId}/release`, {}, token);
+      fetchEnteredResults();
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to release result");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const enteredResults = verifyResults.filter((r) => r.status === "entered");
+  const releasedResults = verifyResults.filter((r) => r.status === "released");
+
   return (
     <div className="max-w-7xl mx-auto space-y-6 font-sans">
       <section className="flex flex-col sm:flex-row justify-between sm:items-end gap-4">
         <div>
           <span className="text-xs font-bold text-brand-green tracking-widest uppercase">Laboratory</span>
-          <h1 className="text-3xl font-bold text-[#1b1c1c] mt-1">Lab Orders & Results</h1>
-          <p className="text-sm text-[#5f5e5e] mt-1">Process orders, enter results, and verify reports</p>
+          <h1 className="text-3xl font-bold text-[#1b1c1c] mt-1">Lab Worklist</h1>
+          <p className="text-sm text-[#5f5e5e] mt-1">Collect specimens, enter results, verify and release reports</p>
         </div>
       </section>
 
       {/* Metric Cards */}
-      <section className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <section className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="bg-white rounded border border-[#becab7]/50 p-5 flex items-center gap-4">
           <div className="h-10 w-10 rounded bg-amber-100 flex items-center justify-center">
             <Clock className="h-5 w-5 text-amber-600" />
           </div>
           <div>
-            <p className="text-xs font-bold text-[#5f5e5e] uppercase tracking-wider">Pending Orders</p>
-            <p className="text-2xl font-extrabold text-[#1b1c1c] font-mono">{loading ? "..." : pendingOrders.length}</p>
+            <p className="text-xs font-bold text-[#5f5e5e] uppercase tracking-wider">Awaiting Collection</p>
+            <p className="text-2xl font-extrabold text-[#1b1c1c] font-mono">{loading ? "..." : filteredItems.length}</p>
           </div>
         </div>
         <div className="bg-white rounded border border-[#becab7]/50 p-5 flex items-center gap-4">
           <div className="h-10 w-10 rounded bg-sky-100 flex items-center justify-center">
-            <FlaskConical className="h-5 w-5 text-sky-600" />
+            <TestTube className="h-5 w-5 text-sky-600" />
           </div>
           <div>
-            <p className="text-xs font-bold text-[#5f5e5e] uppercase tracking-wider">In Progress</p>
-            <p className="text-2xl font-extrabold text-[#1b1c1c] font-mono">{loading ? "..." : inProgressOrders.length}</p>
+            <p className="text-xs font-bold text-[#5f5e5e] uppercase tracking-wider">Results Pending</p>
+            <p className="text-2xl font-extrabold text-[#1b1c1c] font-mono">{loading ? "..." : (activeTab === "collected" ? filteredItems.length : enteredResults.length)}</p>
           </div>
         </div>
         <div className="bg-white rounded border border-[#becab7]/50 p-5 flex items-center gap-4">
-          <div className="h-10 w-10 rounded bg-red-100 flex items-center justify-center">
-            <AlertTriangle className="h-5 w-5 text-red-600" />
+          <div className="h-10 w-10 rounded bg-purple-100 flex items-center justify-center">
+            <AlertTriangle className="h-5 w-5 text-purple-600" />
           </div>
           <div>
-            <p className="text-xs font-bold text-[#5f5e5e] uppercase tracking-wider">Critical Results</p>
-            <p className="text-2xl font-extrabold text-[#1b1c1c] font-mono">
-              {loading ? "..." : results.filter((r) => r.is_critical && !r.verified_at).length}
-            </p>
+            <p className="text-xs font-bold text-[#5f5e5e] uppercase tracking-wider">Awaiting Verification</p>
+            <p className="text-2xl font-extrabold text-[#1b1c1c] font-mono">{loading ? "..." : enteredResults.length}</p>
+          </div>
+        </div>
+        <div className="bg-white rounded border border-[#becab7]/50 p-5 flex items-center gap-4">
+          <div className="h-10 w-10 rounded bg-emerald-100 flex items-center justify-center">
+            <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+          </div>
+          <div>
+            <p className="text-xs font-bold text-[#5f5e5e] uppercase tracking-wider">Released</p>
+            <p className="text-2xl font-extrabold text-[#1b1c1c] font-mono">{loading ? "..." : releasedResults.length}</p>
           </div>
         </div>
       </section>
 
       {/* Tab Navigation */}
-      <section className="flex gap-1 bg-white rounded border border-[#becab7]/50 p-1" role="tablist" aria-label="Lab orders views">
-        {[
-          { key: "pending" as const, label: "Pending Orders", count: pendingOrders.length },
-          { key: "results" as const, label: "Results Entry", count: inProgressOrders.length },
-          { key: "verified" as const, label: "Verified Results", count: results.filter((r) => r.verified_at).length },
-        ].map((tab) => (
+      <section className="flex gap-1 bg-white rounded border border-[#becab7]/50 p-1" role="tablist" aria-label="Lab pipeline views">
+        {tabs.map((tab) => (
           <button
             key={tab.key}
             role="tab"
             aria-selected={activeTab === tab.key}
             onClick={() => setActiveTab(tab.key)}
-            className={`flex-1 px-4 py-3 text-sm font-bold rounded transition-all min-h-[44px] ${
+            className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 text-sm font-bold rounded transition-all min-h-[44px] ${
               activeTab === tab.key
                 ? "bg-clinical-primary text-white"
                 : "text-gray-600 hover:bg-gray-50"
             }`}
           >
-            {tab.label} ({tab.count})
+            {tab.icon}
+            {tab.label}
           </button>
         ))}
       </section>
@@ -220,7 +245,7 @@ export default function LabPage() {
           <input
             type="text"
             placeholder="Search by test name, patient name, or hospital #..."
-            aria-label="Search lab orders"
+            aria-label="Search lab worklist"
             className="w-full pl-9 pr-4 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
@@ -232,13 +257,11 @@ export default function LabPage() {
       <section className="bg-white rounded border border-[#becab7]/50 overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-100 flex items-center">
           <div className="w-1.5 h-6 bg-brand-green rounded-full mr-3"></div>
-          <h2 className="text-lg font-bold text-gray-900">
-            {activeTab === "pending" ? "Pending Lab Orders" : activeTab === "results" ? "Results Entry" : "Verified Results"}
-          </h2>
+          <h2 className="text-lg font-bold text-gray-900">{currentTab.label}</h2>
         </div>
 
         {loading ? (
-          <LoadingState message="Loading lab data..." />
+          <LoadingState message="Loading lab worklist..." />
         ) : error ? (
           <div className="p-8 text-center text-sm text-red-600">{error}</div>
         ) : (
@@ -248,42 +271,38 @@ export default function LabPage() {
                 <tr className="divide-x divide-gray-200/50">
                   <th className="px-6 py-3 text-left text-xs font-bold text-[#5f5e5e] uppercase tracking-wider">Patient</th>
                   <th className="px-6 py-3 text-left text-xs font-bold text-[#5f5e5e] uppercase tracking-wider">Test</th>
-                  <th className="px-6 py-3 text-left text-xs font-bold text-[#5f5e5e] uppercase tracking-wider">Priority</th>
-                  <th className="px-6 py-3 text-left text-xs font-bold text-[#5f5e5e] uppercase tracking-wider">Status</th>
+                  <th className="px-6 py-3 text-left text-xs font-bold text-[#5f5e5e] uppercase tracking-wider">Specimen</th>
+                  <th className="px-6 py-3 text-left text-xs font-bold text-[#5f5e5e] uppercase tracking-wider">Ordered By</th>
                   <th className="px-6 py-3 text-left text-xs font-bold text-[#5f5e5e] uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-100">
-                {activeTab === "pending" && (
-                  pendingOrders.length === 0 ? (
-                    <tr><td colSpan={5}><EmptyState icon={<FlaskConical className="h-6 w-6 text-gray-400" />} title="No pending orders" description="All lab orders have been processed" /></td></tr>
-                  ) : pendingOrders.map((order) => (
-                    <tr key={order.id} className="hover:bg-[#fcf9f8]/40 transition-colors">
+                {/* ── Tab: Ordered (awaiting collection) ── */}
+                {activeTab === "ordered" && (
+                  filteredItems.length === 0 ? (
+                    <tr><td colSpan={5}><EmptyState icon={<FlaskConical className="h-6 w-6 text-gray-400" />} title="No orders awaiting collection" description="All specimens have been collected" /></td></tr>
+                  ) : filteredItems.map((item) => (
+                    <tr key={item.lab_request_id} className="hover:bg-[#fcf9f8]/40 transition-colors">
                       <td className="px-6 py-4">
-                        <div className="text-sm font-semibold text-gray-900">
-                          {order.patient ? `${order.patient.first_name} ${order.patient.last_name}` : `Patient #${order.patient_id}`}
-                        </div>
-                        <div className="text-xs text-gray-400 font-mono">{order.patient?.hospital_number}</div>
+                        <div className="text-sm font-semibold text-gray-900">{item.patient?.full_name}</div>
+                        <div className="text-xs text-gray-400 font-mono">{item.patient?.hospital_number}</div>
                       </td>
                       <td className="px-6 py-4">
-                        <div className="text-sm font-semibold text-gray-900">{order.lab_request?.test_name || "—"}</div>
-                        {order.lab_request?.loinc_code && <div className="text-xs text-gray-400 font-mono">LOINC: {order.lab_request.loinc_code}</div>}
+                        <div className="text-sm font-semibold text-gray-900">{item.test_name}</div>
+                        {item.loinc_code && <div className="text-xs text-gray-400 font-mono">LOINC: {item.loinc_code}</div>}
                       </td>
-                      <td className="px-6 py-4">
-                        <StatusBadge label={order.priority} variant={order.priority?.toLowerCase() === "stat" ? "error" : order.priority?.toLowerCase() === "urgent" ? "warning" : "info"} />
-                      </td>
-                      <td className="px-6 py-4">
-                        <StatusBadge label={order.status} variant="warning" pulse />
-                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-600">{item.specimen_type || "—"}</td>
+                      <td className="px-6 py-4 text-sm text-gray-600">{item.ordered_by || "—"}</td>
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
                           <button
-                            onClick={() => { setSelectedOrder(order); setResultModalOpen(true); }}
-                            className="inline-flex items-center gap-1 text-xs font-bold text-clinical-primary hover:text-clinical-primary-hover uppercase tracking-wider cursor-pointer"
+                            onClick={() => handleCollectSpecimen(item)}
+                            disabled={submitting}
+                            className="text-xs font-bold text-emerald-600 hover:text-emerald-800 uppercase tracking-wider cursor-pointer disabled:opacity-50"
                           >
-                            <Plus className="h-3 w-3" /> Enter Result
+                            Collect Specimen
                           </button>
-                          <Link href={`/patients/${order.patient_id}`} className="text-xs font-bold text-teal-600 hover:text-teal-800 uppercase tracking-wider">
+                          <Link href={`/patients/${item.patient?.id}`} className="text-xs font-bold text-teal-600 hover:text-teal-800 uppercase tracking-wider">
                             Profile
                           </Link>
                         </div>
@@ -292,22 +311,27 @@ export default function LabPage() {
                   ))
                 )}
 
-                {activeTab === "results" && (
-                  inProgressOrders.length === 0 ? (
-                    <tr><td colSpan={5}><EmptyState title="No results pending entry" description="All collected samples have results entered" /></td></tr>
-                  ) : inProgressOrders.map((order) => (
-                    <tr key={order.id} className="hover:bg-[#fcf9f8]/40 transition-colors">
+                {/* ── Tab: Collected (results entry) ── */}
+                {activeTab === "collected" && (
+                  filteredItems.length === 0 ? (
+                    <tr><td colSpan={5}><EmptyState title="No specimens awaiting results" description="All collected specimens have results entered" /></td></tr>
+                  ) : filteredItems.map((item) => (
+                    <tr key={item.lab_request_id} className="hover:bg-[#fcf9f8]/40 transition-colors">
                       <td className="px-6 py-4">
-                        <div className="text-sm font-semibold text-gray-900">
-                          {order.patient ? `${order.patient.first_name} ${order.patient.last_name}` : `Patient #${order.patient_id}`}
-                        </div>
+                        <div className="text-sm font-semibold text-gray-900">{item.patient?.full_name}</div>
+                        <div className="text-xs text-gray-400 font-mono">{item.patient?.hospital_number}</div>
                       </td>
-                      <td className="px-6 py-4 text-sm font-semibold text-gray-900">{order.lab_request?.test_name || "—"}</td>
-                      <td className="px-6 py-4"><StatusBadge label={order.priority} variant="info" /></td>
-                      <td className="px-6 py-4"><StatusBadge label={order.status} variant="info" /></td>
+                      <td className="px-6 py-4 text-sm font-semibold text-gray-900">{item.test_name}</td>
+                      <td className="px-6 py-4 text-sm text-gray-600">
+                        <StatusBadge label="Collected" variant="info" />
+                        {item.specimen_collected_at && (
+                          <div className="text-xs text-gray-400 mt-1">{new Date(item.specimen_collected_at).toLocaleString()}</div>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-600">{item.ordered_by || "—"}</td>
                       <td className="px-6 py-4">
                         <button
-                          onClick={() => { setSelectedOrder(order); setResultModalOpen(true); }}
+                          onClick={() => { setSelectedItem(item); setResultModalOpen(true); }}
                           className="text-xs font-bold text-clinical-primary hover:text-clinical-primary-hover uppercase tracking-wider cursor-pointer"
                         >
                           Enter Result
@@ -317,15 +341,15 @@ export default function LabPage() {
                   ))
                 )}
 
-                {activeTab === "verified" && (
-                  results.filter((r) => r.verified_at).length === 0 ? (
-                    <tr><td colSpan={5}><EmptyState title="No verified results" description="Results will appear here after verification" /></td></tr>
-                  ) : results.filter((r) => r.verified_at).map((result) => (
+                {/* ── Tab: In-Progress (verify results) ── */}
+                {activeTab === "in_progress" && (
+                  enteredResults.length === 0 ? (
+                    <tr><td colSpan={5}><EmptyState title="No results awaiting verification" description="All entered results have been verified" /></td></tr>
+                  ) : enteredResults.map((result) => (
                     <tr key={result.id} className="hover:bg-[#fcf9f8]/40 transition-colors">
                       <td className="px-6 py-4">
-                        <div className="text-sm font-semibold text-gray-900">
-                          {result.lab_request?.patient ? `${result.lab_request.patient.first_name} ${result.lab_request.patient.last_name}` : `Patient #${result.lab_request?.patient_id}`}
-                        </div>
+                        <div className="text-sm font-semibold text-gray-900">{result.lab_request?.patient?.full_name}</div>
+                        <div className="text-xs text-gray-400 font-mono">{result.lab_request?.patient?.hospital_number}</div>
                       </td>
                       <td className="px-6 py-4 text-sm font-semibold text-gray-900">{result.lab_request?.test_name}</td>
                       <td className="px-6 py-4">
@@ -334,11 +358,46 @@ export default function LabPage() {
                         {result.is_abnormal && <StatusBadge label="Abnormal" variant="warning" className="ml-2" />}
                         {result.is_critical && <StatusBadge label="Critical" variant="error" pulse className="ml-2" />}
                       </td>
-                      <td className="px-6 py-4"><StatusBadge label="Verified" variant="success" /></td>
+                      <td className="px-6 py-4"><StatusBadge label="Entered" variant="info" /></td>
                       <td className="px-6 py-4">
-                        <Link href={`/patients/${result.lab_request?.patient_id}`} className="text-xs font-bold text-teal-600 hover:text-teal-800 uppercase tracking-wider">
-                          Profile
-                        </Link>
+                        <button
+                          onClick={() => handleVerify(result.id)}
+                          disabled={submitting}
+                          className="text-xs font-bold text-purple-600 hover:text-purple-800 uppercase tracking-wider cursor-pointer disabled:opacity-50"
+                        >
+                          Verify
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+
+                {/* ── Tab: Released ── */}
+                {activeTab === "released" && (
+                  releasedResults.length === 0 ? (
+                    <tr><td colSpan={5}><EmptyState title="No released results" description="Results will appear here after release" /></td></tr>
+                  ) : releasedResults.map((result) => (
+                    <tr key={result.id} className="hover:bg-[#fcf9f8]/40 transition-colors">
+                      <td className="px-6 py-4">
+                        <div className="text-sm font-semibold text-gray-900">{result.lab_request?.patient?.full_name}</div>
+                        <div className="text-xs text-gray-400 font-mono">{result.lab_request?.patient?.hospital_number}</div>
+                      </td>
+                      <td className="px-6 py-4 text-sm font-semibold text-gray-900">{result.lab_request?.test_name}</td>
+                      <td className="px-6 py-4">
+                        <span className="font-mono text-sm font-bold">{result.result_value_numeric ?? result.result_value_text ?? "—"}</span>
+                        {result.unit && <span className="text-xs text-gray-400 ml-1">{result.unit}</span>}
+                        {result.is_abnormal && <StatusBadge label="Abnormal" variant="warning" className="ml-2" />}
+                        {result.is_critical && <StatusBadge label="Critical" variant="error" className="ml-2" />}
+                      </td>
+                      <td className="px-6 py-4"><StatusBadge label="Released" variant="success" /></td>
+                      <td className="px-6 py-4">
+                        <button
+                          onClick={() => handleRelease(result.id)}
+                          disabled={submitting}
+                          className="text-xs font-bold text-emerald-600 hover:text-emerald-800 uppercase tracking-wider cursor-pointer disabled:opacity-50"
+                        >
+                          Release
+                        </button>
                       </td>
                     </tr>
                   ))
@@ -352,13 +411,13 @@ export default function LabPage() {
       {/* Enter Result Modal */}
       <Modal
         open={resultModalOpen}
-        onClose={() => { setResultModalOpen(false); setSelectedOrder(null); }}
+        onClose={() => { setResultModalOpen(false); setSelectedItem(null); }}
         title="Enter Lab Result"
-        subtitle={selectedOrder ? `${selectedOrder.lab_request?.test_name || "Lab Test"} for Patient #${selectedOrder.patient_id}` : ""}
+        subtitle={selectedItem ? `${selectedItem.test_name} for ${selectedItem.patient?.full_name}` : ""}
         size="lg"
         footer={
           <>
-            <button onClick={() => { setResultModalOpen(false); setSelectedOrder(null); }} className="px-4 py-2 text-sm font-semibold text-gray-600 bg-white border border-gray-300 rounded hover:bg-gray-50">
+            <button onClick={() => { setResultModalOpen(false); setSelectedItem(null); }} className="px-4 py-2 text-sm font-semibold text-gray-600 bg-white border border-gray-300 rounded hover:bg-gray-50">
               Cancel
             </button>
             <button onClick={handleSubmitResult} disabled={submitting || (!resultForm.result_value_text.trim() && !resultForm.result_value_numeric.trim())} className="px-4 py-2 text-sm font-bold text-white bg-clinical-primary rounded hover:bg-clinical-primary-hover disabled:opacity-50">
@@ -367,7 +426,7 @@ export default function LabPage() {
           </>
         }
       >
-        <form onSubmit={handleSubmitResult} className="space-y-4">
+        <div className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">Numeric Result</label>
@@ -410,16 +469,6 @@ export default function LabPage() {
                 placeholder="e.g., 12.0-16.0"
               />
             </div>
-            <div>
-              <label className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">Interpretation</label>
-              <input
-                type="text"
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary"
-                value={resultForm.interpretation}
-                onChange={(e) => setResultForm({ ...resultForm, interpretation: e.target.value })}
-                placeholder="Clinical interpretation"
-              />
-            </div>
           </div>
           <div className="flex gap-6">
             <label className="flex items-center gap-2 text-sm">
@@ -446,7 +495,7 @@ export default function LabPage() {
               Critical results require immediate clinician notification and acknowledgment workflow.
             </div>
           )}
-        </form>
+        </div>
       </Modal>
     </div>
   );
