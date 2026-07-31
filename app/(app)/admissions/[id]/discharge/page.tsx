@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, use } from "react";
+import React, { useState, useEffect, useCallback, useRef, use } from "react";
 import Link from "next/link";
 import { useAuth } from "@/store/RoleContext";
 import { api } from "@/lib/api";
@@ -128,8 +128,11 @@ export default function DischargePage({ params }: { params: Promise<{ id: string
     fetchData(); // eslint-disable-line react-hooks/set-state-in-effect
   }, [fetchData]);
 
+  const prefilledMeds = useRef(false);
+
   useEffect(() => {
-    if (prescriptions.length > 0 && medications.length === 0) {
+    if (prescriptions.length > 0 && medications.length === 0 && !prefilledMeds.current) {
+      prefilledMeds.current = true;
       const prefilled: DischargeMedication[] = prescriptions.map((p) => ({
         name: p.drug?.name ?? "",
         dosage: p.dosage ?? "",
@@ -138,7 +141,7 @@ export default function DischargePage({ params }: { params: Promise<{ id: string
         duration: p.duration ?? "",
         instructions: p.instructions ?? "",
       }));
-      setMedications(prefilled); // eslint-disable-line react-hooks/set-state-in-effect
+      setMedications(prefilled);
     }
   }, [prescriptions, medications.length]);
 
