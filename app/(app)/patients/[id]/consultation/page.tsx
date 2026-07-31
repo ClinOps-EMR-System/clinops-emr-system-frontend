@@ -2,7 +2,6 @@
 
 import React, { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import Link from "next/link";
 import { useAuth } from "@/store/RoleContext";
 import { api } from "@/lib/api";
 import type { Patient, Allergy } from "@/types/patient";
@@ -17,7 +16,7 @@ import { cn } from "@/lib/utils";
 import {
   ArrowLeft, Loader2, Check, TriangleAlert, HeartPulse, Stethoscope,
   ClipboardList, ClipboardPen, FlaskConical, Pill, LogOut, DoorOpen,
-  Search, Plus, X, History, Clock, Activity,
+  Search, Plus, X, History, Clock,
 } from "lucide-react";
 
 interface TimelineEvent {

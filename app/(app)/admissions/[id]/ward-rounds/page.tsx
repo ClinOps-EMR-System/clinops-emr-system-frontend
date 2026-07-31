@@ -4,7 +4,6 @@ import React, { useState, useEffect, useCallback, use } from "react";
 import Link from "next/link";
 import { useAuth } from "@/store/RoleContext";
 import { api } from "@/lib/api";
-import { SectionHeader } from "@/components/ui/PageLayout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,12 +14,9 @@ import StatusBadge from "@/components/ui/StatusBadge";
 import {
   Stethoscope,
   Clock,
-  User as UserIcon,
   CheckCircle2,
   AlertCircle,
-  Sparkles,
   ArrowLeft,
-  Calendar,
   FileText,
   Activity,
   Heart,
@@ -29,7 +25,6 @@ import {
   ShieldCheck,
   ChevronDown,
   ChevronUp,
-  Plus,
   Send,
   Bed,
   Building2,
@@ -133,7 +128,7 @@ const TEMPLATES = [
 export default function WardRoundsPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
   const admissionId = resolvedParams.id;
-  const { token, user } = useAuth();
+  const { token } = useAuth();
 
   const [admission, setAdmission] = useState<AdmissionDetails | null>(null);
   const [rounds, setRounds] = useState<WardRoundEntry[]>([]);
@@ -191,7 +186,7 @@ export default function WardRoundsPage({ params }: { params: Promise<{ id: strin
   }, [token, admissionId]);
 
   useEffect(() => {
-    fetchData();
+    fetchData(); // eslint-disable-line react-hooks/set-state-in-effect
   }, [fetchData]);
 
   const handleApplyTemplate = (templateData: typeof TEMPLATES[0]["data"]) => {

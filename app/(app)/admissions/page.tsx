@@ -6,7 +6,7 @@ import { useAuth } from "@/store/RoleContext";
 import { api } from "@/lib/api";
 import { useFetch } from "@/lib/useFetch";
 import { AdmissionDetail } from "@/components/admissions/AdmissionDetail";
-import { TransferForm } from "@/components/admissions/TransferForm";
+import { TransferHistoryModal } from "@/components/admissions/TransferHistoryModal";
 import { DischargeForm } from "@/components/admissions/DischargeForm";
 import { BedMap } from "@/components/admissions/BedMap";
 import { AdmissionStats } from "@/components/admissions/AdmissionStats";
@@ -56,7 +56,6 @@ export default function AdmissionsPage() {
   });
   const [submitting, setSubmitting] = useState(false);
   const [dischargeSubmitting, setDischargeSubmitting] = useState(false);
-  const [transferSubmitting, setTransferSubmitting] = useState(false);
 
   const { data: admissionsData, loading, error: fetchError, refetch } = useFetch<Admission[]>("/admissions", { interval: 30000 });
   const { data: stats } = useFetch<AdmissionStatsType>("/admissions/stats", { interval: 30000 });
@@ -111,14 +110,14 @@ export default function AdmissionsPage() {
     try {
       const res = await api.get("/wards", token);
       if (res?.data) {
-        setWards(Array.isArray(res.data.data) ? res.data.data : []);
+        setWards(Array.isArray(res.data) ? res.data : Array.isArray(res.data.data) ? res.data.data : []);
       }
     } catch { /* ignore */ }
   }, [token]);
 
   useEffect(() => {
-    if (admitModalOpen) fetchWards();
-  }, [admitModalOpen, fetchWards]);
+    if (admitModalOpen || transferOpen) fetchWards(); // eslint-disable-line react-hooks/set-state-in-effect
+  }, [admitModalOpen, transferOpen, fetchWards]);
 
   async function handleAdmit(e: React.FormEvent) {
     e.preventDefault();
@@ -174,19 +173,11 @@ export default function AdmissionsPage() {
     }
   }
 
-  async function handleTransfer(data: { ward_id: string; bed_id: string; notes: string }) {
-    if (!transferAdmission) return;
-    setTransferSubmitting(true);
-    try {
-      await api.post(`/admissions/${transferAdmission.id}/transfer`, data, token);
-      setTransferOpen(false);
-      setTransferAdmission(null);
-      refetch();
-    } catch (err: unknown) {
-      setFormError(err instanceof Error ? err.message : "Failed to transfer patient");
-    } finally {
-      setTransferSubmitting(false);
-    }
+  function handleTransferred() {
+    setTransferOpen(false);
+    setTransferAdmission(null);
+    refetch();
+    fetchWards();
   }
 
   const displayedAdmissions = tab === "active" ? activeAdmissions : dischargedAdmissions;
@@ -291,14 +282,12 @@ export default function AdmissionsPage() {
       )}
 
       {transferOpen && transferAdmission && (
-        <TransferForm
-          admissionId={transferAdmission.id}
-          currentWardId={transferAdmission.ward_id ?? 0}
-          currentBedId={transferAdmission.bed_id ?? 0}
+        <TransferHistoryModal
+          open
+          admission={transferAdmission}
           wards={wards}
-          onSubmit={handleTransfer}
+          onTransferred={handleTransferred}
           onClose={() => setTransferOpen(false)}
-          submitting={transferSubmitting}
         />
       )}
 

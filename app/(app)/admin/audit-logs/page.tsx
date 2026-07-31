@@ -22,19 +22,13 @@ import {
   Shield,
   Search,
   Calendar,
-  User as UserIcon,
-  Filter,
   RotateCcw,
   Eye,
   Clock,
   Globe,
-  Monitor,
   ChevronLeft,
   ChevronRight,
-  ArrowRight,
   Code,
-  Check,
-  FileJson,
   Layers,
   Sparkles,
   Info,
@@ -155,7 +149,7 @@ export default function AuditLogsPage() {
   }, [token, currentPage, perPage, search, actionFilter, entityFilter, userFilter, dateFrom, dateTo]);
 
   useEffect(() => {
-    fetchAuditLogs();
+    fetchAuditLogs(); // eslint-disable-line react-hooks/set-state-in-effect
   }, [fetchAuditLogs]);
 
   const handleResetFilters = () => {

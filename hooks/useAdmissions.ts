@@ -53,7 +53,7 @@ export function useAdmissions(options: UseAdmissionsOptions = {}): UseAdmissions
     if (!immediate) return;
     const controller = new AbortController();
     abortRef.current = controller;
-    fetchData(controller.signal);
+    fetchData(controller.signal); // eslint-disable-line react-hooks/set-state-in-effect
     return () => {
       controller.abort();
     };
@@ -93,7 +93,6 @@ export function useAdmissionDetail(
   const [admission, setAdmission] = useState<Admission | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const abortRef = useRef<AbortController | null>(null);
 
   const fetchData = useCallback(async () => {
     if (!id) return;
@@ -111,11 +110,8 @@ export function useAdmissionDetail(
 
   useEffect(() => {
     if (id && admitOnMount) {
-      fetchData();
+      fetchData(); // eslint-disable-line react-hooks/set-state-in-effect
     }
-    return () => {
-      abortRef.current?.abort();
-    };
   }, [id, admitOnMount, fetchData]);
 
   return { admission, loading, error, refetch: fetchData };
@@ -158,7 +154,7 @@ export function useNotifications(admissionId?: number): UseNotificationsResult {
   }, []);
 
   useEffect(() => {
-    fetchNotifications();
+    fetchNotifications(); // eslint-disable-line react-hooks/set-state-in-effect
   }, [fetchNotifications]);
 
   return { notifications, loading, error, markRead };

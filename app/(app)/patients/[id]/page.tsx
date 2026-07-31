@@ -98,7 +98,6 @@ export default function PatientProfilePage() {
 const [activeTab, setActiveTab] = useState("vitals");
 const [checkingIn, setCheckingIn] = useState(false);
 const [admissions, setAdmissions] = useState<Admission[]>([]);
-const [admissionsLoading, setAdmissionsLoading] = useState(false);
 
   async function fetchProfileData() {
     try {

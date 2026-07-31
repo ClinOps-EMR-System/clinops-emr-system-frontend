@@ -3,6 +3,7 @@ import type {
   Admission,
   AdmissionFormData,
   AdmissionStats,
+  AdmissionTransfer,
   TransferFormData,
   DischargeFormData,
   NotificationData,
@@ -51,6 +52,10 @@ export const admissionsApi = {
 
   transfer(id: number, data: TransferFormData, token?: string | null): Promise<Admission> {
     return api.post(`${ENDPOINT}/${id}/transfer`, data, getToken(token)).then((res) => res.data);
+  },
+
+  getTransfers(id: number, token?: string | null): Promise<AdmissionTransfer[]> {
+    return api.get(`${ENDPOINT}/${id}/transfers`, getToken(token)).then((res) => res.data ?? []);
   },
 
   discharge(id: number, data: DischargeFormData, token?: string | null): Promise<Admission> {

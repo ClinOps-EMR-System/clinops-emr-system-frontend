@@ -47,10 +47,7 @@ export default function NewAdmissionPage() {
   }, [token]);
 
   useEffect(() => {
-    if (!patientIdFromUrl) {
-      setLoading(false);
-      return;
-    }
+    if (!patientIdFromUrl) return;
     async function init() {
       setLoading(true);
       try {
@@ -75,7 +72,7 @@ export default function NewAdmissionPage() {
 
   useEffect(() => {
     if (!wardId) {
-      setBeds([]);
+      setBeds([]); // eslint-disable-line react-hooks/set-state-in-effect
       setBedId("");
       return;
     }

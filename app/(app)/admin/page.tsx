@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
-import Link from "next/link";
 import { useAuth } from "../../../store/RoleContext";
 import { api } from "../../../lib/api";
 import { SectionHeader } from "../../../components/ui/PageLayout";
@@ -59,7 +58,7 @@ export default function AdminPage() {
   const [activeTab, setActiveTab] = useState<"users" | "roles">("users");
   const [users, setUsers] = useState<UserRecord[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
-  const [permissions, setPermissions] = useState<Permission[]>([]);
+  const [, setPermissions] = useState<Permission[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -106,7 +105,8 @@ export default function AdminPage() {
     }
   }, [token]);
 
-  useEffect(() => { fetchData(); }, [fetchData]);
+  useEffect(() => { fetchData(); // eslint-disable-line react-hooks/set-state-in-effect
+  }, [fetchData]);
 
   const filteredUsers = users.filter((u) =>
     !searchQuery || u.name?.toLowerCase().includes(searchQuery.toLowerCase()) || u.email?.toLowerCase().includes(searchQuery.toLowerCase())

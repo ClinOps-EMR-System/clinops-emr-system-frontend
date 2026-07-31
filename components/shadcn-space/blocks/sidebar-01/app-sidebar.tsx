@@ -5,7 +5,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import Logo from "@/assets/logo/logo";
 import { NavItem, NavMain } from "@/components/shadcn-space/blocks/sidebar-01/nav-main";
 import { useAuth } from "@/store/RoleContext";
-import { LayoutDashboard, Calendar, Users, Stethoscope, ClipboardList, Pill, FlaskConical, DollarSign, CreditCard, ArrowRightLeft, DoorOpen, List, Shield, Package, Bell } from "lucide-react";
+import { LayoutDashboard, Calendar, Users, Stethoscope, ClipboardList, Pill, FlaskConical, DollarSign, CreditCard, ArrowRightLeft, DoorOpen, List, Shield } from "lucide-react";
 
 const ROLE_NAV_MAP: Record<string, string[]> = {
   receptionist: ["receptionist", "appointments", "queue", "patients"],
@@ -51,7 +51,16 @@ const ALL_NAV_ITEMS: NavItem[] = [
   { label: "Other", isSection: true },
   { title: "Queue", icon: ArrowRightLeft, href: "/queue" },
   { title: "Referrals", icon: ArrowRightLeft, href: "/referrals" },
-  { title: "Admissions", icon: DoorOpen, href: "/admissions" },
+  {
+    title: "Admissions",
+    icon: DoorOpen,
+    href: "/admissions",
+    children: [
+      { title: "Overview", href: "/admissions" },
+      { title: "Ward Occupancy", href: "/wards/occupancy" },
+      { title: "Ward Management", href: "/wards" },
+    ],
+  },
 
   { label: "Admin", isSection: true },
   { title: "User Management", icon: Shield, href: "/admin" },

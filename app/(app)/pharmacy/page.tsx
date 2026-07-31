@@ -27,7 +27,6 @@ import {
   AlertTriangle,
   Package,
   ArrowRight,
-  Plus,
   TrendingDown,
 } from "lucide-react";
 
@@ -51,16 +50,9 @@ interface StockAlert {
   }>;
 }
 
-interface DashboardData {
-  encounters?: {
-    in_consultation?: number;
-  };
-}
-
 export default function PharmacyOverviewPage() {
   const { data: prescriptionsRaw, loading: rxLoading } = useFetch<Prescription[]>("/prescriptions", { interval: 30000 });
   const { data: alerts, loading: alertsLoading } = useFetch<StockAlert>("/stock/alerts", { interval: 30000 });
-  const { data: dashboard } = useFetch<DashboardData>("/dashboard", { interval: 30000 });
 
   const prescriptions = Array.isArray(prescriptionsRaw) ? prescriptionsRaw : [];
 

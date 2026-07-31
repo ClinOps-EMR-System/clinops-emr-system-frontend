@@ -71,7 +71,24 @@ export interface AdmissionFormData {
 export interface TransferFormData {
   ward_id: string;
   bed_id: string;
-  notes: string;
+  reason: string;
+}
+
+export interface AdmissionTransfer {
+  id: number;
+  admission_id: number;
+  from_ward_id: number | null;
+  from_bed_id: number | null;
+  to_ward_id: number;
+  to_bed_id: number;
+  reason: string | null;
+  transferred_by: number | null;
+  transferred_by_name: string | null;
+  transferred_at: string;
+  from_ward?: WardSummary | null;
+  from_bed?: BedSummary | null;
+  to_ward?: WardSummary;
+  to_bed?: BedSummary;
 }
 
 export interface DischargeFormData {

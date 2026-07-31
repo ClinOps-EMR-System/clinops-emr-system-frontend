@@ -1,7 +1,7 @@
 "use client";
 
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { BedDouble, Activity, LogOut, Percent, ShieldAlert, Users, CheckCircle, Ambulance, ClipboardList } from "lucide-react";
+import { Activity, LogOut, Percent, ShieldAlert, Users, CheckCircle, Ambulance, ClipboardList } from "lucide-react";
 import type { AdmissionStats as AdmissionStatsType } from "../../types/admission";
 
 interface AdmissionStatsProps {

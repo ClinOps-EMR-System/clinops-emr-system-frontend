@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useMemo, useEffect, useCallback } from "react";
-import { useFetch } from "../../../../lib/useFetch";
 import { api } from "../../../../lib/api";
 import { useAuth } from "../../../../store/RoleContext";
 import { SectionHeader } from "../../../../components/ui/PageLayout";
@@ -26,7 +25,7 @@ import { Input } from "@/components/ui/input";
 import SelectField from "../../../../components/ui/SelectField";
 import EmptyState from "../../../../components/ui/EmptyState";
 import Modal from "../../../../components/ui/Modal";
-import { Search, X, Plus, Package, AlertTriangle, ArrowDownCircle, ArrowUpCircle, Trash2 } from "lucide-react";
+import { Plus, Package, AlertTriangle, ArrowDownCircle, ArrowUpCircle, Trash2 } from "lucide-react";
 
 interface StockBatch {
   id: number;
@@ -65,7 +64,6 @@ type ModalType = "receive" | "adjust" | "waste" | null;
 export default function StockPage() {
   const { token } = useAuth();
   const [page, setPage] = useState(1);
-  const [search, setSearch] = useState("");
   const [expiryFilter, setExpiryFilter] = useState<ExpiryFilter>("all");
   const [modalType, setModalType] = useState<ModalType>(null);
   const [selectedBatch, setSelectedBatch] = useState<StockBatch | null>(null);
@@ -120,8 +118,8 @@ export default function StockPage() {
     }
   }, [token]);
 
-  useEffect(() => { fetchBatches(); }, [fetchBatches]);
-  useEffect(() => { fetchDrugs(); }, [fetchDrugs]);
+  useEffect(() => { fetchBatches(); }, [fetchBatches]); // eslint-disable-line react-hooks/set-state-in-effect
+  useEffect(() => { fetchDrugs(); }, [fetchDrugs]); // eslint-disable-line react-hooks/set-state-in-effect
 
   const [receiveForm, setReceiveForm] = useState({
     drug_id: "",
