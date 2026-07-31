@@ -7,7 +7,6 @@ import { api } from "@/lib/api";
 import { useFetch } from "@/lib/useFetch";
 import { AdmissionDetail } from "@/components/admissions/AdmissionDetail";
 import { TransferHistoryModal } from "@/components/admissions/TransferHistoryModal";
-import { DischargeForm } from "@/components/admissions/DischargeForm";
 import { BedMap } from "@/components/admissions/BedMap";
 import { AdmissionStats } from "@/components/admissions/AdmissionStats";
 import AdmissionsToolbar from "@/components/admissions/AdmissionsToolbar";
@@ -17,7 +16,7 @@ import EmptyState from "@/components/ui/EmptyState";
 import Modal from "@/components/ui/Modal";
 import { Button } from "@/components/ui/button";
 import { BedDouble, Plus } from "lucide-react";
-import type { Admission, AdmissionFormData, AdmissionStats as AdmissionStatsType, WardSummary as Ward, DischargeFormData } from "@/types/admission";
+import type { Admission, AdmissionFormData, AdmissionStats as AdmissionStatsType, WardSummary as Ward } from "@/types/admission";
 
 const TABS = [
   { key: "active" as const, label: "Active Admissions" },
@@ -39,8 +38,6 @@ export default function AdmissionsPage() {
   const [detailAdmission, setDetailAdmission] = useState<Admission | null>(null);
   const [transferOpen, setTransferOpen] = useState(false);
   const [transferAdmission, setTransferAdmission] = useState<Admission | null>(null);
-  const [dischargeOpen, setDischargeOpen] = useState(false);
-  const [dischargeAdmission, setDischargeAdmission] = useState<Admission | null>(null);
   const [admitModalOpen, setAdmitModalOpen] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [wards, setWards] = useState<Ward[]>([]);
@@ -55,7 +52,6 @@ export default function AdmissionsPage() {
     isolation_required: false,
   });
   const [submitting, setSubmitting] = useState(false);
-  const [dischargeSubmitting, setDischargeSubmitting] = useState(false);
 
   const { data: admissionsData, loading, error: fetchError, refetch } = useFetch<Admission[]>("/admissions", { interval: 30000 });
   const { data: stats } = useFetch<AdmissionStatsType>("/admissions/stats", { interval: 30000 });
@@ -158,21 +154,6 @@ export default function AdmissionsPage() {
     }
   }
 
-  async function handleDischarge(data: DischargeFormData) {
-    if (!dischargeAdmission) return;
-    setDischargeSubmitting(true);
-    try {
-      await api.post(`/admissions/${dischargeAdmission.id}/discharge`, data, token);
-      setDischargeOpen(false);
-      setDischargeAdmission(null);
-      refetch();
-    } catch (err: unknown) {
-      setFormError(err instanceof Error ? err.message : "Failed to discharge patient");
-    } finally {
-      setDischargeSubmitting(false);
-    }
-  }
-
   function handleTransferred() {
     setTransferOpen(false);
     setTransferAdmission(null);
@@ -239,7 +220,7 @@ export default function AdmissionsPage() {
             onPageChange={setCurrentPage}
             onView={openDetail}
             onTransfer={(adm) => { setTransferAdmission(adm); setTransferOpen(true); }}
-            onDischarge={(adm) => { setDischargeAdmission(adm); setDischargeOpen(true); }}
+            onDischarge={(adm) => router.push(`/admissions/${adm.id}/discharge`)}
           />
         </>
       ) : (
@@ -288,15 +269,6 @@ export default function AdmissionsPage() {
           wards={wards}
           onTransferred={handleTransferred}
           onClose={() => setTransferOpen(false)}
-        />
-      )}
-
-      {dischargeOpen && dischargeAdmission && (
-        <DischargeForm
-          admissionId={dischargeAdmission.id}
-          onSubmit={handleDischarge}
-          onClose={() => setDischargeOpen(false)}
-          submitting={dischargeSubmitting}
         />
       )}
 

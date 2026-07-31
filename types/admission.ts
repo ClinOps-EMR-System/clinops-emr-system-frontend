@@ -91,10 +91,22 @@ export interface AdmissionTransfer {
   to_bed?: BedSummary;
 }
 
+export interface DischargeMedication {
+  name: string;
+  dosage: string;
+  route?: string;
+  frequency?: string;
+  duration?: string;
+  instructions?: string;
+}
+
 export interface DischargeFormData {
   discharge_date: string;
   discharge_diagnosis: string | null;
-  discharge_summary: string | null;
+  discharge_summary?: string | null;
+  summary_text: string;
+  medications_on_discharge?: DischargeMedication[];
+  follow_up_instructions?: string | null;
 }
 
 export interface AdmissionStats {

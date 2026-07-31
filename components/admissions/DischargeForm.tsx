@@ -22,6 +22,7 @@ export function DischargeForm({ admissionId, onSubmit, onClose, submitting }: Di
       discharge_date: dischargeDate,
       discharge_diagnosis: dischargeDiagnosis || null,
       discharge_summary: dischargeSummary || null,
+      summary_text: dischargeSummary,
     });
   };
 
