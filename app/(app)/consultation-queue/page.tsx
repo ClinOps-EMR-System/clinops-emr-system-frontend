@@ -88,7 +88,7 @@ function getWaitColor(minutes: number): string {
 }
 
 function getEncounterStatus(encounterStatus: string): "waiting" | "in_consultation" {
-  if (encounterStatus === "In Consultation") return "in_consultation";
+  if (encounterStatus === "In Consultation" || encounterStatus === "in_consultation") return "in_consultation";
   return "waiting";
 }
 

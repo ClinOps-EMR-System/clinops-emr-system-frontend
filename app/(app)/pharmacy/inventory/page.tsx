@@ -90,7 +90,10 @@ export default function InventoryPage() {
     }
   }, [token, queryParams]);
 
-  useEffect(() => { fetchDrugs(); }, [fetchDrugs]); // eslint-disable-line react-hooks/set-state-in-effect
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    fetchDrugs();
+  }, [fetchDrugs]);
   const { data: alerts } = useFetch<StockAlert>("/stock/alerts", { interval: 30000 });
 
   const [form, setForm] = useState({

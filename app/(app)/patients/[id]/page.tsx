@@ -67,10 +67,15 @@ interface Diagnosis {
 const statusLabelMap: Record<string, { label: string; variant: "success" | "warning" | "error" | "info" | "neutral" | "purple" }> = {
   "Checked-in": { label: "In Triage", variant: "warning" },
   "In Triage": { label: "In Triage", variant: "warning" },
+  awaiting_triage: { label: "In Triage", variant: "warning" },
+  resuscitation: { label: "Resuscitation", variant: "error" },
   Emergency: { label: "Emergency", variant: "error" },
+  waiting_for_clinician: { label: "Triaged", variant: "info" },
   "Triage Complete": { label: "Triaged", variant: "info" },
   "In Consultation": { label: "In Consult", variant: "purple" },
+  in_consultation: { label: "In Consult", variant: "purple" },
   Completed: { label: "Completed", variant: "success" },
+  discharged: { label: "Discharged", variant: "success" },
   Discharged: { label: "Discharged", variant: "success" },
 };
 
@@ -156,13 +161,13 @@ const [admissions, setAdmissions] = useState<Admission[]>([]);
   }
 
   const activeEncounter = encounters.find((e) =>
-    !["Completed", "Discharged"].includes(e.status)
+    !["Completed", "Discharged", "discharged"].includes(e.status)
   );
   const encounterStatus = activeEncounter?.status ?? null;
   const statusInfo = encounterStatus ? statusLabelMap[encounterStatus] : null;
   const latestTriageCategory = summary?.vital_signs?.[0]?.triage_category ?? null;
   const previousVisits = encounters.filter((e) =>
-    ["Completed", "Discharged"].includes(e.status)
+    ["Completed", "Discharged", "discharged"].includes(e.status)
   ).length;
 
   const birthDate = patient ? new Date(patient.date_of_birth) : null;
@@ -229,15 +234,15 @@ const [admissions, setAdmissions] = useState<Admission[]>([]);
               <Edit className="h-4 w-4" />
               Edit Profile
             </Button>
-            {encounterStatus === "Checked-in" || encounterStatus === "In Triage" ? (
+            {encounterStatus === "Checked-in" || encounterStatus === "In Triage" || encounterStatus === "awaiting_triage" || encounterStatus === "resuscitation" ? (
               <Button nativeButton={false} render={<Link href={`/patients/${patientId}/triage`} />}>
                 <Stethoscope className="h-4 w-4" />
                 Continue Triage
               </Button>
-            ) : encounterStatus === "Triage Complete" || encounterStatus === "In Consultation" ? (
+            ) : encounterStatus === "Triage Complete" || encounterStatus === "waiting_for_clinician" || encounterStatus === "In Consultation" || encounterStatus === "in_consultation" ? (
               <Button nativeButton={false} render={<Link href={`/patients/${patientId}/consultation`} />}>
                 <MessageSquare className="h-4 w-4" />
-                {encounterStatus === "In Consultation" ? "Continue Consult" : "Consult"}
+                {encounterStatus === "In Consultation" || encounterStatus === "in_consultation" ? "Continue Consult" : "Consult"}
               </Button>
             ) : encounterStatus === "Emergency" ? (
               <Button nativeButton={false} render={<Link href={`/patients/${patientId}/emergency-triage`} />}>

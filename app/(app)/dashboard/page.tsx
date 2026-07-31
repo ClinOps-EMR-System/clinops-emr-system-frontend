@@ -366,12 +366,12 @@ export default function Dashboard() {
                 variant="outline"
                 nativeButton={false}
                 className="h-auto flex-col gap-1.5 p-4"
-                render={<Link href="/admin" />}
+                render={<Link href="/system" />}
               >
                 <span className="flex size-5 items-center justify-center text-sm font-bold text-purple-600">
                   Ad
                 </span>
-                <span className="text-xs font-medium">Administration</span>
+                <span className="text-xs font-medium">System Admin</span>
               </Button>
             </div>
           </CardContent>
@@ -436,15 +436,19 @@ export default function Dashboard() {
                     switch (encounter.status) {
                       case "Checked-in":
                       case "Emergency":
+                      case "awaiting_triage":
+                      case "resuscitation":
                         statusLabel = "In Triage";
                         statusVariant = "warning";
                         statusPulse = true;
                         break;
+                      case "waiting_for_clinician":
                       case "Triage Complete":
                         statusLabel = "Triaged";
                         statusVariant = "info";
                         break;
                       case "In Consultation":
+                      case "in_consultation":
                         statusLabel = "In Consult";
                         statusVariant = "purple";
                         statusPulse = true;
@@ -453,6 +457,7 @@ export default function Dashboard() {
                         statusLabel = "Completed";
                         statusVariant = "success";
                         break;
+                      case "discharged":
                       case "Discharged":
                         statusLabel = "Discharged";
                         statusVariant = "success";
@@ -501,7 +506,7 @@ export default function Dashboard() {
                                 <Stethoscope className="h-3.5 w-3.5 text-clinical-primary" />
                                 Triage
                               </Button>
-                            ) : encounter.status === "Triage Complete" ? (
+                            ) : (encounter.status === "Triage Complete" || encounter.status === "waiting_for_clinician") ? (
                               <Button
                                 size="xs"
                                 variant="ghost"
@@ -511,7 +516,7 @@ export default function Dashboard() {
                                 <MessageSquare className="h-3.5 w-3.5 text-teal-600" />
                                 Consult
                               </Button>
-                            ) : encounter.status === "In Consultation" ? (
+                            ) : (encounter.status === "In Consultation" || encounter.status === "in_consultation") ? (
                               <Button
                                 size="xs"
                                 variant="ghost"

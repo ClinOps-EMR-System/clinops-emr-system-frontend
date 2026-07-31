@@ -118,8 +118,14 @@ export default function StockPage() {
     }
   }, [token]);
 
-  useEffect(() => { fetchBatches(); }, [fetchBatches]); // eslint-disable-line react-hooks/set-state-in-effect
-  useEffect(() => { fetchDrugs(); }, [fetchDrugs]); // eslint-disable-line react-hooks/set-state-in-effect
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    fetchBatches();
+  }, [fetchBatches]);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    fetchDrugs();
+  }, [fetchDrugs]);
 
   const [receiveForm, setReceiveForm] = useState({
     drug_id: "",

@@ -2,9 +2,10 @@
 
 import AuthShell from "./AuthShell";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "../../store/RoleContext";
 import { getApiBaseUrl } from "../../lib/config";
+import { adminApi } from "@/lib/services/admin";
 
 const API_BASE = getApiBaseUrl();
 
@@ -17,6 +18,14 @@ export default function LoginPage() {
   const [submitLoading, setSubmitLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [errors, setErrors] = useState<Record<string, string[]>>({});
+  const [signupEnabled, setSignupEnabled] = useState(false);
+
+  useEffect(() => {
+    void adminApi
+      .getPublicConfig()
+      .then((cfg) => setSignupEnabled(cfg.signup_enabled))
+      .catch(() => setSignupEnabled(false));
+  }, []);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -155,11 +164,13 @@ export default function LoginPage() {
         </button>
       </form>
 
-      <div className="text-center text-sm text-gray-500">
-        <Link href="/auth/signup" className="font-medium text-[#0ea5e9] hover:text-[#0288c4]">
-          Create account
-        </Link>
-      </div>
+      {signupEnabled ? (
+        <div className="text-center text-sm text-gray-500">
+          <Link href="/auth/signup" className="font-medium text-[#0ea5e9] hover:text-[#0288c4]">
+            Create account
+          </Link>
+        </div>
+      ) : null}
     </AuthShell>
   );
 }

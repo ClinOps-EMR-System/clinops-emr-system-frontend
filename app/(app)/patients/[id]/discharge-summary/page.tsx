@@ -63,7 +63,7 @@ export default function DischargeSummaryPage() {
   const [admission, setAdmission] = useState<Admission | null>(null);
   const [diagnoses, setDiagnoses] = useState<Diagnosis[]>([]);
   const [latestVitals, setLatestVitals] = useState<VitalSign | null>(null);
-  const [, setEncounter] = useState<Encounter | null>(null);
+  const [encounter, setEncounter] = useState<Encounter | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -132,6 +132,11 @@ export default function DischargeSummaryPage() {
         },
         token
       );
+
+      if (encounter?.id) {
+        await api.post(`/encounters/${encounter.id}/transition`, { status: "discharged" }, token);
+      }
+
       setSuccessMsg("Patient discharged successfully");
       setTimeout(() => router.push(`/patients/${patientId}`), 2000);
     } catch (err: unknown) {
