@@ -26,7 +26,7 @@ export default function AuditPage() {
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [action, setAction] = useState("");
-  const [resourceType, setResourceType] = useState("");
+  const [auditableType, setAuditableType] = useState("");
   const [selected, setSelected] = useState<AuditLogEntry | null>(null);
 
   const load = useCallback(async () => {
@@ -36,7 +36,7 @@ export default function AuditPage() {
       const res = await adminApi.listAuditLogs(token, {
         search: search || undefined,
         action: action || undefined,
-        resource_type: resourceType || undefined,
+        auditable_type: auditableType || undefined,
         per_page: 50,
       });
       setLogs(res.data);
@@ -45,7 +45,7 @@ export default function AuditPage() {
     } finally {
       setLoading(false);
     }
-  }, [token, search, action, resourceType]);
+  }, [token, search, action, auditableType]);
 
   useEffect(() => {
     const t = setTimeout(() => void load(), 200);
@@ -69,7 +69,7 @@ export default function AuditPage() {
             void adminApi.exportAuditLogs(token, {
               ...(search ? { search } : {}),
               ...(action ? { action } : {}),
-              ...(resourceType ? { resource_type: resourceType } : {}),
+              ...(auditableType ? { auditable_type: auditableType } : {}),
             })
           }
         >
@@ -97,8 +97,8 @@ export default function AuditPage() {
         <Input
           className="w-44"
           placeholder="Resource type"
-          value={resourceType}
-          onChange={(e) => setResourceType(e.target.value)}
+          value={auditableType}
+          onChange={(e) => setAuditableType(e.target.value)}
         />
       </div>
 
@@ -141,8 +141,8 @@ export default function AuditPage() {
                   </TableCell>
                   <TableCell className="font-mono text-xs">{log.action}</TableCell>
                   <TableCell className="text-sm">
-                    {log.resource_type}
-                    {log.resource_id ? ` #${log.resource_id}` : ""}
+                    {log.auditable_type}
+                    {log.auditable_id ? ` #${log.auditable_id}` : ""}
                   </TableCell>
                   <TableCell className="text-right">
                     <Button
@@ -181,16 +181,22 @@ export default function AuditPage() {
             </p>
             <p>
               <span className="font-medium">Resource:</span>{" "}
-              {selected.resource_type} {selected.resource_id}
+              {selected.auditable_type} {selected.auditable_id}
             </p>
             <p>
               <span className="font-medium">IP:</span>{" "}
               {selected.ip_address || "—"}
             </p>
             <div>
-              <p className="mb-1 font-medium">Details</p>
+              <p className="mb-1 font-medium">New values</p>
               <pre className="max-h-64 overflow-auto rounded-md bg-[var(--clinical-bg)] p-3 font-mono text-xs">
-                {JSON.stringify(selected.details ?? {}, null, 2)}
+                {JSON.stringify(selected.new_values ?? {}, null, 2)}
+              </pre>
+            </div>
+            <div>
+              <p className="mb-1 font-medium">Old values</p>
+              <pre className="max-h-64 overflow-auto rounded-md bg-[var(--clinical-bg)] p-3 font-mono text-xs">
+                {JSON.stringify(selected.old_values ?? {}, null, 2)}
               </pre>
             </div>
           </div>

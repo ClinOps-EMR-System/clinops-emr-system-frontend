@@ -37,7 +37,7 @@ export default function SystemOverviewPage() {
   }, [token]);
 
   useEffect(() => {
-    void load();
+    void load(); // eslint-disable-line react-hooks/set-state-in-effect
   }, [load]);
 
   return (
@@ -169,8 +169,8 @@ export default function SystemOverviewPage() {
               (data?.recent_audit || []).map((entry) => (
                 <li key={entry.id} className="px-4 py-3 text-sm">
                   <p className="font-medium">
-                    {entry.action} · {entry.resource_type}
-                    {entry.resource_id ? ` #${entry.resource_id}` : ""}
+                    {entry.action} · {entry.auditable_type}
+                    {entry.auditable_id ? ` #${entry.auditable_id}` : ""}
                   </p>
                   <p className="text-xs text-[var(--clinical-muted)]">
                     {entry.user?.name || entry.user?.email || "System"} ·{" "}

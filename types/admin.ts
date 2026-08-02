@@ -60,13 +60,14 @@ export interface AuditLogEntry {
   id: number;
   user_id?: number | null;
   action: string;
-  resource_type: string;
-  resource_id?: string | null;
-  details?: Record<string, unknown> | null;
+  auditable_type: string;
+  auditable_id?: string | number | null;
+  old_values?: Record<string, unknown> | null;
+  new_values?: Record<string, unknown> | null;
   ip_address?: string | null;
   user_agent?: string | null;
   created_at: string;
-  user?: { id: number; name: string; email: string; username?: string } | null;
+  user?: { id: number; name: string; email: string; role?: string | null } | null;
 }
 
 export interface HospitalSettings {

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { SectionHeader, FormActions } from '@/components/ui/PageLayout';
 import { Button } from '@/components/ui/button';
 import { DoorOpen, Plus, Search } from 'lucide-react';
@@ -36,7 +36,7 @@ const WARD_TYPES = [
 
 export default function WardsManagementPage() {
   const { token } = useAuth();
-  const { addToast } = useToast();
+  const { success, error } = useToast();
   const [wards, setWards] = useState<Ward[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -59,11 +59,7 @@ export default function WardsManagementPage() {
     return () => clearTimeout(handler);
   }, [search]);
 
-  useEffect(() => {
-    if (token) fetchWards();
-  }, [token, debouncedSearch]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const fetchWards = async () => {
+  const fetchWards = useCallback(async () => {
     try {
       setLoading(true);
       let endpoint = `/wards`;
@@ -77,7 +73,11 @@ export default function WardsManagementPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [token, debouncedSearch]);
+
+  useEffect(() => {
+    if (token) void fetchWards(); // eslint-disable-line react-hooks/set-state-in-effect
+  }, [fetchWards, token]);
 
   const handleAddWard = () => {
     setEditingWard(null);
@@ -104,18 +104,19 @@ export default function WardsManagementPage() {
     try {
       if (editingWard) {
         await api.put(`/wards/${editingWard.id}`, formData, token);
-        addToast("Success", "Ward updated successfully", "success");
+        success("Ward updated successfully");
       } else {
         await api.post(`/wards`, formData, token);
-        addToast("Success", "Ward created successfully", "success");
+        success("Ward created successfully");
       }
       setIsModalOpen(false);
       fetchWards();
-    } catch (err: any) {
-      if (err.errors) {
-        setErrors(err.errors);
+    } catch (err) {
+      const apiError = err as Error & { errors?: Record<string, string[]> };
+      if (apiError.errors && Object.keys(apiError.errors).length > 0) {
+        setErrors(apiError.errors);
       } else {
-        addToast("Error", err.message || "Failed to save ward", "error");
+        error(apiError.message || "Failed to save ward");
       }
     } finally {
       setIsSubmitting(false);
