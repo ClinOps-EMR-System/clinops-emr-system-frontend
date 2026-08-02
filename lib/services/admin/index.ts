@@ -168,8 +168,21 @@ export const adminApi = {
   deleteWard: async (token: string | null, id: number | string) =>
     api.delete(`/wards/${id}`, token),
 
-  listServices: async (token: string | null) =>
-    unwrap<BillableService[]>(await api.get("/services", token)) ?? [],
+  listServices: async (
+    token: string | null,
+    params: Record<string, string | number | undefined> = {},
+  ) => {
+    const qs = new URLSearchParams();
+    Object.entries(params).forEach(([k, v]) => {
+      if (v !== undefined && v !== "") qs.set(k, String(v));
+    });
+    const q = qs.toString();
+    const res = await api.get(`/services${q ? `?${q}` : ""}`, token);
+    return {
+      data: unwrap<BillableService[]>(res) ?? [],
+      meta: (res as { meta?: Record<string, number> }).meta,
+    };
+  },
 
   createService: async (token: string | null, body: Record<string, unknown>) =>
     unwrap<BillableService>(await api.post("/services", body, token)),

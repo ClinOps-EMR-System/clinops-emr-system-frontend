@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { Plus } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Plus, Search } from "lucide-react";
 import { useAuth } from "@/store/RoleContext";
 import { usePermissions } from "@/lib/hooks/usePermissions";
 import { adminApi } from "@/lib/services/admin";
@@ -27,6 +27,8 @@ export default function ServicesCatalogPage() {
   const [items, setItems] = useState<BillableService[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+  const [category, setCategory] = useState("all");
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<BillableService | null>(null);
   const [form, setForm] = useState({
@@ -36,21 +38,40 @@ export default function ServicesCatalogPage() {
     unit_price: "",
   });
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      setItems(await adminApi.listServices(token));
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to load services");
-    } finally {
-      setLoading(false);
-    }
-  }, [token]);
+  const load = useCallback(
+    async (opts?: { search?: string; category?: string }) => {
+      setLoading(true);
+      setError(null);
+      try {
+        const qSearch = opts?.search ?? search;
+        const qCategory = opts?.category ?? category;
+        const res = await adminApi.listServices(token, {
+          search: qSearch || undefined,
+          category: qCategory === "all" ? undefined : qCategory,
+        });
+        setItems(res.data);
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Failed to load services");
+      } finally {
+        setLoading(false);
+      }
+    },
+    [token, search, category],
+  );
+
+  const categories = useMemo(
+    () =>
+      Array.from(
+        new Set(items.map((s) => s.category).filter((c): c is string => Boolean(c))),
+      ).sort(),
+    [items],
+  );
 
   useEffect(() => {
-    void load();
-  }, [load]);
+    const t = setTimeout(() => void load(), 0);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const openCreate = () => {
     setEditing(null);
@@ -107,12 +128,51 @@ export default function ServicesCatalogPage() {
             Catalog of services used when creating bills.
           </p>
         </div>
-        {canManage && (
-          <Button size="sm" className="gap-1.5" onClick={openCreate}>
-            <Plus className="h-4 w-4" />
-            New service
+        <div className="flex flex-wrap items-end gap-2">
+          <div className="relative min-w-[220px]">
+            <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              className="pl-9"
+              placeholder="Search name or code…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") void load({ search });
+              }}
+            />
+          </div>
+          <select
+            className="h-10 rounded-md border border-input bg-white px-3 text-sm"
+            value={category}
+            onChange={(e) => {
+              const value = e.target.value;
+              setCategory(value);
+              void load({ category: value });
+            }}
+          >
+            <option value="all">All categories</option>
+            {categories.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </select>
+          <Button
+            size="sm"
+            variant="outline"
+            className="gap-1.5"
+            onClick={() => void load({ search })}
+          >
+            <Search className="h-4 w-4" />
+            Load
           </Button>
-        )}
+          {canManage && (
+            <Button size="sm" className="gap-1.5" onClick={openCreate}>
+              <Plus className="h-4 w-4" />
+              New service
+            </Button>
+          )}
+        </div>
       </div>
 
       {error && (
