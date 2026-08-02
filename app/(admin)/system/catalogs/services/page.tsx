@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Plus, Search } from "lucide-react";
 import { useAuth } from "@/store/RoleContext";
 import { usePermissions } from "@/lib/hooks/usePermissions";
@@ -29,6 +29,7 @@ export default function ServicesCatalogPage() {
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("all");
+  const [allCategories, setAllCategories] = useState<string[]>([]);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<BillableService | null>(null);
   const [form, setForm] = useState({
@@ -50,6 +51,13 @@ export default function ServicesCatalogPage() {
           category: qCategory === "all" ? undefined : qCategory,
         });
         setItems(res.data);
+        setAllCategories((prev) => {
+          const merged = new Set(prev);
+          for (const s of res.data) {
+            if (s.category) merged.add(s.category);
+          }
+          return Array.from(merged).sort();
+        });
       } catch (e) {
         setError(e instanceof Error ? e.message : "Failed to load services");
       } finally {
@@ -59,19 +67,17 @@ export default function ServicesCatalogPage() {
     [token, search, category],
   );
 
-  const categories = useMemo(
-    () =>
-      Array.from(
-        new Set(items.map((s) => s.category).filter((c): c is string => Boolean(c))),
-      ).sort(),
-    [items],
-  );
-
   useEffect(() => {
-    const t = setTimeout(() => void load(), 0);
-    return () => clearTimeout(t);
+    if (token) {
+      const t = setTimeout(() => void load(), 0);
+      return () => clearTimeout(t);
+    }
+    // Depends on `token` only: the initial load must wait for AuthProvider to
+    // hydrate the token from localStorage after mount, then run once. Later
+    // search/category changes reload via the explicit controls (Enter, Load
+    // button, category select), not via this effect.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [token]);
 
   const openCreate = () => {
     setEditing(null);
@@ -151,7 +157,7 @@ export default function ServicesCatalogPage() {
             }}
           >
             <option value="all">All categories</option>
-            {categories.map((c) => (
+            {allCategories.map((c) => (
               <option key={c} value={c}>
                 {c}
               </option>
