@@ -9,6 +9,7 @@ import type {
   BillableService,
   Department,
   HospitalSettings,
+  LoincCode,
   Ward,
 } from "@/types/admin";
 
@@ -195,6 +196,9 @@ export const adminApi = {
 
   deleteService: async (token: string | null, id: number | string) =>
     api.delete(`/services/${id}`, token),
+
+  searchLoinc: async (token: string | null, q: string) =>
+    (await api.get(`/loinc/search?q=${encodeURIComponent(q)}`, token)) as LoincCode[],
 
   getSettings: async (token: string | null) =>
     unwrap<HospitalSettings>(await api.get("/settings", token)),
