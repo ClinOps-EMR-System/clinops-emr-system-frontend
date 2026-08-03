@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Plus, Search } from "lucide-react";
 import { useAuth } from "@/store/RoleContext";
 import { usePermissions } from "@/lib/hooks/usePermissions";
@@ -49,6 +49,7 @@ export default function ServicesCatalogPage() {
   const [loincResults, setLoincResults] = useState<LoincCode[]>([]);
   const [loincLoading, setLoincLoading] = useState(false);
   const [loincSearched, setLoincSearched] = useState(false);
+  const loincRequestId = useRef(0);
 
   const load = useCallback(
     async (opts?: { search?: string; category?: string }) => {
@@ -109,6 +110,7 @@ export default function ServicesCatalogPage() {
     setLoincQuery("");
     setLoincResults([]);
     setLoincSearched(false);
+    setLoincLoading(false);
   };
 
   const openEdit = (s: BillableService) => {
@@ -123,6 +125,7 @@ export default function ServicesCatalogPage() {
     setLoincQuery("");
     setLoincResults([]);
     setLoincSearched(false);
+    setLoincLoading(false);
   };
 
   const save = async () => {
@@ -182,22 +185,27 @@ export default function ServicesCatalogPage() {
 
   useEffect(() => {
     if (form.category?.toLowerCase() !== "lab" || loincQuery.trim().length < 2) {
+      loincRequestId.current++;
       setLoincResults([]);
       setLoincSearched(false);
+      setLoincLoading(false);
       return;
     }
     const t = setTimeout(async () => {
+      const requestId = ++loincRequestId.current;
       setLoincLoading(true);
       try {
         const results = await adminApi.searchLoinc(token, loincQuery.trim());
+        if (requestId !== loincRequestId.current) return;
         setLoincResults(results);
         setLoincSearched(true);
       } catch (e) {
+        if (requestId !== loincRequestId.current) return;
         setError(e instanceof Error ? e.message : "LOINC search failed");
         setLoincResults([]);
         setLoincSearched(true);
       } finally {
-        setLoincLoading(false);
+        if (requestId === loincRequestId.current) setLoincLoading(false);
       }
     }, 300);
     return () => clearTimeout(t);
