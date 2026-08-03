@@ -54,6 +54,7 @@ export interface BillableService {
   code: string;
   name: string;
   category?: string | null;
+  billing_unit?: string | null;
   unit_price: string | number;
 }
 

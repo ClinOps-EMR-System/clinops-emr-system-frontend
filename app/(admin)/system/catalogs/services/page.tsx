@@ -19,8 +19,28 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { loincToServiceFields, resolveAutoBilled } from "@/lib/billing/catalog";
+import { loincToServiceFields, resolveAutoBilled, formatBillingUnit } from "@/lib/billing/catalog";
 import type { AutoBilledRow } from "@/lib/billing/catalog";
+
+const BILLING_UNITS = [
+  "per_registration",
+  "per_visit",
+  "per_admission",
+  "per_discharge",
+  "per_day",
+  "per_procedure",
+  "per_surgery",
+  "per_session",
+  "per_test",
+  "per_exam",
+  "per_item",
+  "per_unit",
+  "per_dose",
+  "per_document",
+  "per_report",
+  "per_trip",
+  "per_hour",
+];
 
 export default function ServicesCatalogPage() {
   const { token } = useAuth();
@@ -38,6 +58,7 @@ export default function ServicesCatalogPage() {
     code: "",
     name: "",
     category: "",
+    billing_unit: "",
     unit_price: "",
   });
 
@@ -105,7 +126,7 @@ export default function ServicesCatalogPage() {
 
   const openCreate = () => {
     setEditing(null);
-    setForm({ code: "", name: "", category: "", unit_price: "" });
+    setForm({ code: "", name: "", category: "", billing_unit: "", unit_price: "" });
     setOpen(true);
     setLoincQuery("");
     setLoincResults([]);
@@ -119,6 +140,7 @@ export default function ServicesCatalogPage() {
       code: s.code,
       name: s.name,
       category: s.category || "",
+      billing_unit: s.billing_unit || "",
       unit_price: String(s.unit_price),
     });
     setOpen(true);
@@ -133,6 +155,7 @@ export default function ServicesCatalogPage() {
       code: form.code,
       name: form.name,
       category: form.category || null,
+      billing_unit: form.billing_unit || null,
       unit_price: Number(form.unit_price) || 0,
     };
     try {
@@ -164,6 +187,7 @@ export default function ServicesCatalogPage() {
           code: row.service.code,
           name: row.service.name,
           category: row.service.category || null,
+          billing_unit: row.service.billing_unit || row.seed.billing_unit || null,
           unit_price: price,
         });
       } else {
@@ -171,6 +195,7 @@ export default function ServicesCatalogPage() {
           code: row.seed.code,
           name: row.seed.name,
           category: row.seed.category,
+          billing_unit: row.seed.billing_unit || null,
           unit_price: price,
         });
       }
@@ -297,6 +322,7 @@ export default function ServicesCatalogPage() {
               <TableHead>Code</TableHead>
               <TableHead>Name</TableHead>
               <TableHead>Category</TableHead>
+              <TableHead>Billing unit</TableHead>
               <TableHead className="text-right">Unit price</TableHead>
               {canManage && <TableHead className="text-right">Actions</TableHead>}
             </TableRow>
@@ -311,6 +337,9 @@ export default function ServicesCatalogPage() {
                   <TableCell className="font-mono text-xs">{row.seed.code}</TableCell>
                   <TableCell className="font-medium">{row.seed.name}</TableCell>
                   <TableCell>{row.seed.category}</TableCell>
+                  <TableCell>
+                    {formatBillingUnit(row.service?.billing_unit ?? row.seed.billing_unit)}
+                  </TableCell>
                   <TableCell className="text-right">
                     {canManage ? (
                       <Input
@@ -366,6 +395,7 @@ export default function ServicesCatalogPage() {
                 <TableHead>Code</TableHead>
                 <TableHead>Name</TableHead>
                 <TableHead>Category</TableHead>
+                <TableHead>Billing unit</TableHead>
                 <TableHead className="text-right">Unit price</TableHead>
                 {canManage && (
                   <TableHead className="text-right">Actions</TableHead>
@@ -378,6 +408,7 @@ export default function ServicesCatalogPage() {
                   <TableCell className="font-mono text-xs">{s.code}</TableCell>
                   <TableCell className="font-medium">{s.name}</TableCell>
                   <TableCell>{s.category || "—"}</TableCell>
+                  <TableCell>{formatBillingUnit(s.billing_unit)}</TableCell>
                   <TableCell className="text-right tabular-nums">
                     {Number(s.unit_price).toFixed(2)}
                   </TableCell>
@@ -455,13 +486,11 @@ export default function ServicesCatalogPage() {
               ["code", "Code"],
               ["name", "Name"],
               ["category", "Category"],
-              ["unit_price", "Unit price"],
             ] as const
           ).map(([key, label]) => (
             <label key={key} className="block space-y-1 text-sm">
               <span className="font-medium">{label}</span>
               <Input
-                type={key === "unit_price" ? "number" : "text"}
                 value={form[key]}
                 onChange={(e) =>
                   setForm((f) => ({ ...f, [key]: e.target.value }))
@@ -469,6 +498,35 @@ export default function ServicesCatalogPage() {
               />
             </label>
           ))}
+          <label className="block space-y-1 text-sm">
+            <span className="font-medium">Billing unit</span>
+            <select
+              className="h-10 w-full rounded-md border border-input bg-white px-3 text-sm"
+              value={form.billing_unit}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, billing_unit: e.target.value }))
+              }
+            >
+              <option value="">—</option>
+              {BILLING_UNITS.map((unit) => (
+                <option key={unit} value={unit}>
+                  {formatBillingUnit(unit)}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="block space-y-1 text-sm">
+            <span className="font-medium">Unit price</span>
+            <Input
+              type="number"
+              min={0}
+              step="0.01"
+              value={form.unit_price}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, unit_price: e.target.value }))
+              }
+            />
+          </label>
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => setOpen(false)}>
               Cancel

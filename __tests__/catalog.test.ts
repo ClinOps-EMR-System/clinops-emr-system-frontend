@@ -44,6 +44,7 @@ describe("loincToServiceFields", () => {
       code: "LAB-718-7",
       name: "Hemoglobin",
       category: "Lab",
+      billing_unit: "per_test",
     });
   });
 });
