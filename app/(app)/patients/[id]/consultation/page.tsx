@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/store/RoleContext";
+import { usePermissions } from "@/lib/hooks/usePermissions";
 import { api } from "@/lib/api";
 import type { Patient, Allergy } from "@/types/patient";
 import { Button } from "@/components/ui/button";
@@ -12,11 +13,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SectionHeader } from "@/components/ui/PageLayout";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
+import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import {
   ArrowLeft, Loader2, Check, TriangleAlert, HeartPulse, Stethoscope,
   ClipboardList, ClipboardPen, FlaskConical, Pill, LogOut, DoorOpen,
-  Search, Plus, X, History, Clock,
+  Search, Plus, Receipt, X, History, Clock,
 } from "lucide-react";
 
 interface TimelineEvent {
@@ -99,7 +101,22 @@ interface Drug {
   strength: string | null;
 }
 
-type SubTab = "subjective" | "objective" | "assessment" | "plan" | "orders" | "prescriptions" | "timeline";
+interface BillingServiceItem {
+  id: number;
+  name: string;
+  category: string | null;
+  unit_price: number;
+}
+
+interface BillLine {
+  id: number;
+  item_name: string;
+  quantity: number;
+  unit_price: number;
+  subtotal: number;
+}
+
+type SubTab = "subjective" | "objective" | "assessment" | "plan" | "orders" | "prescriptions" | "timeline" | "billing";
 
 const subTabs: { key: SubTab; label: string; icon: React.ReactNode }[] = [
   { key: "subjective", label: "Subjective (S)", icon: <ClipboardPen className="h-4 w-4" /> },
@@ -109,6 +126,7 @@ const subTabs: { key: SubTab; label: string; icon: React.ReactNode }[] = [
   { key: "orders", label: "Orders", icon: <FlaskConical className="h-4 w-4" /> },
   { key: "prescriptions", label: "Rx", icon: <Pill className="h-4 w-4" /> },
   { key: "timeline", label: "Case Timeline", icon: <History className="h-4 w-4" /> },
+  { key: "billing", label: "Billing", icon: <Receipt className="h-4 w-4" /> },
 ];
 
 function VitalsCard({ label, value, unit }: { label: string; value: string | null | undefined; unit?: string }) {
@@ -141,6 +159,7 @@ export default function ClinicianSOAPConsultation() {
   const params = useParams();
   const router = useRouter();
   const { token } = useAuth();
+  const { can } = usePermissions();
   const patientId = params.id as string;
 
   const [activeSubTab, setActiveSubTab] = useState<SubTab>("subjective");
@@ -174,6 +193,12 @@ export default function ClinicianSOAPConsultation() {
   const [rxForm, setRxForm] = useState({ dosage: "", route: "oral", frequency: "BD", duration: "7 days", quantity: "30", notes: "", is_controlled: false });
 
   const [completingConsultation, setCompletingConsultation] = useState(false);
+
+  const [bill, setBill] = useState<{ id: number; items: BillLine[]; total_amount: number } | null>(null);
+  const [billLoading, setBillLoading] = useState(false);
+  const [serviceQuery, setServiceQuery] = useState("");
+  const [serviceResults, setServiceResults] = useState<BillingServiceItem[]>([]);
+  const [addingBillItem, setAddingBillItem] = useState(false);
 
   async function fetchConsultationData() {
     try {
@@ -253,6 +278,13 @@ export default function ClinicianSOAPConsultation() {
     }, 400);
     return () => clearTimeout(delayDebounceFn);
   }, [drugQuery, token]);
+
+  useEffect(() => {
+    if (activeSubTab === "billing" && token && summary?.encounter?.id) {
+      void loadBill();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeSubTab, token, summary?.encounter?.id]);
 
   const handleStartEncounter = async () => {
     setSubmitLoading(true);
@@ -438,6 +470,54 @@ export default function ClinicianSOAPConsultation() {
       setSubmitLoading(false);
     }
   };
+
+  async function loadBill() {
+    const encounterId = summary?.encounter?.id;
+    if (!token || !encounterId) return;
+    setBillLoading(true);
+    try {
+      const res = await api.get(`/encounters/${encounterId}/bill`, token);
+      setBill(res?.data ?? null);
+    } catch {
+      setBill(null);
+    } finally {
+      setBillLoading(false);
+    }
+  }
+
+  async function searchServices(query: string) {
+    setServiceQuery(query);
+    if (query.length < 2) {
+      setServiceResults([]);
+      return;
+    }
+    try {
+      const res = await api.get(`/services?search=${encodeURIComponent(query)}&category=`, token);
+      setServiceResults(res?.data ?? []);
+    } catch {
+      setServiceResults([]);
+    }
+  }
+
+  async function addServiceToBill(service: BillingServiceItem) {
+    if (!bill || !token) return;
+    setAddingBillItem(true);
+    try {
+      await api.post(`/bills/${bill.id}/items`, {
+        item_name: service.name,
+        service_id: service.id,
+        quantity: 1,
+        unit_price: Number(service.unit_price) || 0,
+        source_type: "manual",
+        source_id: service.id,
+      }, token);
+      await loadBill();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to add service to bill");
+    } finally {
+      setAddingBillItem(false);
+    }
+  }
 
   if (loading) return <LoadingPlaceholder />;
 
@@ -1072,6 +1152,85 @@ export default function ClinicianSOAPConsultation() {
                         <History className="h-8 w-8 mx-auto mb-2 opacity-40" />
                         <p>No timeline events recorded for this encounter yet.</p>
                       </div>
+                    )}
+                  </div>
+                )}
+
+                {activeSubTab === "billing" && (
+                  <div className="space-y-6">
+                    <div>
+                      <h3 className="text-lg font-bold">Billing</h3>
+                      <p className="text-sm text-muted-foreground">Charges attached to this encounter.</p>
+                    </div>
+
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>Running bill</CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-3">
+                        {billLoading ? (
+                          <Skeleton className="h-24 w-full" />
+                        ) : !bill ? (
+                          <p className="text-sm text-muted-foreground">No bill for this encounter yet.</p>
+                        ) : bill.items.length === 0 ? (
+                          <p className="text-sm text-muted-foreground">No charges yet. Add services below.</p>
+                        ) : (
+                          <ul className="divide-y divide-border text-sm">
+                            {bill.items.map((item) => (
+                              <li key={item.id} className="flex justify-between py-2">
+                                <span>{item.item_name} × {item.quantity}</span>
+                                <span className="font-mono">MK {Number(item.subtotal).toLocaleString()}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                        <div className="flex justify-between border-t border-border pt-3 font-semibold">
+                          <span>Total</span>
+                          <span className="font-mono">MK {Number(bill?.total_amount ?? 0).toLocaleString()}</span>
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    {can("billing.manual") && (
+                      <Card>
+                        <CardHeader>
+                          <CardTitle>Add billable service</CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-3">
+                          <div className="relative">
+                            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                            <Input
+                              className="pl-9"
+                              placeholder="Search services by name or code..."
+                              value={serviceQuery}
+                              onChange={(e) => void searchServices(e.target.value)}
+                            />
+                          </div>
+                          {serviceResults.length > 0 && (
+                            <ul className="max-h-56 divide-y divide-border overflow-y-auto rounded-md border border-border">
+                              {serviceResults.map((s) => (
+                                <li key={s.id} className="flex items-center justify-between px-3 py-2 text-sm">
+                                  <div>
+                                    <p className="font-medium">{s.name}</p>
+                                    <p className="text-xs text-muted-foreground">
+                                      {s.category || "—"} · MK {Number(s.unit_price).toLocaleString()}
+                                    </p>
+                                  </div>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    disabled={addingBillItem}
+                                    onClick={() => void addServiceToBill(s)}
+                                  >
+                                    <Plus className="h-3.5 w-3.5" />
+                                    Add
+                                  </Button>
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                        </CardContent>
+                      </Card>
                     )}
                   </div>
                 )}
