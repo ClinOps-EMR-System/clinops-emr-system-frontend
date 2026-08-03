@@ -19,6 +19,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { resolveAutoBilled } from "@/lib/billing/catalog";
+import type { AutoBilledRow } from "@/lib/billing/catalog";
 
 export default function ServicesCatalogPage() {
   const { token } = useAuth();
@@ -38,6 +40,11 @@ export default function ServicesCatalogPage() {
     category: "",
     unit_price: "",
   });
+
+  const [autoItems, setAutoItems] = useState<BillableService[]>([]);
+  const [priceDrafts, setPriceDrafts] = useState<Record<string, string>>({});
+  const [savingCode, setSavingCode] = useState<string | null>(null);
+  const autoRows = resolveAutoBilled(autoItems);
 
   const load = useCallback(
     async (opts?: { search?: string; category?: string }) => {
@@ -67,9 +74,21 @@ export default function ServicesCatalogPage() {
     [token, search, category],
   );
 
+  const loadAuto = useCallback(async () => {
+    try {
+      const res = await adminApi.listServices(token);
+      setAutoItems(res.data);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to load auto-billed services");
+    }
+  }, [token]);
+
   useEffect(() => {
     if (token) {
-      const t = setTimeout(() => void load(), 0);
+      const t = setTimeout(() => {
+        void load();
+        void loadAuto();
+      }, 0);
       return () => clearTimeout(t);
     }
     // Depends on `token` only: the initial load must wait for AuthProvider to
@@ -120,6 +139,34 @@ export default function ServicesCatalogPage() {
       await load();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Delete failed");
+    }
+  };
+
+  const saveAutoPrice = async (row: AutoBilledRow) => {
+    const price = Number(priceDrafts[row.seed.code] ?? row.service?.unit_price ?? 0) || 0;
+    setSavingCode(row.seed.code);
+    try {
+      if (row.service) {
+        await adminApi.updateService(token, row.service.id, {
+          code: row.service.code,
+          name: row.service.name,
+          category: row.service.category || null,
+          unit_price: price,
+        });
+      } else {
+        await adminApi.createService(token, {
+          code: row.seed.code,
+          name: row.seed.name,
+          category: row.seed.category,
+          unit_price: price,
+        });
+      }
+      setPriceDrafts((d) => ({ ...d, [row.seed.code]: String(price) }));
+      await Promise.all([loadAuto(), load()]);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Save failed");
+    } finally {
+      setSavingCode(null);
     }
   };
 
@@ -186,6 +233,71 @@ export default function ServicesCatalogPage() {
           {error}
         </div>
       )}
+
+      <div className="rounded-lg border border-[var(--outline)] bg-white">
+        <div className="border-b border-gray-100 px-4 py-3">
+          <h2 className="text-sm font-semibold">Auto-billed services</h2>
+          <p className="mt-0.5 text-xs text-[var(--clinical-muted)]">
+            Prices applied automatically at consultation, admission and discharge.
+          </p>
+        </div>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Code</TableHead>
+              <TableHead>Name</TableHead>
+              <TableHead>Category</TableHead>
+              <TableHead className="text-right">Unit price</TableHead>
+              {canManage && <TableHead className="text-right">Actions</TableHead>}
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {autoRows.map((row) => {
+              const draft =
+                priceDrafts[row.seed.code] ??
+                (row.service ? String(row.service.unit_price) : "0");
+              return (
+                <TableRow key={row.seed.code}>
+                  <TableCell className="font-mono text-xs">{row.seed.code}</TableCell>
+                  <TableCell className="font-medium">{row.seed.name}</TableCell>
+                  <TableCell>{row.seed.category}</TableCell>
+                  <TableCell className="text-right">
+                    {canManage ? (
+                      <Input
+                        type="number"
+                        min={0}
+                        step="0.01"
+                        className="ml-auto h-8 w-28 text-right"
+                        value={draft}
+                        onChange={(e) =>
+                          setPriceDrafts((d) => ({
+                            ...d,
+                            [row.seed.code]: e.target.value,
+                          }))
+                        }
+                      />
+                    ) : (
+                      <span className="tabular-nums">{Number(draft).toFixed(2)}</span>
+                    )}
+                  </TableCell>
+                  {canManage && (
+                    <TableCell className="text-right">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={savingCode === row.seed.code}
+                        onClick={() => void saveAutoPrice(row)}
+                      >
+                        {row.service ? "Save" : "Create"}
+                      </Button>
+                    </TableCell>
+                  )}
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+      </div>
 
       <div className="rounded-lg border border-[var(--outline)] bg-white">
         {loading ? (
