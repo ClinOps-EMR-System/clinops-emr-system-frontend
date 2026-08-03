@@ -5,7 +5,7 @@ import { Plus, Search } from "lucide-react";
 import { useAuth } from "@/store/RoleContext";
 import { usePermissions } from "@/lib/hooks/usePermissions";
 import { adminApi } from "@/lib/services/admin";
-import type { BillableService } from "@/types/admin";
+import type { BillableService, LoincCode } from "@/types/admin";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -19,7 +19,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { resolveAutoBilled } from "@/lib/billing/catalog";
+import { loincToServiceFields, resolveAutoBilled } from "@/lib/billing/catalog";
 import type { AutoBilledRow } from "@/lib/billing/catalog";
 
 export default function ServicesCatalogPage() {
@@ -45,6 +45,10 @@ export default function ServicesCatalogPage() {
   const [priceDrafts, setPriceDrafts] = useState<Record<string, string>>({});
   const [savingCode, setSavingCode] = useState<string | null>(null);
   const autoRows = resolveAutoBilled(autoItems);
+  const [loincQuery, setLoincQuery] = useState("");
+  const [loincResults, setLoincResults] = useState<LoincCode[]>([]);
+  const [loincLoading, setLoincLoading] = useState(false);
+  const [loincSearched, setLoincSearched] = useState(false);
 
   const load = useCallback(
     async (opts?: { search?: string; category?: string }) => {
@@ -102,6 +106,9 @@ export default function ServicesCatalogPage() {
     setEditing(null);
     setForm({ code: "", name: "", category: "", unit_price: "" });
     setOpen(true);
+    setLoincQuery("");
+    setLoincResults([]);
+    setLoincSearched(false);
   };
 
   const openEdit = (s: BillableService) => {
@@ -113,6 +120,9 @@ export default function ServicesCatalogPage() {
       unit_price: String(s.unit_price),
     });
     setOpen(true);
+    setLoincQuery("");
+    setLoincResults([]);
+    setLoincSearched(false);
   };
 
   const save = async () => {
@@ -168,6 +178,38 @@ export default function ServicesCatalogPage() {
     } finally {
       setSavingCode(null);
     }
+  };
+
+  useEffect(() => {
+    if (form.category?.toLowerCase() !== "lab" || loincQuery.trim().length < 2) {
+      setLoincResults([]);
+      setLoincSearched(false);
+      return;
+    }
+    const t = setTimeout(async () => {
+      setLoincLoading(true);
+      try {
+        const results = await adminApi.searchLoinc(token, loincQuery.trim());
+        setLoincResults(results);
+        setLoincSearched(true);
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "LOINC search failed");
+        setLoincResults([]);
+        setLoincSearched(true);
+      } finally {
+        setLoincLoading(false);
+      }
+    }, 300);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.category, loincQuery, token]);
+
+  const applyLoinc = (loinc: LoincCode) => {
+    const fields = loincToServiceFields(loinc);
+    setForm((f) => ({ ...f, ...fields }));
+    setLoincQuery("");
+    setLoincResults([]);
+    setLoincSearched(false);
   };
 
   return (
@@ -364,6 +406,42 @@ export default function ServicesCatalogPage() {
         title={editing ? "Edit service" : "New service"}
       >
         <div className="space-y-3">
+          {form.category?.toLowerCase() === "lab" && (
+            <div className="space-y-1 rounded-md border border-gray-200 bg-gray-50 p-3">
+              <label className="block space-y-1 text-sm">
+                <span className="font-medium">Pick a lab test</span>
+                <Input
+                  value={loincQuery}
+                  onChange={(e) => setLoincQuery(e.target.value)}
+                  placeholder="Search LOINC code or name…"
+                />
+              </label>
+              {loincLoading ? (
+                <p className="text-xs text-gray-400">Searching…</p>
+              ) : loincSearched && loincResults.length === 0 ? (
+                <p className="text-xs text-gray-400">No matches.</p>
+              ) : (
+                loincResults.length > 0 && (
+                  <ul className="max-h-40 divide-y divide-gray-100 overflow-y-auto rounded-md border border-gray-200 bg-white">
+                    {loincResults.map((loinc) => (
+                      <li key={loinc.code}>
+                        <button
+                          type="button"
+                          className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm hover:bg-gray-50"
+                          onClick={() => applyLoinc(loinc)}
+                        >
+                          <span className="truncate">{loinc.display_name}</span>
+                          <span className="shrink-0 font-mono text-xs text-gray-400">
+                            {loinc.code}
+                          </span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )
+              )}
+            </div>
+          )}
           {(
             [
               ["code", "Code"],
