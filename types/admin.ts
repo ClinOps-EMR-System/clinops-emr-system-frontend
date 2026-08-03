@@ -36,6 +36,7 @@ export interface Ward {
   code: string;
   ward_type: string;
   total_beds: number;
+  daily_charge?: string | number;
   beds_count?: number;
   available_beds?: number;
 }

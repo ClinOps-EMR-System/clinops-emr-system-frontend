@@ -47,6 +47,7 @@ export default function WardsPage() {
     code: "",
     ward_type: "General",
     total_beds: "0",
+    daily_charge: "",
   });
 
   const load = useCallback(async () => {
@@ -67,7 +68,13 @@ export default function WardsPage() {
 
   const openCreate = () => {
     setEditing(null);
-    setForm({ name: "", code: "", ward_type: "General", total_beds: "0" });
+    setForm({
+      name: "",
+      code: "",
+      ward_type: "General",
+      total_beds: "0",
+      daily_charge: "",
+    });
     setOpen(true);
   };
 
@@ -78,6 +85,7 @@ export default function WardsPage() {
       code: w.code,
       ward_type: w.ward_type,
       total_beds: String(w.total_beds),
+      daily_charge: w.daily_charge != null ? String(w.daily_charge) : "",
     });
     setOpen(true);
   };
@@ -88,6 +96,7 @@ export default function WardsPage() {
       code: form.code,
       ward_type: form.ward_type,
       total_beds: Number(form.total_beds) || 0,
+      daily_charge: Number(form.daily_charge) || 0,
     };
     try {
       if (editing) await adminApi.updateWard(token, editing.id, body);
@@ -151,6 +160,7 @@ export default function WardsPage() {
                 <TableHead>Code</TableHead>
                 <TableHead>Type</TableHead>
                 <TableHead>Beds</TableHead>
+                <TableHead>Daily charge</TableHead>
                 {canEdit && (
                   <TableHead className="text-right">Actions</TableHead>
                 )}
@@ -164,6 +174,11 @@ export default function WardsPage() {
                   <TableCell>{w.ward_type}</TableCell>
                   <TableCell className="tabular-nums">
                     {w.beds_count ?? w.total_beds}
+                  </TableCell>
+                  <TableCell className="tabular-nums">
+                    {w.daily_charge != null
+                      ? `MK ${Number(w.daily_charge).toLocaleString()}`
+                      : "—"}
                   </TableCell>
                   {canEdit && (
                     <TableCell className="text-right">
@@ -236,6 +251,18 @@ export default function WardsPage() {
               value={form.total_beds}
               onChange={(e) =>
                 setForm((f) => ({ ...f, total_beds: e.target.value }))
+              }
+            />
+          </label>
+          <label className="block space-y-1 text-sm">
+            <span className="font-medium">Daily charge (MK)</span>
+            <Input
+              type="number"
+              min={0}
+              step="0.01"
+              value={form.daily_charge}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, daily_charge: e.target.value }))
               }
             />
           </label>
