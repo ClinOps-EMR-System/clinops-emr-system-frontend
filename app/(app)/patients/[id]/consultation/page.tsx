@@ -113,7 +113,7 @@ interface BillLine {
   item_name: string;
   quantity: number;
   unit_price: number;
-  subtotal: number;
+  total: number;
 }
 
 type SubTab = "subjective" | "objective" | "assessment" | "plan" | "orders" | "prescriptions" | "timeline" | "billing";
@@ -1179,7 +1179,7 @@ export default function ClinicianSOAPConsultation() {
                             {bill.items.map((item) => (
                               <li key={item.id} className="flex justify-between py-2">
                                 <span>{item.item_name} × {item.quantity}</span>
-                                <span className="font-mono">MK {Number(item.subtotal).toLocaleString()}</span>
+                                <span className="font-mono">MK {Number(item.total).toLocaleString()}</span>
                               </li>
                             ))}
                           </ul>
