@@ -139,7 +139,7 @@ export default function ServicesCatalogPage() {
       if (editing) await adminApi.updateService(token, editing.id, body);
       else await adminApi.createService(token, body);
       setOpen(false);
-      await load();
+      await Promise.all([load(), loadAuto()]);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Save failed");
     }
@@ -149,7 +149,7 @@ export default function ServicesCatalogPage() {
     if (!confirm(`Delete service ${s.name}?`)) return;
     try {
       await adminApi.deleteService(token, s.id);
-      await load();
+      await Promise.all([load(), loadAuto()]);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Delete failed");
     }
