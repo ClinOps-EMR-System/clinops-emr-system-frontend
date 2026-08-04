@@ -200,6 +200,12 @@ export default function ClinicianSOAPConsultation() {
   const [handoverOpen, setHandoverOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"discharge" | "admit" | "refer" | "observe" | "deceased">("discharge");
 
+  const [bill, setBill] = useState<{ id: number; items: BillLine[]; total_amount: number; payment_status: string } | null>(null);
+  const [billLoading, setBillLoading] = useState(false);
+  const [serviceQuery, setServiceQuery] = useState("");
+  const [serviceResults, setServiceResults] = useState<BillingServiceItem[]>([]);
+  const [addingBillItem, setAddingBillItem] = useState(false);
+
   async function fetchConsultationData() {
     try {
       setLoading(true);

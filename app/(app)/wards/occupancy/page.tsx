@@ -249,6 +249,7 @@ export default function OccupancyMap() {
                 <div className="space-y-4">
                   {(() => {
                     const admission = selectedBed.current_admission || selectedBed.currentAdmission;
+                    if (!admission) return null;
                     return (
                       <>
                         <div className="bg-white rounded p-5 shadow-sm border border-gray-200">
