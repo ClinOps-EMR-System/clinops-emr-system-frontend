@@ -11,8 +11,8 @@ import { usePermissions } from "@/lib/hooks/usePermissions";
 const ROLE_NAV_MAP: Record<string, string[]> = {
   receptionist: ["receptionist", "appointments", "queue", "patients"],
   nurse: ["nurse-station", "triage-queue", "consultation-queue", "patients", "admissions"],
-  doctor: ["patients", "triage-queue", "consultation-queue", "lab", "referrals"],
-  "clinical officer": ["patients", "triage-queue", "consultation-queue", "lab", "referrals"],
+  doctor: ["patients", "triage-queue", "consultation-queue", "lab", "referrals", "admissions"],
+  "clinical officer": ["patients", "triage-queue", "consultation-queue", "lab", "referrals", "admissions"],
   pharmacist: ["pharmacy"],
   "lab technician": ["lab"],
   "billing officer": ["billing", "patients"],
@@ -52,11 +52,22 @@ const ALL_NAV_ITEMS: NavItem[] = [
   { label: "Other", isSection: true },
   { title: "Queue", icon: ArrowRightLeft, href: "/queue" },
   { title: "Referrals", icon: ArrowRightLeft, href: "/referrals" },
-  { title: "Admissions", icon: DoorOpen, href: "/admissions" },
+  {
+    title: "Admissions",
+    icon: DoorOpen,
+    href: "/admissions",
+    children: [
+      { title: "Overview", href: "/admissions" },
+      { title: "Ward Occupancy", href: "/wards/occupancy" },
+      { title: "Ward Management", href: "/wards" },
+    ],
+  },
 
   { label: "Admin", isSection: true },
   { title: "System Admin", icon: Shield, href: "/system" },
 ];
+
+
 
 export function AppSidebar() {
   const { user } = useAuth();

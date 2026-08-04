@@ -3,6 +3,8 @@
 import { useAuth } from "@/store/RoleContext";
 import { api } from "@/lib/api";
 import { useState, useCallback } from "react";
+import { Button } from "@/components/ui/button";
+import { CheckCircle, XCircle } from "lucide-react";
 
 interface Appointment {
   id: number;
@@ -56,25 +58,19 @@ export function AppointmentActions({ appointment, onAction }: AppointmentActions
   return (
     <div className="flex items-center gap-2">
       {canCheckIn && (
-        <button
-          onClick={handleCheckIn}
-          disabled={loading}
-          className="text-xs font-bold text-brand-green hover:text-brand-green/80 uppercase tracking-wider disabled:opacity-50"
-        >
+        <Button size="xs" variant="ghost" onClick={handleCheckIn} disabled={loading}>
+          <CheckCircle className="h-3.5 w-3.5 text-emerald-600" />
           Check In
-        </button>
+        </Button>
       )}
       {canCancel && (
-        <button
-          onClick={handleCancel}
-          disabled={loading}
-          className="text-xs font-bold text-red-600 hover:text-red-800 uppercase tracking-wider disabled:opacity-50"
-        >
+        <Button size="xs" variant="ghost" onClick={handleCancel} disabled={loading}>
+          <XCircle className="h-3.5 w-3.5 text-red-600" />
           Cancel
-        </button>
+        </Button>
       )}
       {actionError && (
-        <span className="text-xs text-red-600">{actionError}</span>
+        <span className="text-xs text-destructive">{actionError}</span>
       )}
     </div>
   );

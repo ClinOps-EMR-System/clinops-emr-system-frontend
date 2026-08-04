@@ -124,7 +124,7 @@ export default function ConsultationQueuePage() {
   const [priorityFilter, setPriorityFilter] = useState<PriorityFilter>("all");
   const [startingId, setStartingId] = useState<number | null>(null);
 
-  const entries = queueRaw?.entries || [];
+  const entries = useMemo(() => queueRaw?.entries || [], [queueRaw]);
   const hasFilters = search !== "" || statusFilter !== "all" || priorityFilter !== "all";
 
   const filteredEntries = useMemo(() => {

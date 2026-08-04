@@ -11,6 +11,8 @@ import {
 import { useAuth } from "@/store/RoleContext";
 import { api } from "@/lib/api";
 import type { Patient, Allergy, Encounter } from "@/types/patient";
+import { admissionsApi } from "@/lib/admissions";
+import type { Admission } from "@/types/admission";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import StatusBadge from "@/components/ui/StatusBadge";
@@ -98,8 +100,9 @@ export default function PatientProfilePage() {
   const [encounters, setEncounters] = useState<Encounter[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState("vitals");
-  const [checkingIn, setCheckingIn] = useState(false);
+const [activeTab, setActiveTab] = useState("vitals");
+const [checkingIn, setCheckingIn] = useState(false);
+const [admissions, setAdmissions] = useState<Admission[]>([]);
 
   async function fetchProfileData() {
     try {
@@ -128,6 +131,11 @@ export default function PatientProfilePage() {
       if (encounterRes?.data) {
         const list = Array.isArray(encounterRes.data) ? encounterRes.data : encounterRes.data.data ?? [];
         setEncounters(list);
+      }
+
+      const admissionsRes = await admissionsApi.getByPatient(parseInt(patientId));
+      if (admissionsRes) {
+        setAdmissions(Array.isArray(admissionsRes) ? admissionsRes : []);
       }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to load patient profile data.");
@@ -401,6 +409,7 @@ export default function PatientProfilePage() {
                 { key: "vitals", label: "Vitals", icon: <HeartPulse className="h-3.5 w-3.5" />, count: summary?.vital_signs?.length },
                 { key: "diagnoses", label: "Diagnoses", icon: <ClipboardList className="h-3.5 w-3.5" />, count: diagnoses.length },
                 { key: "allergies", label: "Allergies", icon: <TriangleAlert className="h-3.5 w-3.5" />, count: summary?.allergies?.length },
+                { key: "admissions", label: "Admissions", icon: <FileText className="h-3.5 w-3.5" />, count: admissions.length },
                 { key: "encounters", label: "Visits", icon: <CalendarClock className="h-3.5 w-3.5" />, count: encounters.length },
                 { key: "consents", label: "Consents", icon: <FileText className="h-3.5 w-3.5" /> },
               ]}
@@ -519,6 +528,73 @@ export default function PatientProfilePage() {
                   <div className="rounded-lg border border-amber-200 bg-amber-50 p-6 text-center text-sm font-semibold text-amber-800 flex items-center justify-center gap-2">
                     <TriangleAlert className="h-5 w-5 text-amber-600 animate-pulse" />
                     ALLERGIES UNCONFIRMED
+                  </div>
+                )}
+              </TabPanel>
+
+              <TabPanel tabKey="admissions" activeKey={activeTab} tablistId="profile-tabs">
+                {admissions.length > 0 ? (
+                  <div className="divide-y divide-border rounded border border-border overflow-hidden">
+                    {admissions.map((adm) => (
+                      <div key={adm.id} className="p-4 flex flex-col gap-2 hover:bg-muted/30 transition-colors">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <span className="font-medium text-sm text-foreground">
+                              {adm.admission_type} Admission
+                            </span>
+                            <StatusBadge
+                              label={adm.status}
+                              variant={
+                                adm.status === "Admitted"
+                                  ? "info"
+                                  : adm.status === "Discharged"
+                                    ? "success"
+                                    : "warning"
+                              }
+                              size="sm"
+                            />
+                          </div>
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <span className="font-mono">
+                              {new Date(adm.admission_date).toLocaleDateString()}
+                            </span>
+                            {adm.discharge_date && (
+                              <span className="font-mono">
+                                \u2192 {new Date(adm.discharge_date).toLocaleDateString()}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-4 text-xs text-muted-foreground ml-5">
+                          <span>
+                            {adm.ward?.name}
+                            {adm.bed?.bed_number ? ` / Bed ${adm.bed.bed_number}` : ""}
+                          </span>
+                          <span className="font-mono">
+                            {adm.length_of_stay_days !== null
+                              ? `${adm.length_of_stay_days}d`
+                              : adm.status === "Admitted"
+                                ? `${Math.floor((new Date().getTime() - new Date(adm.admission_date).getTime()) / (1000 * 60 * 60 * 24))}d`
+                                : "—"}
+                          </span>
+                          {adm.isolation_required && (
+                            <StatusBadge label="Isolation" variant="error" size="sm" />
+                          )}
+                        </div>
+                        {adm.admission_diagnosis && (
+                          <p className="text-xs text-muted-foreground ml-5">{adm.admission_diagnosis}</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-12 text-muted-foreground">
+                    <div className="h-8 w-8 mx-auto mb-2 opacity-40">
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-full h-full">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3v11.25A2.25 2.25 0 0 0 6 16.5h2.25M3.75 3h-1.5m1.5 0h16.5m-1.5 0h1.5m-1.5 0v11.25A2.25 2.25 0 0 1 18 16.5h-2.25m-15 0l-1.5 1.5m1.5-1.5l1.5 1.5m15-1.5l1.5 1.5m-1.5-1.5l-1.5 1.5" />
+                      </svg>
+                    </div>
+                    <p>No admission history for this patient.</p>
                   </div>
                 )}
               </TabPanel>

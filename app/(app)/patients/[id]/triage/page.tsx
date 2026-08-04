@@ -486,8 +486,6 @@ export default function NurseTriageWorkbench() {
   const hasComplaint = !!summary?.encounter?.chief_complaint;
   const hasAllergies = (summary?.allergies && summary.allergies.length > 0) || summary?.allergies_confirmed === true;
 
-  const scrollMargin = "scroll-mt-24";
-
   if (loading) return <LoadingPlaceholder />;
 
   if (error && !patient) {
