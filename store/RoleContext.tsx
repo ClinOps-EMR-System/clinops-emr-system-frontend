@@ -3,6 +3,22 @@
 
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
+import { getApiBaseUrl } from "../lib/config";
+
+const API_BASE_URL = getApiBaseUrl();
+
+async function fetchUser(token: string): Promise<User | null> {
+  try {
+    const res = await fetch(`${API_BASE_URL}/user`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) return null;
+    const { data } = await res.json();
+    return data as User;
+  } catch {
+    return null;
+  }
+}
 
 export interface User {
   id: number;
@@ -41,16 +57,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const storedToken = localStorage.getItem("clinops_token");
     const storedUser = localStorage.getItem("clinops_user");
 
-    if (storedToken && storedUser) {
-      setToken(storedToken);
-      try {
-        setUser(JSON.parse(storedUser));
-      } catch {
-        localStorage.removeItem("clinops_token");
-        localStorage.removeItem("clinops_user");
-      }
+    if (!storedToken || !storedUser) {
+      setIsLoading(false);
+      return;
     }
-    setIsLoading(false);
+
+    setToken(storedToken);
+
+    try {
+      setUser(JSON.parse(storedUser));
+    } catch {
+      localStorage.removeItem("clinops_token");
+      localStorage.removeItem("clinops_user");
+      setIsLoading(false);
+      return;
+    }
+
+    // Re-validate the profile so stale/role-less sessions self-heal before the
+    // role-gated UI renders. Ignore the result if the session changed meanwhile.
+    void fetchUser(storedToken).then((freshUser) => {
+      if (freshUser && localStorage.getItem("clinops_token") === storedToken) {
+        localStorage.setItem("clinops_user", JSON.stringify(freshUser));
+        setUser(freshUser);
+      }
+      setIsLoading(false);
+    });
   }, []);
 
   useEffect(() => {
@@ -115,19 +146,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     let finalUser: User = newUser;
 
-    try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000/api"}/user`, {
-        headers: { Authorization: `Bearer ${newToken}` },
-      });
-      if (res.ok) {
-        const { data } = await res.json();
-        finalUser = data;
-        localStorage.setItem("clinops_user", JSON.stringify(data));
-        setUser(data);
-      } else {
-        throw new Error("me endpoint returned non-ok");
-      }
-    } catch {
+    const freshUser = await fetchUser(newToken);
+    if (freshUser) {
+      finalUser = freshUser;
+      localStorage.setItem("clinops_user", JSON.stringify(freshUser));
+      setUser(freshUser);
+    } else {
       localStorage.setItem("clinops_user", JSON.stringify(newUser));
       setUser(newUser);
     }

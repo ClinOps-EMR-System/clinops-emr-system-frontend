@@ -263,10 +263,6 @@ export default function NurseTriageWorkbench() {
         const s = triageRes.data as TriageSummary;
         setSummary(s);
         if (s.encounter) {
-          if ((s.encounter as unknown as { status?: string }).status === "Emergency" || (s.encounter as unknown as { status?: string }).status === "awaiting_triage") {
-            router.replace(`/patients/${patientId}/emergency-triage`);
-            return;
-          }
           setChiefComplaint(s.encounter.chief_complaint || "");
           setHpi(s.encounter.history_of_present_illness || "");
         }
