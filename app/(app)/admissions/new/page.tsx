@@ -7,6 +7,8 @@ import { api } from "@/lib/api";
 import { SectionHeader } from "@/components/ui/PageLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import BillingConfirmation from "@/components/billing/BillingConfirmation";
+import { parseBilling, type BillingSummary } from "@/types/billing";
 import { Loader2, ArrowLeft, Building2 } from "lucide-react";
 import type { WardSummary, BedSummary } from "@/types/admission";
 
@@ -27,6 +29,8 @@ export default function NewAdmissionPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [billingSummary, setBillingSummary] = useState<BillingSummary | null>(null);
+  const [pendingNav, setPendingNav] = useState<string | null>(null);
 
   const [wardId, setWardId] = useState("");
   const [bedId, setBedId] = useState("");
@@ -113,7 +117,7 @@ export default function NewAdmissionPage() {
     setError(null);
     setSuccessMsg(null);
     try {
-      await api.post(
+      const res = await api.post(
         "/admissions",
         {
           patient_id: parseInt(pid),
@@ -129,6 +133,12 @@ export default function NewAdmissionPage() {
       );
       if (encounterIdFromUrl) {
         await api.post(`/encounters/${encId}/complete`, {}, token);
+      }
+      const billing = parseBilling(res);
+      if (billing) {
+        setBillingSummary(billing);
+        setPendingNav("/admissions");
+        return;
       }
       setSuccessMsg("Patient admitted successfully.");
       setTimeout(() => router.push("/admissions"), 1500);
@@ -334,6 +344,18 @@ export default function NewAdmissionPage() {
           </form>
         </CardContent>
       </Card>
+
+      {billingSummary && (
+        <BillingConfirmation
+          billing={billingSummary}
+          onDone={() => {
+            const to = pendingNav;
+            setBillingSummary(null);
+            setPendingNav(null);
+            if (to) router.push(to);
+          }}
+        />
+      )}
     </div>
   );
 }

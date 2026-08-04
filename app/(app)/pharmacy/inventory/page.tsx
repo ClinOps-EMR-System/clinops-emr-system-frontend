@@ -40,6 +40,7 @@ interface Drug {
   is_controlled: boolean;
   current_stock: number;
   reorder_level: number;
+  sell_price: number;
 }
 
 interface StockAlert {
@@ -106,10 +107,11 @@ export default function InventoryPage() {
     route: "",
     is_controlled: false,
     reorder_level: 10,
+    sell_price: "",
   });
 
   const resetForm = () => {
-    setForm({ name: "", generic_name: "", atc_code: "", formulation: "", strength: "", unit: "", route: "", is_controlled: false, reorder_level: 10 });
+    setForm({ name: "", generic_name: "", atc_code: "", formulation: "", strength: "", unit: "", route: "", is_controlled: false, reorder_level: 10, sell_price: "" });
     setEditingDrug(null);
     setError(null);
   };
@@ -130,6 +132,7 @@ export default function InventoryPage() {
       route: drug.route ?? "",
       is_controlled: drug.is_controlled,
       reorder_level: drug.reorder_level,
+      sell_price: String(drug.sell_price ?? ""),
     });
     setEditingDrug(drug);
     setAddModalOpen(true);
@@ -151,6 +154,7 @@ export default function InventoryPage() {
         strength: form.strength || null,
         unit: form.unit || null,
         route: form.route || null,
+        sell_price: Number(form.sell_price) || 0,
       };
       if (editingDrug) {
         await api.put(`/drugs/${editingDrug.id}`, payload, token);
@@ -289,6 +293,7 @@ export default function InventoryPage() {
                     <TableHead className="hidden lg:table-cell">Formulation</TableHead>
                     <TableHead className="hidden lg:table-cell">Strength</TableHead>
                     <TableHead>Stock</TableHead>
+                    <TableHead className="hidden md:table-cell">Sell Price</TableHead>
                     <TableHead>Controlled</TableHead>
                     <TableHead>Actions</TableHead>
                   </TableRow>
@@ -301,6 +306,7 @@ export default function InventoryPage() {
                       <TableCell className="hidden lg:table-cell"><Skeleton className="h-4 w-20" /></TableCell>
                       <TableCell className="hidden lg:table-cell"><Skeleton className="h-4 w-16" /></TableCell>
                       <TableCell><Skeleton className="h-4 w-12" /></TableCell>
+                      <TableCell className="hidden md:table-cell"><Skeleton className="h-4 w-16" /></TableCell>
                       <TableCell><Skeleton className="h-5 w-16 rounded-full" /></TableCell>
                       <TableCell><Skeleton className="h-8 w-16 rounded-md" /></TableCell>
                     </TableRow>
@@ -334,6 +340,7 @@ export default function InventoryPage() {
                     <TableHead className="hidden lg:table-cell">Formulation</TableHead>
                     <TableHead className="hidden lg:table-cell">Strength</TableHead>
                     <TableHead>Stock</TableHead>
+                    <TableHead className="hidden md:table-cell">Sell Price</TableHead>
                     <TableHead>Controlled</TableHead>
                     <TableHead>Actions</TableHead>
                   </TableRow>
@@ -355,6 +362,9 @@ export default function InventoryPage() {
                         <span className={cn("tabular-nums font-medium", drug.current_stock <= drug.reorder_level && drug.reorder_level > 0 ? "text-amber-600" : "")}>
                           {drug.current_stock}
                         </span>
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell font-mono text-sm tabular-nums">
+                        {drug.sell_price != null ? `MK ${drug.sell_price.toLocaleString()}` : "—"}
                       </TableCell>
                       <TableCell>
                         {drug.is_controlled ? (
@@ -459,16 +469,20 @@ export default function InventoryPage() {
               <label className="block text-xs font-medium text-muted-foreground mb-1">Reorder Level</label>
               <Input type="number" min={0} value={form.reorder_level} onChange={(e) => setForm({ ...form, reorder_level: parseInt(e.target.value) || 0 })} />
             </div>
-            <div className="flex items-center gap-2 pt-6">
-              <input
-                type="checkbox"
-                id="is_controlled"
-                checked={form.is_controlled}
-                onChange={(e) => setForm({ ...form, is_controlled: e.target.checked })}
-                className="h-4 w-4 rounded border-gray-300"
-              />
-              <label htmlFor="is_controlled" className="text-sm font-medium">Controlled Substance</label>
+            <div>
+              <label className="block text-xs font-medium text-muted-foreground mb-1">Sell Price</label>
+              <Input type="number" min={0} step="0.01" value={form.sell_price} onChange={(e) => setForm({ ...form, sell_price: e.target.value })} />
             </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              id="is_controlled"
+              checked={form.is_controlled}
+              onChange={(e) => setForm({ ...form, is_controlled: e.target.checked })}
+              className="h-4 w-4 rounded border-gray-300"
+            />
+            <label htmlFor="is_controlled" className="text-sm font-medium">Controlled Substance</label>
           </div>
         </div>
       </Modal>

@@ -7,6 +7,8 @@ import { useAuth } from "../../store/RoleContext";
 import { api } from "../../lib/api";
 import { DuplicatePatient } from "../../types/patient";
 import ConfirmDialog from "../ui/ConfirmDialog";
+import BillingConfirmation from "../billing/BillingConfirmation";
+import { parseBilling, type BillingSummary } from "../../types/billing";
 import { SectionHeader, PageCard } from "../ui/PageLayout";
 import { useToast } from "../ui/Toast";
 import { Button } from "../ui/button";
@@ -66,6 +68,8 @@ export default function PatientRegistrationForm() {
   const [errors, setErrors] = useState<Record<string, string[]>>({});
   const [duplicates, setDuplicates] = useState<DuplicatePatient[]>([]);
   const [showDuplicateDialog, setShowDuplicateDialog] = useState(false);
+  const [billingSummary, setBillingSummary] = useState<BillingSummary | null>(null);
+  const [pendingNav, setPendingNav] = useState<string | null>(null);
 
   const [currentStep, setCurrentStep] = useState(0);
 
@@ -268,6 +272,14 @@ export default function PatientRegistrationForm() {
 
       if (response) {
         const patientId = response?.data?.id ?? response?.data?.patient?.id;
+        const billing = parseBilling(response);
+
+        if (!editId && !completeId && billing) {
+          setBillingSummary(billing);
+          setPendingNav(isEmergency ? "/patients" : patientId ? `/patients/${patientId}` : "/patients");
+          return;
+        }
+
         success(editId ? "Patient record updated successfully." : "Patient registered successfully.");
         if (editId) {
           router.push(`/patients/${editId}`);
@@ -443,6 +455,22 @@ export default function PatientRegistrationForm() {
           ))}
         </div>
       </ConfirmDialog>
+
+      {billingSummary && (
+        <BillingConfirmation
+          billing={billingSummary}
+          onDone={() => {
+            const to = pendingNav;
+            setBillingSummary(null);
+            setPendingNav(null);
+            if (to) router.push(to);
+          }}
+          onClose={() => {
+            setBillingSummary(null);
+            setPendingNav(null);
+          }}
+        />
+      )}
     </div>
   );
 }

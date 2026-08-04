@@ -27,6 +27,8 @@ import { Input } from "@/components/ui/input";
 import SelectField from "../../../../components/ui/SelectField";
 import EmptyState from "../../../../components/ui/EmptyState";
 import Modal from "../../../../components/ui/Modal";
+import BillingConfirmation from "../../../../components/billing/BillingConfirmation";
+import { parseBilling, type BillingSummary } from "../../../../types/billing";
 import { Search, X, Pill, Clock, CheckCircle, AlertTriangle, User } from "lucide-react";
 
 interface Prescription {
@@ -97,6 +99,7 @@ export default function DispensingPage() {
   const [selectedPrescription, setSelectedPrescription] = useState<Prescription | null>(null);
   const [dispensing, setDispensing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [billingSummary, setBillingSummary] = useState<BillingSummary | null>(null);
 
   const [stockBatches, setStockBatches] = useState<StockBatch[]>([]);
   const [selectedBatchId, setSelectedBatchId] = useState<number | null>(null);
@@ -167,12 +170,16 @@ export default function DispensingPage() {
       if (selectedPrescription.status?.toLowerCase() === "prescribed") {
         await api.post(`/prescriptions/${selectedPrescription.id}/verify`, {}, token);
       }
-      await api.post(`/prescriptions/${selectedPrescription.id}/dispense`, {
+      const res = await api.post(`/prescriptions/${selectedPrescription.id}/dispense`, {
         items: [{ stock_batch_id: selectedBatchId, quantity: dispenseQuantity }],
       }, token);
       setDispenseModalOpen(false);
       setSelectedPrescription(null);
       refetch();
+      const billing = parseBilling(res);
+      if (billing) {
+        setBillingSummary(billing);
+      }
     } catch (err: unknown) {
       const apiError = err as { status?: number; message?: string };
       setError(apiError.message || "Failed to dispense");
@@ -533,6 +540,14 @@ export default function DispensingPage() {
           </div>
         )}
       </Modal>
+
+      {billingSummary && (
+        <BillingConfirmation
+          billing={billingSummary}
+          onDone={() => setBillingSummary(null)}
+          onClose={() => setBillingSummary(null)}
+        />
+      )}
     </div>
   );
 }

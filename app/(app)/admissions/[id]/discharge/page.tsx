@@ -10,6 +10,8 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import EmptyState from "@/components/ui/EmptyState";
 import StatusBadge from "@/components/ui/StatusBadge";
+import BillingConfirmation from "@/components/billing/BillingConfirmation";
+import { parseBilling, type BillingSummary } from "@/types/billing";
 import type { DischargeMedication } from "@/types/admission";
 import {
   AlertCircle,
@@ -95,6 +97,7 @@ export default function DischargePage({ params }: { params: Promise<{ id: string
   const [success, setSuccess] = useState<boolean>(false);
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [checklist, setChecklist] = useState<ChecklistItem[]>(INITIAL_CHECKLIST);
+  const [billingSummary, setBillingSummary] = useState<BillingSummary | null>(null);
 
   const [dischargeDate, setDischargeDate] = useState<string>(() => new Date().toISOString().split("T")[0]);
   const [diagnosis, setDiagnosis] = useState<string>("");
@@ -175,7 +178,7 @@ export default function DischargePage({ params }: { params: Promise<{ id: string
     setError(null);
 
     try {
-      await api.post(
+      const res = await api.post(
         `/admissions/${admissionId}/discharge`,
         {
           discharge_date: dischargeDate,
@@ -186,6 +189,11 @@ export default function DischargePage({ params }: { params: Promise<{ id: string
         },
         token
       );
+      const billing = parseBilling(res);
+      if (billing) {
+        setBillingSummary(billing);
+        return;
+      }
       setSuccess(true);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to discharge patient");
@@ -620,6 +628,16 @@ export default function DischargePage({ params }: { params: Promise<{ id: string
             </div>
           )}
         </>
+      )}
+
+      {billingSummary && (
+        <BillingConfirmation
+          billing={billingSummary}
+          onDone={() => {
+            setBillingSummary(null);
+            setSuccess(true);
+          }}
+        />
       )}
     </div>
   );

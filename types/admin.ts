@@ -36,6 +36,7 @@ export interface Ward {
   code: string;
   ward_type: string;
   total_beds: number;
+  daily_charge?: string | number;
   beds_count?: number;
   available_beds?: number;
 }
@@ -53,7 +54,15 @@ export interface BillableService {
   code: string;
   name: string;
   category?: string | null;
+  billing_unit?: string | null;
   unit_price: string | number;
+}
+
+export interface LoincCode {
+  code: string;
+  display_name: string;
+  component_name?: string | null;
+  system?: string | null;
 }
 
 export interface AuditLogEntry {
