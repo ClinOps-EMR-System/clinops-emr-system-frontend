@@ -14,6 +14,8 @@ import { SectionHeader } from "@/components/ui/PageLayout";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
+import BillingConfirmation from "@/components/billing/BillingConfirmation";
+import { parseBilling, type BillingSummary } from "@/types/billing";
 import { cn } from "@/lib/utils";
 import {
   ArrowLeft, Loader2, Check, TriangleAlert, HeartPulse, Stethoscope,
@@ -193,6 +195,8 @@ export default function ClinicianSOAPConsultation() {
   const [rxForm, setRxForm] = useState({ dosage: "", route: "oral", frequency: "BD", duration: "7 days", quantity: "30", notes: "", is_controlled: false });
 
   const [completingConsultation, setCompletingConsultation] = useState(false);
+  const [billingSummary, setBillingSummary] = useState<BillingSummary | null>(null);
+  const [pendingNav, setPendingNav] = useState<string | null>(null);
 
   const [bill, setBill] = useState<{ id: number; items: BillLine[]; total_amount: number } | null>(null);
   const [billLoading, setBillLoading] = useState(false);
@@ -407,7 +411,13 @@ export default function ClinicianSOAPConsultation() {
     setSuccessMsg(null);
     try {
       const targetStatus = disposition === "discharge" ? "discharged" : "admitted";
-      await api.post(`/encounters/${summary.encounter.id}/transition`, { status: targetStatus }, token);
+      const res = await api.post(`/encounters/${summary.encounter.id}/transition`, { status: targetStatus }, token);
+      const billing = parseBilling(res);
+      if (billing) {
+        setBillingSummary(billing);
+        setPendingNav(redirectPath || `/patients/${patientId}`);
+        return;
+      }
       setSuccessMsg(disposition === "discharge" ? "Patient discharged." : "Consultation completed.");
       setTimeout(() => router.push(redirectPath || `/patients/${patientId}`), 1500);
     } catch (err: unknown) {
@@ -1297,6 +1307,23 @@ export default function ClinicianSOAPConsultation() {
             )}
           </div>
         </div>
+      )}
+
+      {billingSummary && (
+        <BillingConfirmation
+          billing={billingSummary}
+          onDone={() => {
+            const to = pendingNav;
+            setBillingSummary(null);
+            setPendingNav(null);
+            if (to) router.push(to);
+          }}
+          onClose={() => {
+            setBillingSummary(null);
+            setPendingNav(null);
+            setCompletingConsultation(false);
+          }}
+        />
       )}
     </div>
   );
