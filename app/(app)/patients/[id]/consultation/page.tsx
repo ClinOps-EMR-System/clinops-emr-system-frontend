@@ -1318,11 +1318,6 @@ export default function ClinicianSOAPConsultation() {
             setPendingNav(null);
             if (to) router.push(to);
           }}
-          onClose={() => {
-            setBillingSummary(null);
-            setPendingNav(null);
-            setCompletingConsultation(false);
-          }}
         />
       )}
     </div>

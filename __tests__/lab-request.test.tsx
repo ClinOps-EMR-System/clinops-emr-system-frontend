@@ -123,4 +123,28 @@ describe("NewLabRequestPage", () => {
 
     expect(mocks.push).toHaveBeenCalledWith("/lab");
   });
+
+  it("falls back to the success toast and navigation when the response has no billing block", async () => {
+    mocks.post.mockResolvedValue({
+      status: 201,
+      message: "Lab request created successfully.",
+      data: { id: 56 },
+    });
+
+    render(<NewLabRequestPage />);
+
+    await waitFor(() => expect(screen.getAllByRole("combobox").length).toBe(2));
+    const selects = screen.getAllByRole("combobox");
+    fireEvent.change(selects[0], { target: { value: "2" } });
+    fireEvent.change(screen.getByPlaceholderText(/Search by test name/), {
+      target: { value: "hemo" },
+    });
+    fireEvent.click(await screen.findByRole("button", { name: /Hemoglobin/ }));
+
+    fireEvent.click(screen.getByRole("button", { name: /Create Lab Request/ }));
+
+    expect(await screen.findByText(/Lab request created successfully/)).toBeInTheDocument();
+    expect(screen.queryByText("Charges Added to Bill")).not.toBeInTheDocument();
+    await waitFor(() => expect(mocks.push).toHaveBeenCalledWith("/lab"), { timeout: 3000 });
+  });
 });

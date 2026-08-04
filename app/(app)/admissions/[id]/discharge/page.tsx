@@ -637,10 +637,6 @@ export default function DischargePage({ params }: { params: Promise<{ id: string
             setBillingSummary(null);
             setSuccess(true);
           }}
-          onClose={() => {
-            setBillingSummary(null);
-            setSubmitting(false);
-          }}
         />
       )}
     </div>

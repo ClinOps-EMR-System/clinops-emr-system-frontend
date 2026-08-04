@@ -351,10 +351,6 @@ export default function NewLabRequestPage() {
             setBillingSummary(null);
             router.push("/lab");
           }}
-          onClose={() => {
-            setBillingSummary(null);
-            setSubmitting(false);
-          }}
         />
       )}
     </div>

@@ -354,11 +354,6 @@ export default function NewAdmissionPage() {
             setPendingNav(null);
             if (to) router.push(to);
           }}
-          onClose={() => {
-            setBillingSummary(null);
-            setPendingNav(null);
-            setSubmitting(false);
-          }}
         />
       )}
     </div>

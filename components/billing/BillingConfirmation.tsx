@@ -10,7 +10,8 @@ interface BillingConfirmationProps {
 }
 
 function formatMk(value: string): string {
-  return `MK ${Number(value).toLocaleString()}`;
+  const amount = Number(value);
+  return Number.isFinite(amount) ? `MK ${amount.toLocaleString()}` : "MK 0";
 }
 
 export default function BillingConfirmation({ billing, onDone, onClose }: BillingConfirmationProps) {
@@ -25,6 +26,7 @@ export default function BillingConfirmation({ billing, onDone, onClose }: Billin
         <>
           {onClose && (
             <button
+              type="button"
               onClick={onClose}
               className="px-4 py-2 text-sm font-semibold text-gray-600 bg-white border border-gray-300 rounded hover:bg-gray-50"
             >
@@ -32,6 +34,7 @@ export default function BillingConfirmation({ billing, onDone, onClose }: Billin
             </button>
           )}
           <button
+            type="button"
             onClick={onDone}
             className="px-4 py-2 text-sm font-bold text-white bg-emerald-600 rounded hover:bg-emerald-700"
           >
