@@ -155,6 +155,12 @@ export default function LabPage() {
           <h1 className="text-3xl font-bold text-[#1b1c1c] mt-1">Lab Orders & Results</h1>
           <p className="text-sm text-[#5f5e5e] mt-1">Process orders, enter results, and verify reports</p>
         </div>
+        <Link
+          href="/lab/request"
+          className="inline-flex items-center gap-2 px-4 py-2 text-sm font-bold text-white bg-clinical-primary rounded hover:bg-clinical-primary-hover"
+        >
+          <Plus className="h-4 w-4" /> New Lab Request
+        </Link>
       </section>
 
       {/* Metric Cards */}
