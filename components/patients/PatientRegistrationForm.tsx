@@ -8,6 +8,7 @@ import { api } from "../../lib/api";
 import { DuplicatePatient } from "../../types/patient";
 import ConfirmDialog from "../ui/ConfirmDialog";
 import BillingConfirmation from "../billing/BillingConfirmation";
+import RegistrationPaymentModal from "../billing/RegistrationPaymentModal";
 import { parseBilling, type BillingSummary } from "../../types/billing";
 import { SectionHeader, PageCard } from "../ui/PageLayout";
 import { useToast } from "../ui/Toast";
@@ -69,6 +70,10 @@ export default function PatientRegistrationForm() {
   const [duplicates, setDuplicates] = useState<DuplicatePatient[]>([]);
   const [showDuplicateDialog, setShowDuplicateDialog] = useState(false);
   const [billingSummary, setBillingSummary] = useState<BillingSummary | null>(null);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [paymentBillId, setPaymentBillId] = useState<number | null>(null);
+  const [paymentBillNumber, setPaymentBillNumber] = useState("");
+  const [paymentAmount, setPaymentAmount] = useState(0);
   const [pendingNav, setPendingNav] = useState<string | null>(null);
 
   const [currentStep, setCurrentStep] = useState(0);
@@ -276,6 +281,11 @@ export default function PatientRegistrationForm() {
 
         if (!editId && !completeId && billing) {
           setBillingSummary(billing);
+          setPaymentBillId(billing.bill_id);
+          setPaymentBillNumber(billing.bill_number);
+          const feeItem = billing.items_added[0];
+          setPaymentAmount(feeItem ? parseFloat(feeItem.total) : 0);
+          setShowPaymentModal(true);
           setPendingNav(isEmergency ? "/patients" : patientId ? `/patients/${patientId}` : "/patients");
           return;
         }
@@ -468,6 +478,27 @@ export default function PatientRegistrationForm() {
           onClose={() => {
             setBillingSummary(null);
             setPendingNav(null);
+          }}
+        />
+      )}
+
+      {showPaymentModal && paymentBillId && (
+        <RegistrationPaymentModal
+          billId={paymentBillId}
+          billNumber={paymentBillNumber}
+          amountDue={paymentAmount}
+          onPaid={() => {
+            setShowPaymentModal(false);
+            success("Registration fee paid.");
+            const to = pendingNav;
+            setPendingNav(null);
+            if (to) router.push(to);
+          }}
+          onClose={() => {
+            setShowPaymentModal(false);
+            const to = pendingNav;
+            setPendingNav(null);
+            if (to) router.push(to);
           }}
         />
       )}

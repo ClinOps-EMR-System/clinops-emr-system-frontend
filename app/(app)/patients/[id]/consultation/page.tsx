@@ -188,7 +188,7 @@ export default function ClinicianSOAPConsultation() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [orderForm, setOrderForm] = useState({ test_name: "", clinical_indication: "", priority: "routine" });
 
-  const [prescriptions] = useState<Prescription[]>([]);
+  const [prescriptions, setPrescriptions] = useState<Prescription[]>([]);
   const [drugQuery, setDrugQuery] = useState("");
   const [drugResults, setDrugResults] = useState<Drug[]>([]);
   const [selectedDrug, setSelectedDrug] = useState<Drug | null>(null);
@@ -202,7 +202,17 @@ export default function ClinicianSOAPConsultation() {
   const [billLoading, setBillLoading] = useState(false);
   const [serviceQuery, setServiceQuery] = useState("");
   const [serviceResults, setServiceResults] = useState<BillingServiceItem[]>([]);
+  const [allServices, setAllServices] = useState<BillingServiceItem[]>([]);
+  const [serviceCategory, setServiceCategory] = useState<string>("all");
   const [addingBillItem, setAddingBillItem] = useState(false);
+
+  const SERVICE_CATEGORIES: Array<[string, string]> = [
+    ["all", "All"],
+    ["Consultation", "Consultation"],
+    ["Lab", "Lab"],
+    ["Pharmacy", "Pharmacy"],
+    ["Misc", "Misc"],
+  ];
 
   async function fetchConsultationData() {
     try {
@@ -233,12 +243,26 @@ export default function ClinicianSOAPConsultation() {
         setDiagnoses(filtered);
       }
 
+      const encounterId = triageRes?.data?.encounter?.id;
       try {
-        const ordersRes = await api.get(`/orders?patient_id=${patientId}`, token);
+        const ordersUrl = encounterId
+          ? `/orders?patient_id=${patientId}&encounter_id=${encounterId}`
+          : `/orders?patient_id=${patientId}`;
+        const ordersRes = await api.get(ordersUrl, token);
         if (ordersRes?.data) {
           setOrders(Array.isArray(ordersRes.data) ? ordersRes.data : ordersRes.data.data || []);
         }
       } catch { setOrders([]); }
+
+      try {
+        const rxUrl = encounterId
+          ? `/prescriptions?encounter_id=${encounterId}`
+          : `/prescriptions?patient_id=${patientId}`;
+        const rxRes = await api.get(rxUrl, token);
+        if (rxRes?.data) {
+          setPrescriptions(Array.isArray(rxRes.data) ? rxRes.data : rxRes.data.data || []);
+        }
+      } catch { setPrescriptions([]); }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to load consultation data.");
     } finally {
@@ -286,6 +310,7 @@ export default function ClinicianSOAPConsultation() {
   useEffect(() => {
     if (activeSubTab === "billing" && token && summary?.encounter?.id) {
       void loadBill();
+      void loadAllServices();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeSubTab, token, summary?.encounter?.id]);
@@ -501,12 +526,40 @@ export default function ClinicianSOAPConsultation() {
       setServiceResults([]);
       return;
     }
+    const categoryParam = serviceCategory !== "all" ? `&category=${encodeURIComponent(serviceCategory)}` : "";
     try {
-      const res = await api.get(`/services?search=${encodeURIComponent(query)}&category=`, token);
+      const res = await api.get(`/services?search=${encodeURIComponent(query)}${categoryParam}`, token);
       setServiceResults(res?.data ?? []);
     } catch {
       setServiceResults([]);
     }
+  }
+
+  async function loadAllServices() {
+    if (allServices.length > 0) return;
+    try {
+      const res = await api.get("/services", token);
+      const data = res?.data ?? [];
+      const services = Array.isArray(data) ? data : data.data || [];
+      setAllServices(services);
+    } catch {
+      setAllServices([]);
+    }
+  }
+
+  function getFilteredServices(): BillingServiceItem[] {
+    let services = allServices;
+    if (serviceCategory !== "all") {
+      services = services.filter((s) => s.category === serviceCategory);
+    }
+    if (serviceQuery.length >= 2) {
+      services = services.filter(
+        (s) =>
+          s.name?.toLowerCase().includes(serviceQuery.toLowerCase()) ||
+          s.category?.toLowerCase().includes(serviceQuery.toLowerCase())
+      );
+    }
+    return services;
   }
 
   async function addServiceToBill(service: BillingServiceItem) {
@@ -1206,17 +1259,45 @@ export default function ClinicianSOAPConsultation() {
                         <CardHeader>
                           <CardTitle>Add billable service</CardTitle>
                         </CardHeader>
-                        <CardContent className="space-y-3">
+                        <CardContent className="space-y-4">
                           <div className="relative">
                             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                             <Input
                               className="pl-9"
-                              placeholder="Search services by name or code..."
+                              placeholder="Search services..."
                               value={serviceQuery}
                               onChange={(e) => void searchServices(e.target.value)}
                             />
                           </div>
-                          {serviceResults.length > 0 && (
+
+                          <section
+                            role="tablist"
+                            aria-label="Service category filter"
+                            className="flex w-full items-center gap-1 overflow-x-auto rounded-lg bg-muted p-1"
+                          >
+                            {SERVICE_CATEGORIES.map(([key, label]) => (
+                              <button
+                                key={key}
+                                role="tab"
+                                aria-selected={serviceCategory === key}
+                                onClick={() => {
+                                  setServiceCategory(key);
+                                  setServiceQuery("");
+                                  setServiceResults([]);
+                                }}
+                                className={cn(
+                                  "flex-shrink-0 rounded-md px-3 py-1.5 text-xs font-semibold whitespace-nowrap transition-all",
+                                  serviceCategory === key
+                                    ? "bg-background text-foreground shadow-sm"
+                                    : "text-muted-foreground hover:text-foreground"
+                                )}
+                              >
+                                {label}
+                              </button>
+                            ))}
+                          </section>
+
+                          {serviceResults.length > 0 ? (
                             <ul className="max-h-56 divide-y divide-border overflow-y-auto rounded-md border border-border">
                               {serviceResults.map((s) => (
                                 <li key={s.id} className="flex items-center justify-between px-3 py-2 text-sm">
@@ -1238,6 +1319,33 @@ export default function ClinicianSOAPConsultation() {
                                 </li>
                               ))}
                             </ul>
+                          ) : (
+                            <div className="max-h-64 overflow-y-auto space-y-1">
+                              {getFilteredServices().map((s) => (
+                                <div
+                                  key={s.id}
+                                  className="flex items-center justify-between px-3 py-2 rounded-lg border border-border hover:bg-muted/50 cursor-pointer"
+                                  onClick={() => void addServiceToBill(s)}
+                                >
+                                  <div className="flex-1">
+                                    <p className="font-medium text-sm">{s.name}</p>
+                                    <p className="text-xs text-muted-foreground">
+                                      {s.category || "—"} · MK {Number(s.unit_price).toLocaleString()}
+                                    </p>
+                                  </div>
+                                  {addingBillItem ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                  ) : (
+                                    <Plus className="h-4 w-4 text-muted-foreground" />
+                                  )}
+                                </div>
+                              ))}
+                              {getFilteredServices().length === 0 && (
+                                <p className="text-sm text-muted-foreground text-center py-4">
+                                  No services found.
+                                </p>
+                              )}
+                            </div>
                           )}
                         </CardContent>
                       </Card>
