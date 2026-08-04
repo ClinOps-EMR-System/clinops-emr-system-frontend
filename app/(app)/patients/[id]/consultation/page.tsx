@@ -20,8 +20,10 @@ import { cn } from "@/lib/utils";
 import {
   ArrowLeft, Loader2, Check, TriangleAlert, HeartPulse, Stethoscope,
   ClipboardList, ClipboardPen, FlaskConical, Pill, LogOut, DoorOpen,
-  Search, Plus, Receipt, X, History, Clock,
+  Search, Plus, X, History, Clock, ArrowRightLeft, Receipt,
 } from "lucide-react";
+import DispositionModal from "@/components/clinical/DispositionModal";
+import HandoverModal from "@/components/clinical/HandoverModal";
 
 interface TimelineEvent {
   timestamp: string;
@@ -194,11 +196,11 @@ export default function ClinicianSOAPConsultation() {
   const [selectedDrug, setSelectedDrug] = useState<Drug | null>(null);
   const [rxForm, setRxForm] = useState({ dosage: "", route: "oral", frequency: "BD", duration: "7 days", quantity: "30", notes: "", is_controlled: false });
 
-  const [completingConsultation, setCompletingConsultation] = useState(false);
-  const [billingSummary, setBillingSummary] = useState<BillingSummary | null>(null);
-  const [pendingNav, setPendingNav] = useState<string | null>(null);
+  const [dispositionOpen, setDispositionOpen] = useState(false);
+  const [handoverOpen, setHandoverOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<"discharge" | "admit" | "refer" | "observe" | "deceased">("discharge");
 
-  const [bill, setBill] = useState<{ id: number; items: BillLine[]; total_amount: number } | null>(null);
+  const [bill, setBill] = useState<{ id: number; items: BillLine[]; total_amount: number; payment_status: string } | null>(null);
   const [billLoading, setBillLoading] = useState(false);
   const [serviceQuery, setServiceQuery] = useState("");
   const [serviceResults, setServiceResults] = useState<BillingServiceItem[]>([]);
@@ -404,28 +406,6 @@ export default function ClinicianSOAPConsultation() {
     }
   };
 
-  const handleCompleteConsultation = async (disposition: "discharge" | "admit", redirectPath?: string) => {
-    if (!summary?.encounter?.id || completingConsultation) return;
-    setCompletingConsultation(true);
-    setError(null);
-    setSuccessMsg(null);
-    try {
-      const targetStatus = disposition === "discharge" ? "discharged" : "admitted";
-      const res = await api.post(`/encounters/${summary.encounter.id}/transition`, { status: targetStatus }, token);
-      const billing = parseBilling(res);
-      if (billing) {
-        setBillingSummary(billing);
-        setPendingNav(redirectPath || `/patients/${patientId}`);
-        return;
-      }
-      setSuccessMsg(disposition === "discharge" ? "Patient discharged." : "Consultation completed.");
-      setTimeout(() => router.push(redirectPath || `/patients/${patientId}`), 1500);
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to complete.");
-      setCompletingConsultation(false);
-    }
-  };
-
   const handleCreateOrder = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!summary?.encounter?.id) return;
@@ -601,13 +581,21 @@ export default function ClinicianSOAPConsultation() {
         action={
           <div className="flex gap-2">
             {activeEncounterId ? (
-              <Button
-                onClick={() => handleCompleteConsultation("discharge")}
-                disabled={completingConsultation}
-              >
-                {completingConsultation ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogOut className="h-4 w-4" />}
-                {completingConsultation ? "Completing..." : "Complete & Discharge"}
-              </Button>
+              <>
+                <Button
+                  variant="outline"
+                  onClick={() => setHandoverOpen(true)}
+                >
+                  <ArrowRightLeft className="h-4 w-4" />
+                  Handover
+                </Button>
+                <Button
+                  onClick={() => setDispositionOpen(true)}
+                >
+                  <LogOut className="h-4 w-4" />
+                  Disposition
+                </Button>
+              </>
             ) : null}
             <Button variant="ghost" onClick={() => router.back()}>
               <ArrowLeft className="h-4 w-4" />
@@ -1258,12 +1246,11 @@ export default function ClinicianSOAPConsultation() {
                   <p className="text-sm text-muted-foreground">
                     Select clinical disposition to complete consultation and transfer the case to the appropriate destination.
                   </p>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
                     <Button
                       variant="default"
                       className="h-auto py-3 flex flex-col items-center justify-center gap-1.5"
-                      onClick={() => handleCompleteConsultation("discharge")}
-                      disabled={completingConsultation}
+                      onClick={() => { setActiveTab("discharge"); setDispositionOpen(true); }}
                     >
                       <LogOut className="h-5 w-5" />
                       <span className="font-bold">Discharge Home</span>
@@ -1273,7 +1260,7 @@ export default function ClinicianSOAPConsultation() {
                     <Button
                       variant="secondary"
                       className="h-auto py-3 flex flex-col items-center justify-center gap-1.5"
-                      onClick={() => router.push(`/admissions/new?patient_id=${patientId}&encounter_id=${summary?.encounter?.id}`)}
+                      onClick={() => { setActiveTab("admit"); setDispositionOpen(true); }}
                     >
                       <DoorOpen className="h-5 w-5 text-purple-600" />
                       <span className="font-bold text-purple-950">Admit to Ward</span>
@@ -1283,8 +1270,7 @@ export default function ClinicianSOAPConsultation() {
                     <Button
                       variant="outline"
                       className="h-auto py-3 flex flex-col items-center justify-center gap-1.5 border-sky-300 bg-sky-50/50 hover:bg-sky-100"
-                      onClick={() => router.push(`/referrals?patient_id=${patientId}`)}
-                      disabled={completingConsultation}
+                      onClick={() => { setActiveTab("refer"); setDispositionOpen(true); }}
                     >
                       <Stethoscope className="h-5 w-5 text-sky-600" />
                       <span className="font-bold text-sky-950">Refer Patient</span>
@@ -1294,12 +1280,20 @@ export default function ClinicianSOAPConsultation() {
                     <Button
                       variant="outline"
                       className="h-auto py-3 flex flex-col items-center justify-center gap-1.5 border-amber-300 bg-amber-50/50 hover:bg-amber-100"
-                      onClick={() => handleCompleteConsultation("admit")}
-                      disabled={completingConsultation}
+                      onClick={() => { setActiveTab("observe"); setDispositionOpen(true); }}
                     >
                       <HeartPulse className="h-5 w-5 text-amber-600" />
                       <span className="font-bold text-amber-950">Short-Stay Observation</span>
                       <span className="text-[10px] text-amber-700 font-normal">Retain for ED serial vitals</span>
+                    </Button>
+
+                    <Button
+                      variant="outline"
+                      className="h-auto py-3 flex flex-col items-center justify-center gap-1.5 border-red-300 bg-red-50/50 hover:bg-red-100"
+                      onClick={() => { setActiveTab("deceased"); setDispositionOpen(true); }}
+                    >
+                      <span className="font-bold text-red-950">Deceased</span>
+                      <span className="text-[10px] text-red-700 font-normal">Record patient death</span>
                     </Button>
                   </div>
                 </CardContent>
@@ -1309,17 +1303,24 @@ export default function ClinicianSOAPConsultation() {
         </div>
       )}
 
-      {billingSummary && (
-        <BillingConfirmation
-          billing={billingSummary}
-          onDone={() => {
-            const to = pendingNav;
-            setBillingSummary(null);
-            setPendingNav(null);
-            if (to) router.push(to);
-          }}
-        />
-      )}
+      <HandoverModal
+        open={handoverOpen}
+        onClose={() => setHandoverOpen(false)}
+        patientId={parseInt(patientId)}
+        encounterId={activeEncounterId!}
+        patientName={patient ? `${patient.first_name} ${patient.last_name}` : ""}
+      />
+
+      <DispositionModal
+        open={dispositionOpen}
+        onClose={() => setDispositionOpen(false)}
+        encounterId={activeEncounterId!}
+        patientId={patientId}
+        patientName={patient ? `${patient.first_name} ${patient.last_name}` : ""}
+        onDisposed={() => { fetchConsultationData(); }}
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+      />
     </div>
   );
 }

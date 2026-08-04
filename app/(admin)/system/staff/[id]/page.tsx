@@ -60,7 +60,7 @@ export default function StaffDetailPage() {
   }, [token, id]);
 
   useEffect(() => {
-    void load();
+    void load(); // eslint-disable-line react-hooks/set-state-in-effect
   }, [load]);
 
   const isAdminUser = (user?.roles || []).some((r) => r.name === "Admin");

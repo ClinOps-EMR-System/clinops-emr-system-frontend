@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Bed, Clock, LogIn, RefreshCw, X, ChevronRight } from 'lucide-react';
+import { Bed, Clock, LogIn, RefreshCw, X } from 'lucide-react';
 import { differenceInDays } from 'date-fns';
 import { SectionHeader } from '@/components/ui/PageLayout';
 import { Button } from '@/components/ui/button';
@@ -46,10 +46,6 @@ export default function OccupancyMap() {
   const [loading, setLoading] = useState(true);
   const [selectedBed, setSelectedBed] = useState<BedType | null>(null);
 
-  useEffect(() => {
-    if (token) fetchWards();
-  }, [token]);
-
   const fetchWards = async () => {
     try {
       setLoading(true);
@@ -65,6 +61,10 @@ export default function OccupancyMap() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (token) fetchWards(); // eslint-disable-line react-hooks/set-state-in-effect
+  }, [token]);
 
   const getAcuityColor = (acuity: string) => {
     switch (acuity?.toLowerCase()) {
@@ -166,7 +166,7 @@ export default function OccupancyMap() {
 
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-4">
                 {ward.beds.map((bed) => {
-                  const admission = bed.current_admission || (bed as any).currentAdmission;
+                  const admission = bed.current_admission || bed.currentAdmission;
                   return (
                     <div 
                       key={bed.id} 
@@ -245,10 +245,11 @@ export default function OccupancyMap() {
                  </span>
               </div>
               
-              {selectedBed.occupancy_status === 'Occupied' && (selectedBed.current_admission || (selectedBed as any).currentAdmission) && (
+              {selectedBed.occupancy_status === 'Occupied' && (selectedBed.current_admission || selectedBed.currentAdmission) && (
                 <div className="space-y-4">
                   {(() => {
-                    const admission = selectedBed.current_admission || (selectedBed as any).currentAdmission;
+                    const admission = selectedBed.current_admission || selectedBed.currentAdmission;
+                    if (!admission) return null;
                     return (
                       <>
                         <div className="bg-white rounded p-5 shadow-sm border border-gray-200">
