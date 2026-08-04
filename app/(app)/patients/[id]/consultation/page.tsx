@@ -20,7 +20,7 @@ import { cn } from "@/lib/utils";
 import {
   ArrowLeft, Loader2, Check, TriangleAlert, HeartPulse, Stethoscope,
   ClipboardList, ClipboardPen, FlaskConical, Pill, LogOut, DoorOpen,
-  Search, Plus, X, History, Clock, ArrowRightLeft,
+  Search, Plus, X, History, Clock, ArrowRightLeft, Receipt,
 } from "lucide-react";
 import DispositionModal from "@/components/clinical/DispositionModal";
 import HandoverModal from "@/components/clinical/HandoverModal";

@@ -8,7 +8,7 @@ import StatusBadge from "@/components/ui/StatusBadge";
 import EmptyState from "@/components/ui/EmptyState";
 import LoadingState from "@/components/ui/LoadingState";
 import Modal from "@/components/ui/Modal";
-import { FlaskConical, Search, Clock, AlertTriangle, CheckCircle2, TestTube } from "lucide-react";
+import { FlaskConical, Search, Clock, AlertTriangle, CheckCircle2, TestTube, Plus } from "lucide-react";
 
 interface LabWorklistItem {
   lab_request_id: number;

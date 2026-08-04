@@ -211,7 +211,7 @@ export default function ServicesCatalogPage() {
   useEffect(() => {
     if (form.category?.toLowerCase() !== "lab" || loincQuery.trim().length < 2) {
       loincRequestId.current++;
-      setLoincResults([]);
+      setLoincResults([]); // eslint-disable-line react-hooks/set-state-in-effect
       setLoincSearched(false);
       setLoincLoading(false);
       return;

@@ -45,7 +45,7 @@ export default function RoleDetailPage() {
   }, [token, id]);
 
   useEffect(() => {
-    void load();
+    void load(); // eslint-disable-line react-hooks/set-state-in-effect
   }, [load]);
 
   const isAdminRole = role?.name === "Admin";
