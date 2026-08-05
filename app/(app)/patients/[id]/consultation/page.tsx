@@ -68,6 +68,29 @@ interface Diagnosis {
   diagnosed_at: string;
 }
 
+interface LabResult {
+  id: number;
+  result_value_text: string | null;
+  result_value_numeric: number | null;
+  unit: string | null;
+  reference_range: string | null;
+  is_abnormal: boolean;
+  is_critical: boolean;
+  status: string;
+  verified_at: string | null;
+  released_at: string | null;
+}
+
+interface LabRequest {
+  id: number;
+  test_name: string;
+  loinc_code: string | null;
+  status: string;
+  specimen_collected_at: string | null;
+  is_critical: boolean;
+  results: LabResult[];
+}
+
 interface Order {
   id: number;
   patient_id: number;
@@ -79,6 +102,7 @@ interface Order {
   priority: string;
   status: string;
   ordered_at: string;
+  labRequests?: LabRequest[];
 }
 
 interface Prescription {
@@ -934,21 +958,51 @@ export default function ClinicianSOAPConsultation() {
                       <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-3">Order History</h4>
                       {orders.length > 0 ? (
                         <div className="divide-y divide-border rounded-lg border bg-card overflow-hidden">
-                          {orders.map((order) => (
-                            <div key={order.id} className="px-4 py-3 flex items-center justify-between">
-                              <div className="min-w-0">
-                                <span className="font-medium text-sm">{order.order_type}</span>
-                                {order.clinical_indication && (
-                                  <span className="ml-2 text-xs text-muted-foreground">— {order.clinical_indication}</span>
+                          {orders.map((order) => {
+                            const labReqs = order.labRequests ?? [];
+                            const hasResults = labReqs.some((lr) => lr.results.length > 0);
+                            return (
+                              <div key={order.id} className="px-4 py-3">
+                                <div className="flex items-center justify-between">
+                                  <div className="min-w-0">
+                                    <span className="font-medium text-sm">{order.test_name || order.order_type}</span>
+                                    {order.clinical_indication && (
+                                      <span className="ml-2 text-xs text-muted-foreground">— {order.clinical_indication}</span>
+                                    )}
+                                    {order.priority && order.priority.toLowerCase() !== "routine" && (
+                                      <Badge variant={order.priority.toLowerCase() === "stat" ? "destructive" : "secondary"} className="ml-2 text-[10px]">{order.priority}</Badge>
+                                    )}
+                                  </div>
+                                  <StatusBadge
+                                    label={order.status}
+                                    variant={order.status?.toLowerCase() === "completed" ? "success" : "warning"}
+                                    size="sm"
+                                  />
+                                </div>
+                                {hasResults && (
+                                  <div className="mt-2 ml-4 space-y-1.5">
+                                    {labReqs.map((lr) =>
+                                      lr.results.map((result) => (
+                                        <div key={result.id} className="flex items-center gap-2 text-xs">
+                                          <span className="font-medium text-foreground">{lr.test_name}:</span>
+                                          <span className={`font-mono ${result.is_abnormal ? "text-amber-600 font-bold" : "text-muted-foreground"}`}>
+                                            {result.result_value_numeric ?? result.result_value_text}
+                                            {result.unit ? ` ${result.unit}` : ""}
+                                          </span>
+                                          {result.reference_range && (
+                                            <span className="text-muted-foreground">(ref: {result.reference_range})</span>
+                                          )}
+                                          {result.is_critical && <Badge variant="destructive" className="text-[9px] px-1 py-0">CRITICAL</Badge>}
+                                          {result.is_abnormal && !result.is_critical && <Badge variant="secondary" className="text-[9px] px-1 py-0 bg-amber-100 text-amber-800">Abnormal</Badge>}
+                                          <Badge variant="outline" className="text-[9px] px-1 py-0">{result.status}</Badge>
+                                        </div>
+                                      ))
+                                    )}
+                                  </div>
                                 )}
                               </div>
-                              <StatusBadge
-                                label={order.status}
-                                variant={order.status?.toLowerCase() === "completed" ? "success" : "warning"}
-                                size="sm"
-                              />
-                            </div>
-                          ))}
+                            );
+                          })}
                         </div>
                       ) : (
                         <div className="text-center py-6 text-sm text-muted-foreground">No orders yet.</div>
