@@ -189,6 +189,29 @@ function LoadingPlaceholder() {
   );
 }
 
+function Sparkline({ data, color = "bg-primary", height = 32 }: { data: { value: number }[]; color?: string; height?: number }) {
+  if (data.length === 0) return null;
+  const values = data.map((d) => d.value);
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const range = max - min || 1;
+  return (
+    <div className="flex items-end gap-px" style={{ height }}>
+      {values.map((v, i) => {
+        const pct = ((v - min) / range) * 100;
+        return (
+          <div
+            key={i}
+            className={`flex-1 rounded-t-sm ${color} opacity-70 hover:opacity-100 transition-opacity`}
+            style={{ height: `${Math.max(4, pct)}%` }}
+            title={`${v}`}
+          />
+        );
+      })}
+    </div>
+  );
+}
+
 export default function ClinicianSOAPConsultation() {
   const params = useParams();
   const router = useRouter();
@@ -226,6 +249,9 @@ export default function ClinicianSOAPConsultation() {
   const [selectedDrug, setSelectedDrug] = useState<Drug | null>(null);
   const [rxForm, setRxForm] = useState({ dosage: "", route: "oral", frequency: "BD", duration: "7 days", quantity: "30", notes: "", is_controlled: false });
   const [allergyWarnings, setAllergyWarnings] = useState<{ allergen: string; severity: string; reaction: string | null }[]>([]);
+
+  type TrendPoint = { recorded_at: string; value: number };
+  const [vitalTrends, setVitalTrends] = useState<Record<string, TrendPoint[]>>({});
 
   const [dispositionOpen, setDispositionOpen] = useState(false);
   const [handoverOpen, setHandoverOpen] = useState(false);
@@ -357,6 +383,11 @@ export default function ClinicianSOAPConsultation() {
   useEffect(() => {
     if (activeSubTab === "billing" && token && summary?.encounter?.id) {
       void loadBill();
+    }
+    if (activeSubTab === "objective" && token && patientId) {
+      api.get(`/patients/${patientId}/vital-signs/trends?days=7`, token)
+        .then((res) => { if (res?.data) setVitalTrends(res.data); })
+        .catch(() => {});
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeSubTab, token, summary?.encounter?.id]);
@@ -863,6 +894,31 @@ export default function ClinicianSOAPConsultation() {
                         <div className="text-center py-6 text-sm text-muted-foreground">No vitals recorded for this encounter.</div>
                       )}
                     </div>
+
+                    {Object.keys(vitalTrends).length > 0 && (
+                      <div className="bg-muted/30 rounded-lg p-4">
+                        <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-3">7-Day Trends</h4>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                          {[
+                            { key: "temperature", label: "Temp (°C)", color: "bg-red-400" },
+                            { key: "pulse_rate", label: "Pulse (bpm)", color: "bg-blue-400" },
+                            { key: "oxygen_saturation", label: "SpO₂ (%)", color: "bg-cyan-400" },
+                            { key: "ews_score", label: "EWS Score", color: "bg-amber-400" },
+                          ].map(({ key, label, color }) =>
+                            vitalTrends[key] ? (
+                              <div key={key} className="space-y-1">
+                                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">{label}</span>
+                                <Sparkline data={vitalTrends[key]} color={color} />
+                                <div className="flex justify-between text-[9px] text-muted-foreground font-mono">
+                                  <span>{vitalTrends[key][0]?.value}</span>
+                                  <span>{vitalTrends[key][vitalTrends[key].length - 1]?.value}</span>
+                                </div>
+                              </div>
+                            ) : null
+                          )}
+                        </div>
+                      </div>
+                    )}
 
                     <Separator />
 
