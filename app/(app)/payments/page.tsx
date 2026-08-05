@@ -106,8 +106,8 @@ export default function PaymentsPage() {
     void loadReceipt(payment.id);
   };
 
-  const handlePayChanguInitiated = () => {
-    // keep the form visible while the charge is pending (PaymentForm shows the notice)
+  const handlePayChanguInitiated = (charge: PayChanguChargeResult) => {
+    setPaychanguCharge(charge);
   };
 
   const handlePayChanguCompleted = (charge: PayChanguChargeResult) => {
@@ -118,7 +118,7 @@ export default function PaymentsPage() {
     setReceipt(null);
     setBillDetail(null);
     setSelectedBillId(null);
-    void selectPatient(selectedPatient as Patient);
+    if (selectedPatient) selectPatient(selectedPatient);
   };
 
   const isPaid = billDetail?.payment_status?.toLowerCase() === "paid";

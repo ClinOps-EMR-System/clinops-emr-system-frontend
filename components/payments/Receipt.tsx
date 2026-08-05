@@ -13,7 +13,7 @@ interface ReceiptProps {
 }
 
 export function Receipt({ receipt, highlightPaymentId, onDone }: ReceiptProps) {
-  const fmt = (n: number) => `MK ${Number(n).toLocaleString()}`;
+  const fmt = (n: number) => `MK ${n.toLocaleString()}`;
 
   return (
     <Card>
@@ -89,9 +89,9 @@ export function Receipt({ receipt, highlightPaymentId, onDone }: ReceiptProps) {
             {receipt.issued_by && (
               <p className="pt-2 text-xs text-muted-foreground">
                 Collected by {receipt.issued_by.name} ·{" "}
-                {receipt.payments[0]?.created_at
-                  ? new Date(receipt.payments[0].created_at).toLocaleString()
-                  : new Date(receipt.created_at ?? new Date()).toLocaleString()}
+                 {receipt.payments[0]?.created_at
+                   ? new Date(receipt.payments[0].created_at).toLocaleString()
+                   : "—"}
               </p>
             )}
           </div>

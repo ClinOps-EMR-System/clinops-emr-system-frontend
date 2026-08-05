@@ -35,6 +35,23 @@ describe("BillPicker", () => {
     expect(onSelect).toHaveBeenCalledWith(1);
   });
 
+  it("sorts bills with unpaid first (BLL-1001 before BLL-2002 in DOM)", () => {
+    render(<BillPicker bills={bills} selectedId={null} loading={false} onSelect={vi.fn()} />);
+    const billElements = screen.getAllByRole("listitem");
+    const firstBill = billElements[0].textContent;
+    expect(firstBill).toContain("BLL-1001");
+  });
+
+  it("renders a skeleton when loading", () => {
+    const { container } = render(<BillPicker bills={[]} selectedId={null} loading={true} onSelect={vi.fn()} />);
+    expect(container.querySelectorAll('[data-slot="skeleton"]')).toHaveLength(2);
+  });
+
+  it("renders an empty state when no bills", () => {
+    render(<BillPicker bills={[]} selectedId={null} loading={false} onSelect={vi.fn()} />);
+    expect(screen.getByText("No bills found")).toBeInTheDocument();
+  });
+
   it("renders the amber status badge for partially paid bills", () => {
     const { container } = render(
       <BillPicker
@@ -69,5 +86,10 @@ describe("BillPreview", () => {
     expect(screen.getAllByText("MK 10,000").length).toBeGreaterThan(0);
     expect(screen.getByText("Balance")).toBeInTheDocument();
     expect(screen.getByText("MK 6,000")).toBeInTheDocument();
+  });
+
+  it("renders a skeleton when loading", () => {
+    const { container } = render(<BillPreview bill={bill} loading={true} />);
+    expect(container.querySelector('[data-slot="skeleton"]')).toBeInTheDocument();
   });
 });

@@ -44,6 +44,7 @@ export function PaymentForm({
   onPaymentRecorded,
   onPayChanguInitiated,
   onPayChanguCompleted,
+  onPayChanguError,
 }: PaymentFormProps) {
   const [amount, setAmount] = useState("");
   const [method, setMethod] = useState("Cash");
@@ -72,7 +73,10 @@ export function PaymentForm({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!token) return;
+    if (!token) {
+      setFormError("You must be logged in to record a payment.");
+      return;
+    }
     setProcessing(true);
     setFormError(null);
     try {
@@ -103,11 +107,17 @@ export function PaymentForm({
       const apiError = err as { status?: number; message?: string; errors?: Record<string, string[]> };
       if (apiError.status === 422) {
         const first = apiError.errors ? Object.values(apiError.errors)[0]?.[0] : undefined;
-        setFormError(first || "Invalid payment details.");
+        const msg = first || "Invalid payment details.";
+        setFormError(msg);
+        onPayChanguError?.(msg);
       } else if (apiError.status === 502) {
-        setFormError("Unable to initialize payment with PayChangu.");
+        const msg = isPayChangu ? "Unable to initialize payment with PayChangu." : "A gateway error occurred. Please try again.";
+        setFormError(msg);
+        onPayChanguError?.(msg);
       } else {
-        setFormError(apiError.message || "Failed to record payment.");
+        const msg = apiError.message || "Failed to record payment.";
+        setFormError(msg);
+        onPayChanguError?.(msg);
       }
     } finally {
       setProcessing(false);

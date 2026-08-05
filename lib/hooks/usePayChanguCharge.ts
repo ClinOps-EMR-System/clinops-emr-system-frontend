@@ -75,6 +75,7 @@ export function usePayChanguCharge({ token, onCompleted }: UsePayChanguChargeOpt
 
   const retry = useCallback(() => {
     setError(null);
+    setOperatorsError(null);
     setPolling(true);
   }, []);
 
