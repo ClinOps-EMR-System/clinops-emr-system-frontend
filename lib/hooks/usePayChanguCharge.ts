@@ -68,6 +68,7 @@ export function usePayChanguCharge({ token, onCompleted }: UsePayChanguChargeOpt
       setCharge(result);
       setPolling(true);
       setError(null);
+      return result;
     },
     [token, mobile, operatorRef]
   );
