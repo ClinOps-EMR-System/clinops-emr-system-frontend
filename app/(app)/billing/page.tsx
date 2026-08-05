@@ -1,9 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useAuth } from "@/store/RoleContext";
 import { api } from "@/lib/api";
+import { adminApi } from "@/lib/services/admin";
+import type { PayChanguChargeResult, PayChanguOperator } from "@/lib/services/admin";
 import {
   Card,
   CardContent,
@@ -71,6 +73,9 @@ function getStatusVariant(status: string): "success" | "warning" | "error" | "in
   return "neutral";
 }
 
+const PAYCHANGU_POLL_INTERVAL_MS = 5000;
+const PAYCHANGU_POLL_LIMIT_MS = 2 * 60 * 1000;
+
 export default function BillingPage() {
   const { token } = useAuth();
   const [bills, setBills] = useState<Bill[]>([]);
@@ -83,6 +88,16 @@ export default function BillingPage() {
   const [selectedBill, setSelectedBill] = useState<Bill | null>(null);
   const [paymentForm, setPaymentForm] = useState({ amount: "", payment_method: "cash", reference: "" });
   const [processing, setProcessing] = useState(false);
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [paychanguOperators, setPaychanguOperators] = useState<PayChanguOperator[]>([]);
+  const [paychanguOperatorsLoading, setPaychanguOperatorsLoading] = useState(false);
+  const [paychanguOperatorError, setPaychanguOperatorError] = useState<string | null>(null);
+  const [paychanguMobile, setPaychanguMobile] = useState("");
+  const [paychanguOperatorRef, setPaychanguOperatorRef] = useState("");
+  const [paychanguCharge, setPaychanguCharge] = useState<PayChanguChargeResult | null>(null);
+  const [paychanguPolling, setPaychanguPolling] = useState(false);
+  const [paychanguError, setPaychanguError] = useState<string | null>(null);
+  const paychanguBillIdRef = useRef<number | null>(null);
 
   async function fetchData() {
     try {
@@ -111,6 +126,115 @@ export default function BillingPage() {
   }, [token]);
   /* eslint-enable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
 
+  const resetPaymentForm = () => {
+    setPaymentForm({ amount: "", payment_method: "cash", reference: "" });
+  };
+
+  const resetPayChanguState = () => {
+    paychanguBillIdRef.current = null;
+    setPaychanguCharge(null);
+    setPaychanguPolling(false);
+    setPaychanguError(null);
+    setPaychanguOperatorsLoading(false);
+    setPaychanguOperatorError(null);
+    setPaychanguMobile("");
+    setPaychanguOperatorRef("");
+  };
+
+  const loadPayChanguOperators = async () => {
+    setPaychanguOperatorsLoading(true);
+    setPaychanguOperatorError(null);
+    try {
+      const res = await adminApi.getPayChanguOperators(token);
+      setPaychanguOperators(res.operators ?? []);
+    } catch (err: unknown) {
+      const apiError = err as { status?: number; message?: string };
+      setPaychanguOperators([]);
+      setPaychanguOperatorError(
+        apiError.status === 404
+          ? "PayChangu is not configured on the backend."
+          : apiError.message || "Unable to load PayChangu operators."
+      );
+    } finally {
+      setPaychanguOperatorsLoading(false);
+    }
+  };
+
+  const handlePaymentMethodChange = (method: string) => {
+    setPaymentForm((prev) => ({ ...prev, payment_method: method }));
+    if (method === "paychangu") {
+      if (paychanguOperators.length === 0 && !paychanguOperatorsLoading && !paychanguOperatorError) {
+        loadPayChanguOperators();
+      }
+    } else {
+      resetPayChanguState();
+    }
+  };
+
+  const handleOpenPaymentModal = (bill: Bill) => {
+    setSuccessMsg(null);
+    setSelectedBill(bill);
+    setPaymentForm({ amount: String(bill.balance || 0), payment_method: "cash", reference: "" });
+    resetPayChanguState();
+    setPaymentModalOpen(true);
+  };
+
+  const handleClosePaymentModal = () => {
+    resetPayChanguState();
+    setPaymentModalOpen(false);
+    setSelectedBill(null);
+  };
+
+  const handlePayChanguRetry = () => {
+    setPaychanguError(null);
+    setPaychanguPolling(true);
+  };
+
+  /* eslint-disable react-hooks/exhaustive-deps */
+  useEffect(() => {
+    const billId = paychanguBillIdRef.current;
+    if (!paychanguCharge || !paychanguPolling || !token || !billId) return;
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const startedAt = Date.now();
+
+    const poll = async () => {
+      if (cancelled) return;
+      if (Date.now() - startedAt >= PAYCHANGU_POLL_LIMIT_MS) {
+        setPaychanguPolling(false);
+        setPaychanguError("Payment is still pending on the patient's phone. You can close this dialog; the payment will still be confirmed automatically if completed.");
+        return;
+      }
+      try {
+        const result = await adminApi.verifyPayChanguPayment(token, billId, paychanguCharge.charge_id);
+        if (cancelled) return;
+        if (result.status === "completed") {
+          setPaychanguPolling(false);
+          setPaychanguCharge(null);
+          setPaymentModalOpen(false);
+          setSelectedBill(null);
+          resetPaymentForm();
+          setSuccessMsg("PayChangu payment completed successfully.");
+          fetchData();
+          return;
+        }
+        timer = setTimeout(poll, PAYCHANGU_POLL_INTERVAL_MS);
+      } catch {
+        if (cancelled) return;
+        setPaychanguPolling(false);
+        setPaychanguError("Unable to check the payment status. The payment will still be confirmed by webhook if the patient completes it.");
+      }
+    };
+
+    poll();
+
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+    };
+  }, [paychanguCharge, paychanguPolling, token]);
+  /* eslint-enable react-hooks/exhaustive-deps */
+
   const filteredBills = bills.filter((b) => {
     const matchesSearch = !searchQuery ||
       b.bill_number?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -128,30 +252,64 @@ export default function BillingPage() {
     waived: bills.filter((b) => b.payment_status?.toLowerCase() === "waived").length,
   };
 
-  const totalOutstanding = bills.reduce((sum, b) => sum + (b.balance || 0), 0);
+  const totalOutstanding = bills.reduce((sum, b) => sum + (Number(b.balance) || 0), 0);
   const unpaidCount = counts.unpaid + counts.partially_paid;
   const paidToday = bills.filter((b) => {
     const today = new Date().toISOString().split("T")[0];
     return b.payment_status?.toLowerCase() === "paid" && b.created_at?.startsWith(today);
   }).length;
 
+  const isSubmitDisabled =
+    processing ||
+    paychanguCharge !== null ||
+    !paymentForm.amount ||
+    (paymentForm.payment_method === "paychangu" &&
+      (paychanguOperators.length === 0 ||
+        paychanguOperatorError !== null ||
+        !paychanguOperatorRef ||
+        !paychanguMobile));
+
   const handleRecordPayment = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedBill) return;
     setProcessing(true);
     try {
-      await api.post(`/bills/${selectedBill.id}/payments`, {
-        amount_paid: parseFloat(paymentForm.amount),
-        payment_method: paymentForm.payment_method,
-        reference: paymentForm.reference || null,
-      }, token);
-      setPaymentModalOpen(false);
-      setSelectedBill(null);
-      setPaymentForm({ amount: "", payment_method: "cash", reference: "" });
-      fetchData();
+      if (paymentForm.payment_method === "paychangu") {
+        paychanguBillIdRef.current = selectedBill.id;
+        const charge = await adminApi.initializePayChanguPayment(token, selectedBill.id, {
+          mobile: paychanguMobile,
+          operator_ref_id: paychanguOperatorRef,
+          amount: parseFloat(paymentForm.amount),
+        });
+        setPaychanguCharge(charge);
+        setPaychanguPolling(true);
+        setPaychanguError(null);
+      } else {
+        await api.post(`/bills/${selectedBill.id}/payments`, {
+          amount_paid: parseFloat(paymentForm.amount),
+          payment_method: paymentForm.payment_method,
+          reference: paymentForm.reference || null,
+        }, token);
+        setPaymentModalOpen(false);
+        setSelectedBill(null);
+        resetPaymentForm();
+        fetchData();
+      }
     } catch (err: unknown) {
       const apiError = err as { status?: number; message?: string };
-      if (apiError.status === 404) {
+      if (paymentForm.payment_method === "paychangu") {
+        if (apiError.status === 422) {
+          const errors = (err as { errors?: Record<string, string[]> }).errors;
+          const firstMessage = errors ? Object.values(errors)[0]?.[0] : undefined;
+          setPaychanguError(firstMessage || "Invalid payment details. Please check the mobile number and operator.");
+        } else if (apiError.status === 502) {
+          setPaychanguError("Unable to initialize payment with PayChangu.");
+        } else if (apiError.status === 404) {
+          setError("Billing module is not yet configured on the backend. Payments cannot be recorded at this time.");
+        } else {
+          setPaychanguError(apiError.message || "Failed to initialize PayChangu payment.");
+        }
+      } else if (apiError.status === 404) {
         setError("Billing module is not yet configured on the backend. Payments cannot be recorded at this time.");
       } else {
         setError(apiError.message || "Failed to record payment");
@@ -177,6 +335,13 @@ export default function BillingPage() {
           </p>
         </div>
       </div>
+
+      {successMsg && (
+        <div className="p-3 rounded-lg bg-green-50 text-green-700 text-sm border border-green-200 flex items-center gap-2">
+          <CheckCircle className="h-4 w-4" />
+          {successMsg}
+        </div>
+      )}
 
       {/* Metric Cards */}
       <section className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -333,11 +498,7 @@ export default function BillingPage() {
                             size="sm"
                             variant="outline"
                             className="h-7 text-xs"
-                            onClick={() => {
-                              setSelectedBill(bill);
-                              setPaymentForm({ amount: String(bill.balance || 0), payment_method: "cash", reference: "" });
-                              setPaymentModalOpen(true);
-                            }}
+                            onClick={() => handleOpenPaymentModal(bill)}
                           >
                             Pay
                           </Button>
@@ -361,59 +522,151 @@ export default function BillingPage() {
       {/* Record Payment Modal */}
       <Modal
         open={paymentModalOpen}
-        onClose={() => { setPaymentModalOpen(false); setSelectedBill(null); }}
+        onClose={handleClosePaymentModal}
         title="Record Payment"
         subtitle={selectedBill ? `Bill ${selectedBill.bill_number} — Balance: MK ${selectedBill.balance?.toLocaleString()}` : ""}
         footer={
-          <>
-            <button onClick={() => { setPaymentModalOpen(false); setSelectedBill(null); }} className="px-4 py-2 text-sm font-semibold text-muted-foreground bg-background border border-border rounded-lg hover:bg-muted">
-              Cancel
-            </button>
-            <button onClick={handleRecordPayment} disabled={processing || !paymentForm.amount} className="px-4 py-2 text-sm font-bold text-primary-foreground bg-primary rounded-lg hover:bg-primary/90 disabled:opacity-50">
-              {processing ? "Processing..." : "Record Payment"}
-            </button>
-          </>
+          paychanguCharge && paychanguError ? (
+            <>
+              <button onClick={handleClosePaymentModal} className="px-4 py-2 text-sm font-semibold text-muted-foreground bg-background border border-border rounded-lg hover:bg-muted">
+                Close
+              </button>
+              <button onClick={handlePayChanguRetry} className="px-4 py-2 text-sm font-bold text-primary-foreground bg-primary rounded-lg hover:bg-primary/90">
+                Retry
+              </button>
+            </>
+          ) : (
+            <>
+              <button onClick={handleClosePaymentModal} className="px-4 py-2 text-sm font-semibold text-muted-foreground bg-background border border-border rounded-lg hover:bg-muted">
+                Cancel
+              </button>
+              <button onClick={handleRecordPayment} disabled={isSubmitDisabled} className="px-4 py-2 text-sm font-bold text-primary-foreground bg-primary rounded-lg hover:bg-primary/90 disabled:opacity-50">
+                {processing || paychanguCharge ? "Processing..." : "Record Payment"}
+              </button>
+            </>
+          )
         }
       >
-        <form onSubmit={handleRecordPayment} className="space-y-4">
-          <div>
-            <label className="block text-xs font-semibold text-foreground uppercase tracking-wide mb-1.5">Amount (MK) *</label>
-            <input
-              type="number"
-              step="0.01"
-              min="0.01"
-              max={selectedBill?.balance}
-              required
-              className="block w-full px-3 py-2 border border-input rounded-lg text-sm bg-background focus:outline-none focus:ring-2 focus:ring-ring font-mono"
-              value={paymentForm.amount}
-              onChange={(e) => setPaymentForm({ ...paymentForm, amount: e.target.value })}
-            />
+        {paychanguCharge ? (
+          <div className="space-y-4">
+            {paychanguError ? (
+              <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+                <p className="font-semibold">Payment still pending</p>
+                <p className="mt-1">{paychanguError}</p>
+                <p className="mt-2 text-xs text-amber-700">
+                  The payment will still be confirmed automatically if the patient completes it.
+                </p>
+              </div>
+            ) : (
+              <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+                <p className="font-semibold">Awaiting payment confirmation</p>
+                <p className="mt-1">Ask the patient to complete the payment using the prompt on their phone.</p>
+              </div>
+            )}
+            <div className="space-y-2 rounded-lg border border-input p-4 text-sm">
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Operator</span>
+                <span className="font-medium">{paychanguCharge.operator}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Mobile</span>
+                <span className="font-medium font-mono">{paychanguCharge.mobile}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Amount</span>
+                <span className="font-medium font-mono">MK {Number(paychanguCharge.amount).toLocaleString()}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Transaction</span>
+                <span className="font-medium font-mono">{paychanguCharge.trans_id}</span>
+              </div>
+            </div>
           </div>
-          <div>
-            <label className="block text-xs font-semibold text-foreground uppercase tracking-wide mb-1.5">Payment Method *</label>
-            <select
-              className="block w-full px-3 py-2 border border-input rounded-lg bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-              value={paymentForm.payment_method}
-              onChange={(e) => setPaymentForm({ ...paymentForm, payment_method: e.target.value })}
-            >
-              <option value="cash">Cash</option>
-              <option value="bank_transfer">Bank Transfer</option>
-              <option value="mobile_money">Mobile Money</option>
-              <option value="insurance">Insurance</option>
-              <option value="card">Card</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-xs font-semibold text-foreground uppercase tracking-wide mb-1.5">Reference Number</label>
-            <input
-              type="text"
-              className="block w-full px-3 py-2 border border-input rounded-lg text-sm bg-background focus:outline-none focus:ring-2 focus:ring-ring"
-              value={paymentForm.reference}
-              onChange={(e) => setPaymentForm({ ...paymentForm, reference: e.target.value })}
-              placeholder="Transaction/receipt reference"
-            />
-          </div>
-        </form>
+        ) : (
+          <form onSubmit={handleRecordPayment} className="space-y-4">
+            {paymentForm.payment_method === "paychangu" && paychanguError && (
+              <div className="rounded-md border border-destructive/50 bg-destructive/5 p-3 text-sm text-destructive">
+                {paychanguError}
+              </div>
+            )}
+            <div>
+              <label className="block text-xs font-semibold text-foreground uppercase tracking-wide mb-1.5">Amount (MK) *</label>
+              <input
+                type="number"
+                step="0.01"
+                min="0.01"
+                max={selectedBill?.balance}
+                required
+                className="block w-full px-3 py-2 border border-input rounded-lg text-sm bg-background focus:outline-none focus:ring-2 focus:ring-ring font-mono"
+                value={paymentForm.amount}
+                onChange={(e) => setPaymentForm({ ...paymentForm, amount: e.target.value })}
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-foreground uppercase tracking-wide mb-1.5">Payment Method *</label>
+              <select
+                className="block w-full px-3 py-2 border border-input rounded-lg bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                value={paymentForm.payment_method}
+                onChange={(e) => handlePaymentMethodChange(e.target.value)}
+              >
+                <option value="cash">Cash</option>
+                <option value="bank_transfer">Bank Transfer</option>
+                <option value="mobile_money">Mobile Money</option>
+                <option value="paychangu">Mobile Money (PayChangu)</option>
+                <option value="insurance">Insurance</option>
+                <option value="card">Card</option>
+              </select>
+            </div>
+            {paymentForm.payment_method === "paychangu" ? (
+              <>
+                <div>
+                  <label className="block text-xs font-semibold text-foreground uppercase tracking-wide mb-1.5">Operator *</label>
+                  {paychanguOperatorsLoading ? (
+                    <div className="text-sm text-muted-foreground">Loading operators...</div>
+                  ) : paychanguOperatorError ? (
+                    <div className="text-xs text-destructive">{paychanguOperatorError}</div>
+                  ) : paychanguOperators.length === 0 ? (
+                    <div className="text-sm text-muted-foreground">No mobile money operators are available.</div>
+                  ) : (
+                    <select
+                      className="block w-full px-3 py-2 border border-input rounded-lg bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                      value={paychanguOperatorRef}
+                      onChange={(e) => setPaychanguOperatorRef(e.target.value)}
+                      required
+                    >
+                      <option value="">Select operator</option>
+                      {paychanguOperators.map((op) => (
+                        <option key={op.id} value={op.ref_id}>{op.name}</option>
+                      ))}
+                    </select>
+                  )}
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-foreground uppercase tracking-wide mb-1.5">Mobile Number *</label>
+                  <input
+                    type="tel"
+                    className="block w-full px-3 py-2 border border-input rounded-lg text-sm bg-background focus:outline-none focus:ring-2 focus:ring-ring font-mono"
+                    value={paychanguMobile}
+                    onChange={(e) => setPaychanguMobile(e.target.value)}
+                    placeholder="e.g. +2659..."
+                    required
+                  />
+                </div>
+              </>
+            ) : (
+              <div>
+                <label className="block text-xs font-semibold text-foreground uppercase tracking-wide mb-1.5">Reference Number</label>
+                <input
+                  type="text"
+                  className="block w-full px-3 py-2 border border-input rounded-lg text-sm bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+                  value={paymentForm.reference}
+                  onChange={(e) => setPaymentForm({ ...paymentForm, reference: e.target.value })}
+                  placeholder="Transaction/receipt reference"
+                />
+              </div>
+            )}
+          </form>
+        )}
       </Modal>
     </div>
   );
