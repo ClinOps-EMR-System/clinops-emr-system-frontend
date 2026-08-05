@@ -106,8 +106,8 @@ export default function PaymentsPage() {
     void loadReceipt(payment.id);
   };
 
-  const handlePayChanguInitiated = (charge: PayChanguChargeResult) => {
-    setPaychanguCharge(charge);
+  const handlePayChanguInitiated = () => {
+    // keep the form visible while the charge is pending (PaymentForm shows the notice)
   };
 
   const handlePayChanguCompleted = (charge: PayChanguChargeResult) => {
