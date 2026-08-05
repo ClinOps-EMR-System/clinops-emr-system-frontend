@@ -378,17 +378,12 @@ export default function ClinicianSOAPConsultation() {
   }, [drugQuery, token]);
 
   useEffect(() => {
-    if (!selectedDrug || !token || !patientId) {
-      setAllergyWarnings([]);
-      return;
-    }
+    if (!selectedDrug || !token || !patientId) return;
     let cancelled = false;
     api.get(`/patients/${patientId}/allergy-check?drug_id=${selectedDrug.id}`, token)
       .then((res) => {
-        if (!cancelled && res?.data?.has_match) {
-          setAllergyWarnings(res.data.matches);
-        } else if (!cancelled) {
-          setAllergyWarnings([]);
+        if (!cancelled) {
+          setAllergyWarnings(res?.data?.has_match ? res.data.matches : []);
         }
       })
       .catch(() => { if (!cancelled) setAllergyWarnings([]); });
@@ -568,6 +563,7 @@ export default function ClinicianSOAPConsultation() {
       setSuccessMsg(`Prescription for ${selectedDrug.name} created.`);
       setSelectedDrug(null);
       setDrugQuery("");
+      setAllergyWarnings([]);
       setRxForm({ dosage: "", route: "oral", frequency: "BD", duration: "7 days", quantity: "30", notes: "", is_controlled: false });
       fetchConsultationData();
     } catch (err: unknown) {
@@ -1335,7 +1331,7 @@ export default function ClinicianSOAPConsultation() {
                           className="block w-full rounded-lg border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                           placeholder="Search drug..."
                           value={drugQuery}
-                          onChange={(e) => { setDrugQuery(e.target.value); setSelectedDrug(null); }}
+                          onChange={(e) => { setDrugQuery(e.target.value); setSelectedDrug(null); setAllergyWarnings([]); }}
                         />
                         {drugResults.length > 0 && !selectedDrug && (
                           <ul className="absolute left-0 right-0 mt-1 bg-card border rounded-lg shadow-lg max-h-48 overflow-y-auto z-30 divide-y text-sm">
@@ -1374,7 +1370,7 @@ export default function ClinicianSOAPConsultation() {
                               </span>
                             )}
                           </div>
-                          <button type="button" onClick={() => { setSelectedDrug(null); setDrugQuery(""); }} className="text-xs text-muted-foreground hover:text-foreground font-bold uppercase">Clear</button>
+                          <button type="button" onClick={() => { setSelectedDrug(null); setDrugQuery(""); setAllergyWarnings([]); }} className="text-xs text-muted-foreground hover:text-foreground font-bold uppercase">Clear</button>
                         </div>
                       )}
 
