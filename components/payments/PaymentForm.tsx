@@ -23,6 +23,7 @@ interface PaymentFormProps {
   disabled?: boolean;
   onPaymentRecorded: (payment: RecordedPayment) => void;
   onPayChanguInitiated: (charge: PayChanguChargeResult) => void;
+  onPayChanguCompleted?: (charge: PayChanguChargeResult) => void;
   onPayChanguError?: (message: string) => void;
 }
 
@@ -42,6 +43,7 @@ export function PaymentForm({
   disabled = false,
   onPaymentRecorded,
   onPayChanguInitiated,
+  onPayChanguCompleted,
 }: PaymentFormProps) {
   const [amount, setAmount] = useState("");
   const [method, setMethod] = useState("Cash");
@@ -49,7 +51,7 @@ export function PaymentForm({
   const [processing, setProcessing] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
-  const paychangu = usePayChanguCharge({ token, onCompleted: onPayChanguInitiated });
+  const paychangu = usePayChanguCharge({ token, onCompleted: onPayChanguCompleted ?? onPayChanguInitiated });
   const isPayChangu = method === "paychangu";
 
   useEffect(() => {
