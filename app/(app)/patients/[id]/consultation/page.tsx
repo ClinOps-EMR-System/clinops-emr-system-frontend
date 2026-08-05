@@ -35,6 +35,7 @@ interface TimelineEvent {
 interface TriageSummary {
   encounter: {
     id: number;
+    status: string;
     chief_complaint: string | null;
     history_of_present_illness: string | null;
     allergy_confirmed_at: string | null;
@@ -609,6 +610,62 @@ export default function ClinicianSOAPConsultation() {
   }
 
   const activeEncounterId = summary?.encounter?.id;
+  const encounterStatus = summary?.encounter?.status ?? "unknown";
+
+  const statusLabel: Record<string, string> = {
+    in_consultation: "In Consultation",
+    orders_pending: "Orders Pending",
+    awaiting_results: "Awaiting Results",
+    results_review: "Results to Review",
+    observation: "Observation",
+    admitted: "Admitted",
+    referred: "Referred",
+    discharged: "Discharged",
+    deceased: "Deceased",
+  };
+
+  const statusVariant: Record<string, "success" | "warning" | "error" | "info" | "neutral" | "purple"> = {
+    in_consultation: "purple",
+    orders_pending: "warning",
+    awaiting_results: "warning",
+    results_review: "info",
+    observation: "neutral",
+    admitted: "info",
+    referred: "info",
+    discharged: "success",
+    deceased: "error",
+  };
+
+  const transitionTargets: Record<string, { target: string; label: string }[]> = {
+    in_consultation: [
+      { target: "orders_pending", label: "Send to Lab" },
+      { target: "awaiting_results", label: "Await Results" },
+    ],
+    orders_pending: [
+      { target: "awaiting_results", label: "Await Results" },
+    ],
+    awaiting_results: [
+      { target: "results_review", label: "Results Ready" },
+    ],
+    results_review: [
+      { target: "in_consultation", label: "Continue Consultation" },
+    ],
+  };
+
+  async function handleTransition(targetStatus: string) {
+    if (!activeEncounterId) return;
+    setSubmitLoading(true);
+    setError(null);
+    try {
+      await api.post(`/encounters/${activeEncounterId}/transition`, { status: targetStatus }, token);
+      setSuccessMsg(`Status changed to ${statusLabel[targetStatus] ?? targetStatus}`);
+      fetchConsultationData();
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to update status.");
+    } finally {
+      setSubmitLoading(false);
+    }
+  }
 
   const sidebarNav = (
     <nav className="flex flex-col gap-1">
@@ -676,8 +733,22 @@ export default function ClinicianSOAPConsultation() {
       <Card className="border-l-4 border-l-primary">
         <CardContent className="p-4 flex items-center justify-between flex-wrap gap-3">
           <div className="flex items-center gap-3">
-            <StatusBadge label="In Consultation" variant="purple" pulse />
+            <StatusBadge label={statusLabel[encounterStatus] ?? encounterStatus} variant={statusVariant[encounterStatus] ?? "neutral"} pulse={encounterStatus === "in_consultation"} />
             {patient.patient_category && <Badge variant="outline">{patient.patient_category}</Badge>}
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            {(transitionTargets[encounterStatus] ?? []).map((t) => (
+              <Button
+                key={t.target}
+                size="sm"
+                variant="outline"
+                onClick={() => handleTransition(t.target)}
+                disabled={submitLoading}
+              >
+                {submitLoading && <Loader2 className="h-3 w-3 animate-spin mr-1" />}
+                {t.label}
+              </Button>
+            ))}
           </div>
           <div className="flex items-center gap-4 text-sm text-muted-foreground">
             {summary?.allergies_confirmed && (
