@@ -224,6 +224,7 @@ export default function ClinicianSOAPConsultation() {
   const [drugResults, setDrugResults] = useState<Drug[]>([]);
   const [selectedDrug, setSelectedDrug] = useState<Drug | null>(null);
   const [rxForm, setRxForm] = useState({ dosage: "", route: "oral", frequency: "BD", duration: "7 days", quantity: "30", notes: "", is_controlled: false });
+  const [allergyWarnings, setAllergyWarnings] = useState<{ allergen: string; severity: string; reaction: string | null }[]>([]);
 
   const [dispositionOpen, setDispositionOpen] = useState(false);
   const [handoverOpen, setHandoverOpen] = useState(false);
@@ -333,6 +334,24 @@ export default function ClinicianSOAPConsultation() {
     }, 400);
     return () => clearTimeout(delayDebounceFn);
   }, [drugQuery, token]);
+
+  useEffect(() => {
+    if (!selectedDrug || !token || !patientId) {
+      setAllergyWarnings([]);
+      return;
+    }
+    let cancelled = false;
+    api.get(`/patients/${patientId}/allergy-check?drug_id=${selectedDrug.id}`, token)
+      .then((res) => {
+        if (!cancelled && res?.data?.has_match) {
+          setAllergyWarnings(res.data.matches);
+        } else if (!cancelled) {
+          setAllergyWarnings([]);
+        }
+      })
+      .catch(() => { if (!cancelled) setAllergyWarnings([]); });
+    return () => { cancelled = true; };
+  }, [selectedDrug, token, patientId]);
 
   useEffect(() => {
     if (activeSubTab === "billing" && token && summary?.encounter?.id) {
@@ -1150,6 +1169,23 @@ export default function ClinicianSOAPConsultation() {
                             )}
                           </div>
                           <button type="button" onClick={() => { setSelectedDrug(null); setDrugQuery(""); }} className="text-xs text-muted-foreground hover:text-foreground font-bold uppercase">Clear</button>
+                        </div>
+                      )}
+
+                      {allergyWarnings.length > 0 && (
+                        <div className="rounded-lg bg-red-50 border border-red-200 p-3 space-y-1.5">
+                          <div className="flex items-center gap-1.5 text-xs font-bold text-red-800 uppercase tracking-wider">
+                            <TriangleAlert className="h-3.5 w-3.5" />
+                            Allergy Warning
+                          </div>
+                          {allergyWarnings.map((w, i) => (
+                            <div key={i} className="text-xs text-red-700">
+                              Patient has recorded allergy to <span className="font-bold">{w.allergen}</span>
+                              {w.severity && <span className="ml-1">— Severity: {w.severity}</span>}
+                              {w.reaction && <span className="ml-1">— Reaction: {w.reaction}</span>}
+                            </div>
+                          ))}
+                          <div className="text-[10px] text-red-600 italic">Prescription will be flagged. Proceed only if clinically appropriate.</div>
                         </div>
                       )}
 
