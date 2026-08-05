@@ -17,6 +17,7 @@ import { Input } from "@/components/ui/input";
 import BillingConfirmation from "@/components/billing/BillingConfirmation";
 import { parseBilling, type BillingSummary } from "@/types/billing";
 import { cn } from "@/lib/utils";
+import { getTemplatesByCategory } from "@/lib/clinical-templates";
 import {
   ArrowLeft, Loader2, Check, TriangleAlert, HeartPulse, Stethoscope,
   ClipboardList, ClipboardPen, FlaskConical, Pill, LogOut, DoorOpen,
@@ -923,7 +924,23 @@ export default function ClinicianSOAPConsultation() {
                     <Separator />
 
                     <form onSubmit={handleSavePhysicalExam} className="space-y-3">
-                      <label className="block text-xs font-semibold text-foreground uppercase tracking-wide">Physical Exam Findings</label>
+                      <div className="flex items-center justify-between">
+                        <label className="block text-xs font-semibold text-foreground uppercase tracking-wide">Physical Exam Findings</label>
+                        <select
+                          className="text-xs border border-input rounded-md px-2 py-1 bg-background text-muted-foreground"
+                          onChange={(e) => {
+                            const tpl = getTemplatesByCategory("objective").find((t) => t.id === e.target.value);
+                            if (tpl) setPhysicalExam(tpl.content);
+                            e.target.value = "";
+                          }}
+                          defaultValue=""
+                        >
+                          <option value="" disabled>Load template...</option>
+                          {getTemplatesByCategory("objective").map((t) => (
+                            <option key={t.id} value={t.id}>{t.name}</option>
+                          ))}
+                        </select>
+                      </div>
                       <textarea
                         rows={5}
                         className="block w-full rounded-lg border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -1075,7 +1092,23 @@ export default function ClinicianSOAPConsultation() {
                       <p className="text-sm text-muted-foreground">Instructions for nursing, pharmacy, and next steps.</p>
                     </div>
                     <div>
-                      <label className="block text-xs font-semibold text-foreground uppercase tracking-wide mb-1.5">Clinician&apos;s Plan</label>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <label className="block text-xs font-semibold text-foreground uppercase tracking-wide">Clinician&apos;s Plan</label>
+                        <select
+                          className="text-xs border border-input rounded-md px-2 py-1 bg-background text-muted-foreground"
+                          onChange={(e) => {
+                            const tpl = getTemplatesByCategory("plan").find((t) => t.id === e.target.value);
+                            if (tpl) setPlanInstructions(tpl.content);
+                            e.target.value = "";
+                          }}
+                          defaultValue=""
+                        >
+                          <option value="" disabled>Load template...</option>
+                          {getTemplatesByCategory("plan").map((t) => (
+                            <option key={t.id} value={t.id}>{t.name}</option>
+                          ))}
+                        </select>
+                      </div>
                       <textarea
                         rows={6}
                         className="block w-full rounded-lg border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
