@@ -34,6 +34,19 @@ describe("BillPicker", () => {
     fireEvent.click(screen.getAllByRole("button", { name: /collect/i })[0]);
     expect(onSelect).toHaveBeenCalledWith(1);
   });
+
+  it("renders the amber status badge for partially paid bills", () => {
+    const { container } = render(
+      <BillPicker
+        bills={[{ ...bills[1] }]}
+        selectedId={null}
+        loading={false}
+        onSelect={vi.fn()}
+      />
+    );
+    expect(screen.getByText("Partially Paid")).toBeInTheDocument();
+    expect(container.querySelector(".bg-amber-50")).toBeInTheDocument();
+  });
 });
 
 describe("BillPreview", () => {

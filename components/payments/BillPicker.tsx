@@ -15,10 +15,12 @@ interface BillPickerProps {
   onSelect: (id: number) => void;
 }
 
+const normalizeStatus = (status?: string) =>
+  (status ?? "").toLowerCase().replace("_", " ");
+
 export function BillPicker({ bills, selectedId, loading, onSelect }: BillPickerProps) {
   const sorted = [...bills].sort((a, b) => {
-    const rank = (s: BillSummary) =>
-      s.payment_status?.toLowerCase() === "paid" ? 1 : 0;
+    const rank = (s: BillSummary) => (normalizeStatus(s.payment_status) === "paid" ? 1 : 0);
     return rank(a) - rank(b) || new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
   });
 
@@ -59,9 +61,9 @@ export function BillPicker({ bills, selectedId, loading, onSelect }: BillPickerP
                 <div className="flex items-center gap-2 shrink-0">
                   <span className={cn(
                     "inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider",
-                    bill.payment_status?.toLowerCase() === "paid" && "bg-emerald-50 text-emerald-700 border border-emerald-200",
-                    bill.payment_status?.toLowerCase() === "partially_paid" && "bg-amber-50 text-amber-700 border border-amber-200",
-                    bill.payment_status?.toLowerCase() === "unpaid" && "bg-red-50 text-red-700 border border-red-200"
+                    normalizeStatus(bill.payment_status) === "paid" && "bg-emerald-50 text-emerald-700 border border-emerald-200",
+                    normalizeStatus(bill.payment_status) === "partially paid" && "bg-amber-50 text-amber-700 border border-amber-200",
+                    normalizeStatus(bill.payment_status) === "unpaid" && "bg-red-50 text-red-700 border border-red-200"
                   )}>
                     {bill.payment_status?.replace("_", " ")}
                   </span>
