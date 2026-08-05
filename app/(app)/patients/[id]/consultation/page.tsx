@@ -17,6 +17,7 @@ import { Input } from "@/components/ui/input";
 import BillingConfirmation from "@/components/billing/BillingConfirmation";
 import { parseBilling, type BillingSummary } from "@/types/billing";
 import { cn } from "@/lib/utils";
+import { getTemplatesByCategory } from "@/lib/clinical-templates";
 import {
   ArrowLeft, Loader2, Check, TriangleAlert, HeartPulse, Stethoscope,
   ClipboardList, ClipboardPen, FlaskConical, Pill, LogOut, DoorOpen,
@@ -35,6 +36,7 @@ interface TimelineEvent {
 interface TriageSummary {
   encounter: {
     id: number;
+    status: string;
     chief_complaint: string | null;
     history_of_present_illness: string | null;
     allergy_confirmed_at: string | null;
@@ -68,6 +70,29 @@ interface Diagnosis {
   diagnosed_at: string;
 }
 
+interface LabResult {
+  id: number;
+  result_value_text: string | null;
+  result_value_numeric: number | null;
+  unit: string | null;
+  reference_range: string | null;
+  is_abnormal: boolean;
+  is_critical: boolean;
+  status: string;
+  verified_at: string | null;
+  released_at: string | null;
+}
+
+interface LabRequest {
+  id: number;
+  test_name: string;
+  loinc_code: string | null;
+  status: string;
+  specimen_collected_at: string | null;
+  is_critical: boolean;
+  results: LabResult[];
+}
+
 interface Order {
   id: number;
   patient_id: number;
@@ -79,22 +104,26 @@ interface Order {
   priority: string;
   status: string;
   ordered_at: string;
+  labRequests?: LabRequest[];
 }
 
 interface Prescription {
   id: number;
   patient_id: number;
   encounter_id: number;
-  drug_name: string;
+  drug_id: number;
+  drug?: { id: number; name: string; strength: string | null; formulation: string | null; current_stock: number | null };
   dosage: string;
   route: string;
   frequency: string;
-  duration: string;
-  quantity: number;
+  duration: string | null;
+  quantity: number | null;
   status: string;
-  notes: string | null;
+  instructions: string | null;
   is_controlled: boolean;
-  prescribed_at: string;
+  allergy_check: boolean;
+  interaction_check: boolean;
+  created_at: string;
 }
 
 interface Drug {
@@ -103,6 +132,8 @@ interface Drug {
   generic_name: string | null;
   formulation: string | null;
   strength: string | null;
+  current_stock: number | null;
+  reorder_level: number | null;
 }
 
 interface BillingServiceItem {
@@ -159,6 +190,29 @@ function LoadingPlaceholder() {
   );
 }
 
+function Sparkline({ data, color = "bg-primary", height = 32 }: { data: { value: number }[]; color?: string; height?: number }) {
+  if (data.length === 0) return null;
+  const values = data.map((d) => d.value);
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const range = max - min || 1;
+  return (
+    <div className="flex items-end gap-px" style={{ height }}>
+      {values.map((v, i) => {
+        const pct = ((v - min) / range) * 100;
+        return (
+          <div
+            key={i}
+            className={`flex-1 rounded-t-sm ${color} opacity-70 hover:opacity-100 transition-opacity`}
+            style={{ height: `${Math.max(4, pct)}%` }}
+            title={`${v}`}
+          />
+        );
+      })}
+    </div>
+  );
+}
+
 export default function ClinicianSOAPConsultation() {
   const params = useParams();
   const router = useRouter();
@@ -190,11 +244,25 @@ export default function ClinicianSOAPConsultation() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [orderForm, setOrderForm] = useState({ test_name: "", clinical_indication: "", priority: "routine" });
 
-  const [prescriptions] = useState<Prescription[]>([]);
+  const [prescriptions, setPrescriptions] = useState<Prescription[]>([]);
   const [drugQuery, setDrugQuery] = useState("");
   const [drugResults, setDrugResults] = useState<Drug[]>([]);
   const [selectedDrug, setSelectedDrug] = useState<Drug | null>(null);
   const [rxForm, setRxForm] = useState({ dosage: "", route: "oral", frequency: "BD", duration: "7 days", quantity: "30", notes: "", is_controlled: false });
+  const [allergyWarnings, setAllergyWarnings] = useState<{ allergen: string; severity: string; reaction: string | null }[]>([]);
+
+  type TrendPoint = { recorded_at: string; value: number };
+  const [vitalTrends, setVitalTrends] = useState<Record<string, TrendPoint[]>>({});
+
+  interface CriticalAlert {
+    id: number;
+    alert_type: string;
+    severity: string;
+    message: string;
+    created_at: string;
+    patient?: { hospital_number: string; first_name: string; last_name: string };
+  }
+  const [criticalAlerts, setCriticalAlerts] = useState<CriticalAlert[]>([]);
 
   const [dispositionOpen, setDispositionOpen] = useState(false);
   const [handoverOpen, setHandoverOpen] = useState(false);
@@ -235,12 +303,36 @@ export default function ClinicianSOAPConsultation() {
         setDiagnoses(filtered);
       }
 
-      try {
-        const ordersRes = await api.get(`/orders?patient_id=${patientId}`, token);
+      const encounterId = triageRes?.data?.encounter?.id;
+
+      if (encounterId) {
+        const [ordersRes, prescriptionsRes, consultationRes, alertsRes] = await Promise.all([
+          api.get(`/orders?patient_id=${patientId}&encounter_id=${encounterId}`, token).catch(() => null),
+          api.get(`/prescriptions?encounter_id=${encounterId}`, token).catch(() => null),
+          api.get(`/encounters/${encounterId}/consultation`, token).catch(() => null),
+          api.get(`/alerts?encounter_id=${encounterId}`, token).catch(() => null),
+        ]);
+
         if (ordersRes?.data) {
           setOrders(Array.isArray(ordersRes.data) ? ordersRes.data : ordersRes.data.data || []);
         }
-      } catch { setOrders([]); }
+        if (prescriptionsRes?.data) {
+          setPrescriptions(Array.isArray(prescriptionsRes.data) ? prescriptionsRes.data : prescriptionsRes.data.data || []);
+        }
+        if (consultationRes?.data) {
+          const note = consultationRes.data.clinical_note;
+          if (note) {
+            if (note.physical_examination) setPhysicalExam(note.physical_examination);
+            else if (note.content && note.note_type === "physical_exam") setPhysicalExam(note.content);
+            if (note.plan) setPlanInstructions(note.plan);
+            else if (note.content && note.note_type === "consultation_plan") setPlanInstructions(note.content);
+            if (note.history_of_present_illness && !hpi) setHpi(note.history_of_present_illness);
+          }
+        }
+        if (alertsRes?.data) {
+          setCriticalAlerts(Array.isArray(alertsRes.data) ? alertsRes.data : []);
+        }
+      }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to load consultation data.");
     } finally {
@@ -286,8 +378,31 @@ export default function ClinicianSOAPConsultation() {
   }, [drugQuery, token]);
 
   useEffect(() => {
+    if (!selectedDrug || !token || !patientId) {
+      setAllergyWarnings([]);
+      return;
+    }
+    let cancelled = false;
+    api.get(`/patients/${patientId}/allergy-check?drug_id=${selectedDrug.id}`, token)
+      .then((res) => {
+        if (!cancelled && res?.data?.has_match) {
+          setAllergyWarnings(res.data.matches);
+        } else if (!cancelled) {
+          setAllergyWarnings([]);
+        }
+      })
+      .catch(() => { if (!cancelled) setAllergyWarnings([]); });
+    return () => { cancelled = true; };
+  }, [selectedDrug, token, patientId]);
+
+  useEffect(() => {
     if (activeSubTab === "billing" && token && summary?.encounter?.id) {
       void loadBill();
+    }
+    if (activeSubTab === "objective" && token && patientId) {
+      api.get(`/patients/${patientId}/vital-signs/trends?days=7`, token)
+        .then((res) => { if (res?.data) setVitalTrends(res.data); })
+        .catch(() => {});
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeSubTab, token, summary?.encounter?.id]);
@@ -439,12 +554,13 @@ export default function ClinicianSOAPConsultation() {
     try {
       await api.post(`/encounters/${summary.encounter.id}/prescriptions`, {
         patient_id: parseInt(patientId),
+        drug_id: selectedDrug.id,
         drug_name: selectedDrug.name,
         generic_name: selectedDrug.generic_name,
         dosage: rxForm.dosage,
         route: rxForm.route,
         frequency: rxForm.frequency,
-        duration: rxForm.duration,
+        duration: rxForm.duration || null,
         quantity: parseInt(rxForm.quantity) || 30,
         notes: rxForm.notes || null,
         is_controlled: rxForm.is_controlled,
@@ -540,6 +656,69 @@ export default function ClinicianSOAPConsultation() {
   }
 
   const activeEncounterId = summary?.encounter?.id;
+  const encounterStatus = summary?.encounter?.status ?? "unknown";
+
+  const statusLabel: Record<string, string> = {
+    in_consultation: "In Consultation",
+    orders_pending: "Orders Pending",
+    awaiting_results: "Awaiting Results",
+    results_review: "Results to Review",
+    observation: "Observation",
+    admitted: "Admitted",
+    referred: "Referred",
+    discharged: "Discharged",
+    deceased: "Deceased",
+  };
+
+  const statusVariant: Record<string, "success" | "warning" | "error" | "info" | "neutral" | "purple"> = {
+    in_consultation: "purple",
+    orders_pending: "warning",
+    awaiting_results: "warning",
+    results_review: "info",
+    observation: "neutral",
+    admitted: "info",
+    referred: "info",
+    discharged: "success",
+    deceased: "error",
+  };
+
+  const transitionTargets: Record<string, { target: string; label: string }[]> = {
+    in_consultation: [
+      { target: "orders_pending", label: "Send to Lab" },
+      { target: "awaiting_results", label: "Await Results" },
+    ],
+    orders_pending: [
+      { target: "awaiting_results", label: "Await Results" },
+    ],
+    awaiting_results: [
+      { target: "results_review", label: "Results Ready" },
+    ],
+    results_review: [
+      { target: "in_consultation", label: "Continue Consultation" },
+    ],
+  };
+
+  async function handleTransition(targetStatus: string) {
+    if (!activeEncounterId) return;
+    setSubmitLoading(true);
+    setError(null);
+    try {
+      await api.post(`/encounters/${activeEncounterId}/transition`, { status: targetStatus }, token);
+      setSuccessMsg(`Status changed to ${statusLabel[targetStatus] ?? targetStatus}`);
+      fetchConsultationData();
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to update status.");
+    } finally {
+      setSubmitLoading(false);
+    }
+  }
+
+  async function handleAcknowledgeAlert(alertId: number) {
+    try {
+      await api.post(`/alerts/${alertId}/acknowledge`, {}, token);
+      setCriticalAlerts((prev) => prev.filter((a) => a.id !== alertId));
+    } catch {}
+  }
 
   const sidebarNav = (
     <nav className="flex flex-col gap-1">
@@ -607,8 +786,22 @@ export default function ClinicianSOAPConsultation() {
       <Card className="border-l-4 border-l-primary">
         <CardContent className="p-4 flex items-center justify-between flex-wrap gap-3">
           <div className="flex items-center gap-3">
-            <StatusBadge label="In Consultation" variant="purple" pulse />
+            <StatusBadge label={statusLabel[encounterStatus] ?? encounterStatus} variant={statusVariant[encounterStatus] ?? "neutral"} pulse={encounterStatus === "in_consultation"} />
             {patient.patient_category && <Badge variant="outline">{patient.patient_category}</Badge>}
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            {(transitionTargets[encounterStatus] ?? []).map((t) => (
+              <Button
+                key={t.target}
+                size="sm"
+                variant="outline"
+                onClick={() => handleTransition(t.target)}
+                disabled={submitLoading}
+              >
+                {submitLoading && <Loader2 className="h-3 w-3 animate-spin mr-1" />}
+                {t.label}
+              </Button>
+            ))}
           </div>
           <div className="flex items-center gap-4 text-sm text-muted-foreground">
             {summary?.allergies_confirmed && (
@@ -624,6 +817,31 @@ export default function ClinicianSOAPConsultation() {
           </div>
         </CardContent>
       </Card>
+
+      {criticalAlerts.length > 0 && (
+        <div className="rounded-lg border border-red-300 bg-red-50 p-4 space-y-2">
+          <div className="flex items-center gap-2 text-sm font-bold text-red-800">
+            <TriangleAlert className="h-4 w-4" />
+            Critical Alerts ({criticalAlerts.length})
+          </div>
+          {criticalAlerts.map((alert) => (
+            <div key={alert.id} className="flex items-start justify-between gap-3 text-xs text-red-700 bg-white/60 rounded-md p-2.5 border border-red-200">
+              <div className="min-w-0">
+                <span className="font-semibold">{alert.message}</span>
+                <span className="ml-2 text-red-500">{new Date(alert.created_at).toLocaleString()}</span>
+              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                className="shrink-0 text-red-700 border-red-300 hover:bg-red-100"
+                onClick={() => handleAcknowledgeAlert(alert.id)}
+              >
+                Acknowledge
+              </Button>
+            </div>
+          ))}
+        </div>
+      )}
 
       {!activeEncounterId ? (
         <Card>
@@ -724,10 +942,51 @@ export default function ClinicianSOAPConsultation() {
                       )}
                     </div>
 
+                    {Object.keys(vitalTrends).length > 0 && (
+                      <div className="bg-muted/30 rounded-lg p-4">
+                        <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-3">7-Day Trends</h4>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                          {[
+                            { key: "temperature", label: "Temp (°C)", color: "bg-red-400" },
+                            { key: "pulse_rate", label: "Pulse (bpm)", color: "bg-blue-400" },
+                            { key: "oxygen_saturation", label: "SpO₂ (%)", color: "bg-cyan-400" },
+                            { key: "ews_score", label: "EWS Score", color: "bg-amber-400" },
+                          ].map(({ key, label, color }) =>
+                            vitalTrends[key] ? (
+                              <div key={key} className="space-y-1">
+                                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">{label}</span>
+                                <Sparkline data={vitalTrends[key]} color={color} />
+                                <div className="flex justify-between text-[9px] text-muted-foreground font-mono">
+                                  <span>{vitalTrends[key][0]?.value}</span>
+                                  <span>{vitalTrends[key][vitalTrends[key].length - 1]?.value}</span>
+                                </div>
+                              </div>
+                            ) : null
+                          )}
+                        </div>
+                      </div>
+                    )}
+
                     <Separator />
 
                     <form onSubmit={handleSavePhysicalExam} className="space-y-3">
-                      <label className="block text-xs font-semibold text-foreground uppercase tracking-wide">Physical Exam Findings</label>
+                      <div className="flex items-center justify-between">
+                        <label className="block text-xs font-semibold text-foreground uppercase tracking-wide">Physical Exam Findings</label>
+                        <select
+                          className="text-xs border border-input rounded-md px-2 py-1 bg-background text-muted-foreground"
+                          onChange={(e) => {
+                            const tpl = getTemplatesByCategory("objective").find((t) => t.id === e.target.value);
+                            if (tpl) setPhysicalExam(tpl.content);
+                            e.target.value = "";
+                          }}
+                          defaultValue=""
+                        >
+                          <option value="" disabled>Load template...</option>
+                          {getTemplatesByCategory("objective").map((t) => (
+                            <option key={t.id} value={t.id}>{t.name}</option>
+                          ))}
+                        </select>
+                      </div>
                       <textarea
                         rows={5}
                         className="block w-full rounded-lg border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -879,7 +1138,23 @@ export default function ClinicianSOAPConsultation() {
                       <p className="text-sm text-muted-foreground">Instructions for nursing, pharmacy, and next steps.</p>
                     </div>
                     <div>
-                      <label className="block text-xs font-semibold text-foreground uppercase tracking-wide mb-1.5">Clinician&apos;s Plan</label>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <label className="block text-xs font-semibold text-foreground uppercase tracking-wide">Clinician&apos;s Plan</label>
+                        <select
+                          className="text-xs border border-input rounded-md px-2 py-1 bg-background text-muted-foreground"
+                          onChange={(e) => {
+                            const tpl = getTemplatesByCategory("plan").find((t) => t.id === e.target.value);
+                            if (tpl) setPlanInstructions(tpl.content);
+                            e.target.value = "";
+                          }}
+                          defaultValue=""
+                        >
+                          <option value="" disabled>Load template...</option>
+                          {getTemplatesByCategory("plan").map((t) => (
+                            <option key={t.id} value={t.id}>{t.name}</option>
+                          ))}
+                        </select>
+                      </div>
                       <textarea
                         rows={6}
                         className="block w-full rounded-lg border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -908,21 +1183,51 @@ export default function ClinicianSOAPConsultation() {
                       <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-3">Order History</h4>
                       {orders.length > 0 ? (
                         <div className="divide-y divide-border rounded-lg border bg-card overflow-hidden">
-                          {orders.map((order) => (
-                            <div key={order.id} className="px-4 py-3 flex items-center justify-between">
-                              <div className="min-w-0">
-                                <span className="font-medium text-sm">{order.order_type}</span>
-                                {order.clinical_indication && (
-                                  <span className="ml-2 text-xs text-muted-foreground">— {order.clinical_indication}</span>
+                          {orders.map((order) => {
+                            const labReqs = order.labRequests ?? [];
+                            const hasResults = labReqs.some((lr) => lr.results.length > 0);
+                            return (
+                              <div key={order.id} className="px-4 py-3">
+                                <div className="flex items-center justify-between">
+                                  <div className="min-w-0">
+                                    <span className="font-medium text-sm">{order.test_name || order.order_type}</span>
+                                    {order.clinical_indication && (
+                                      <span className="ml-2 text-xs text-muted-foreground">— {order.clinical_indication}</span>
+                                    )}
+                                    {order.priority && order.priority.toLowerCase() !== "routine" && (
+                                      <Badge variant={order.priority.toLowerCase() === "stat" ? "destructive" : "secondary"} className="ml-2 text-[10px]">{order.priority}</Badge>
+                                    )}
+                                  </div>
+                                  <StatusBadge
+                                    label={order.status}
+                                    variant={order.status?.toLowerCase() === "completed" ? "success" : "warning"}
+                                    size="sm"
+                                  />
+                                </div>
+                                {hasResults && (
+                                  <div className="mt-2 ml-4 space-y-1.5">
+                                    {labReqs.map((lr) =>
+                                      lr.results.map((result) => (
+                                        <div key={result.id} className="flex items-center gap-2 text-xs">
+                                          <span className="font-medium text-foreground">{lr.test_name}:</span>
+                                          <span className={`font-mono ${result.is_abnormal ? "text-amber-600 font-bold" : "text-muted-foreground"}`}>
+                                            {result.result_value_numeric ?? result.result_value_text}
+                                            {result.unit ? ` ${result.unit}` : ""}
+                                          </span>
+                                          {result.reference_range && (
+                                            <span className="text-muted-foreground">(ref: {result.reference_range})</span>
+                                          )}
+                                          {result.is_critical && <Badge variant="destructive" className="text-[9px] px-1 py-0">CRITICAL</Badge>}
+                                          {result.is_abnormal && !result.is_critical && <Badge variant="secondary" className="text-[9px] px-1 py-0 bg-amber-100 text-amber-800">Abnormal</Badge>}
+                                          <Badge variant="outline" className="text-[9px] px-1 py-0">{result.status}</Badge>
+                                        </div>
+                                      ))
+                                    )}
+                                  </div>
                                 )}
                               </div>
-                              <StatusBadge
-                                label={order.status}
-                                variant={order.status?.toLowerCase() === "completed" ? "success" : "warning"}
-                                size="sm"
-                              />
-                            </div>
-                          ))}
+                            );
+                          })}
                         </div>
                       ) : (
                         <div className="text-center py-6 text-sm text-muted-foreground">No orders yet.</div>
@@ -994,10 +1299,16 @@ export default function ClinicianSOAPConsultation() {
                           {prescriptions.map((rx) => (
                             <div key={rx.id} className="px-4 py-3 flex items-center justify-between">
                               <div className="min-w-0">
-                                <span className="font-medium text-sm">{rx.drug_name}</span>
+                                <span className="font-medium text-sm">{rx.drug?.name ?? `Drug #${rx.drug_id}`}</span>
                                 <span className="ml-2 font-mono text-xs text-muted-foreground">{rx.dosage} {rx.route} — {rx.frequency}</span>
+                                {rx.drug?.current_stock != null && rx.drug.current_stock <= 0 && (
+                                  <Badge variant="destructive" className="ml-2 text-[10px]">Out of Stock</Badge>
+                                )}
                                 {rx.is_controlled && (
                                   <Badge variant="destructive" className="ml-2 text-[10px]">Controlled</Badge>
+                                )}
+                                {rx.allergy_check && (
+                                  <Badge variant="destructive" className="ml-2 text-[10px]">Allergy Alert</Badge>
                                 )}
                               </div>
                               <StatusBadge label={rx.status} variant={rx.status?.toLowerCase() === "dispensed" ? "success" : "warning"} size="sm" />
@@ -1036,7 +1347,14 @@ export default function ClinicianSOAPConsultation() {
                                   className="w-full text-left px-4 py-2.5 hover:bg-muted/50 flex items-baseline justify-between transition-colors"
                                 >
                                   <span className="font-medium text-foreground">{drug.name}</span>
-                                  <span className="text-xs text-muted-foreground">{drug.formulation} {drug.strength}</span>
+                                  <span className="text-xs text-muted-foreground flex items-center gap-2">
+                                    {drug.current_stock != null && (
+                                      <span className={drug.current_stock <= 0 ? "text-destructive font-bold" : drug.current_stock <= (drug.reorder_level ?? 0) ? "text-amber-600" : ""}>
+                                        Stock: {drug.current_stock}
+                                      </span>
+                                    )}
+                                    <span>{drug.formulation} {drug.strength}</span>
+                                  </span>
                                 </button>
                               </li>
                             ))}
@@ -1045,13 +1363,35 @@ export default function ClinicianSOAPConsultation() {
                       </div>
 
                       {selectedDrug && (
-                        <div className="rounded-lg bg-emerald-50 border border-emerald-200 p-3 flex items-center justify-between">
+                        <div className={`rounded-lg border p-3 flex items-center justify-between ${selectedDrug.current_stock != null && selectedDrug.current_stock <= 0 ? "bg-red-50 border-red-200" : "bg-emerald-50 border-emerald-200"}`}>
                           <div>
-                            <span className="text-xs text-emerald-800 font-bold uppercase tracking-wider">Selected: </span>
-                            <span className="text-sm font-semibold text-emerald-950">{selectedDrug.name}</span>
-                            {selectedDrug.formulation && <span className="ml-2 text-xs text-emerald-700">{selectedDrug.formulation} {selectedDrug.strength}</span>}
+                            <span className={`text-xs font-bold uppercase tracking-wider ${selectedDrug.current_stock != null && selectedDrug.current_stock <= 0 ? "text-red-800" : "text-emerald-800"}`}>Selected: </span>
+                            <span className={`text-sm font-semibold ${selectedDrug.current_stock != null && selectedDrug.current_stock <= 0 ? "text-red-950" : "text-emerald-950"}`}>{selectedDrug.name}</span>
+                            {selectedDrug.formulation && <span className={`ml-2 text-xs ${selectedDrug.current_stock != null && selectedDrug.current_stock <= 0 ? "text-red-700" : "text-emerald-700"}`}>{selectedDrug.formulation} {selectedDrug.strength}</span>}
+                            {selectedDrug.current_stock != null && (
+                              <span className={`ml-3 text-xs font-bold ${selectedDrug.current_stock <= 0 ? "text-red-700" : selectedDrug.current_stock <= (selectedDrug.reorder_level ?? 0) ? "text-amber-700" : "text-emerald-700"}`}>
+                                {selectedDrug.current_stock <= 0 ? "OUT OF STOCK" : `Stock: ${selectedDrug.current_stock}`}
+                              </span>
+                            )}
                           </div>
                           <button type="button" onClick={() => { setSelectedDrug(null); setDrugQuery(""); }} className="text-xs text-muted-foreground hover:text-foreground font-bold uppercase">Clear</button>
+                        </div>
+                      )}
+
+                      {allergyWarnings.length > 0 && (
+                        <div className="rounded-lg bg-red-50 border border-red-200 p-3 space-y-1.5">
+                          <div className="flex items-center gap-1.5 text-xs font-bold text-red-800 uppercase tracking-wider">
+                            <TriangleAlert className="h-3.5 w-3.5" />
+                            Allergy Warning
+                          </div>
+                          {allergyWarnings.map((w, i) => (
+                            <div key={i} className="text-xs text-red-700">
+                              Patient has recorded allergy to <span className="font-bold">{w.allergen}</span>
+                              {w.severity && <span className="ml-1">— Severity: {w.severity}</span>}
+                              {w.reaction && <span className="ml-1">— Reaction: {w.reaction}</span>}
+                            </div>
+                          ))}
+                          <div className="text-[10px] text-red-600 italic">Prescription will be flagged. Proceed only if clinically appropriate.</div>
                         </div>
                       )}
 
