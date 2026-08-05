@@ -254,6 +254,16 @@ export default function ClinicianSOAPConsultation() {
   type TrendPoint = { recorded_at: string; value: number };
   const [vitalTrends, setVitalTrends] = useState<Record<string, TrendPoint[]>>({});
 
+  interface CriticalAlert {
+    id: number;
+    alert_type: string;
+    severity: string;
+    message: string;
+    created_at: string;
+    patient?: { hospital_number: string; first_name: string; last_name: string };
+  }
+  const [criticalAlerts, setCriticalAlerts] = useState<CriticalAlert[]>([]);
+
   const [dispositionOpen, setDispositionOpen] = useState(false);
   const [handoverOpen, setHandoverOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"discharge" | "admit" | "refer" | "observe" | "deceased">("discharge");
@@ -296,10 +306,11 @@ export default function ClinicianSOAPConsultation() {
       const encounterId = triageRes?.data?.encounter?.id;
 
       if (encounterId) {
-        const [ordersRes, prescriptionsRes, consultationRes] = await Promise.all([
+        const [ordersRes, prescriptionsRes, consultationRes, alertsRes] = await Promise.all([
           api.get(`/orders?patient_id=${patientId}&encounter_id=${encounterId}`, token).catch(() => null),
           api.get(`/prescriptions?encounter_id=${encounterId}`, token).catch(() => null),
           api.get(`/encounters/${encounterId}/consultation`, token).catch(() => null),
+          api.get(`/alerts?encounter_id=${encounterId}`, token).catch(() => null),
         ]);
 
         if (ordersRes?.data) {
@@ -317,6 +328,9 @@ export default function ClinicianSOAPConsultation() {
             else if (note.content && note.note_type === "consultation_plan") setPlanInstructions(note.content);
             if (note.history_of_present_illness && !hpi) setHpi(note.history_of_present_illness);
           }
+        }
+        if (alertsRes?.data) {
+          setCriticalAlerts(Array.isArray(alertsRes.data) ? alertsRes.data : []);
         }
       }
     } catch (err: unknown) {
@@ -699,6 +713,13 @@ export default function ClinicianSOAPConsultation() {
     }
   }
 
+  async function handleAcknowledgeAlert(alertId: number) {
+    try {
+      await api.post(`/alerts/${alertId}/acknowledge`, {}, token);
+      setCriticalAlerts((prev) => prev.filter((a) => a.id !== alertId));
+    } catch {}
+  }
+
   const sidebarNav = (
     <nav className="flex flex-col gap-1">
       {subTabs.map((tab) => {
@@ -796,6 +817,31 @@ export default function ClinicianSOAPConsultation() {
           </div>
         </CardContent>
       </Card>
+
+      {criticalAlerts.length > 0 && (
+        <div className="rounded-lg border border-red-300 bg-red-50 p-4 space-y-2">
+          <div className="flex items-center gap-2 text-sm font-bold text-red-800">
+            <TriangleAlert className="h-4 w-4" />
+            Critical Alerts ({criticalAlerts.length})
+          </div>
+          {criticalAlerts.map((alert) => (
+            <div key={alert.id} className="flex items-start justify-between gap-3 text-xs text-red-700 bg-white/60 rounded-md p-2.5 border border-red-200">
+              <div className="min-w-0">
+                <span className="font-semibold">{alert.message}</span>
+                <span className="ml-2 text-red-500">{new Date(alert.created_at).toLocaleString()}</span>
+              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                className="shrink-0 text-red-700 border-red-300 hover:bg-red-100"
+                onClick={() => handleAcknowledgeAlert(alert.id)}
+              >
+                Acknowledge
+              </Button>
+            </div>
+          ))}
+        </div>
+      )}
 
       {!activeEncounterId ? (
         <Card>
