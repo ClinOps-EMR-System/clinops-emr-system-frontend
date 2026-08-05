@@ -85,16 +85,19 @@ interface Prescription {
   id: number;
   patient_id: number;
   encounter_id: number;
-  drug_name: string;
+  drug_id: number;
+  drug?: { id: number; name: string; strength: string | null; formulation: string | null; current_stock: number | null };
   dosage: string;
   route: string;
   frequency: string;
-  duration: string;
-  quantity: number;
+  duration: string | null;
+  quantity: number | null;
   status: string;
-  notes: string | null;
+  instructions: string | null;
   is_controlled: boolean;
-  prescribed_at: string;
+  allergy_check: boolean;
+  interaction_check: boolean;
+  created_at: string;
 }
 
 interface Drug {
@@ -103,6 +106,8 @@ interface Drug {
   generic_name: string | null;
   formulation: string | null;
   strength: string | null;
+  current_stock: number | null;
+  reorder_level: number | null;
 }
 
 interface BillingServiceItem {
@@ -190,7 +195,7 @@ export default function ClinicianSOAPConsultation() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [orderForm, setOrderForm] = useState({ test_name: "", clinical_indication: "", priority: "routine" });
 
-  const [prescriptions] = useState<Prescription[]>([]);
+  const [prescriptions, setPrescriptions] = useState<Prescription[]>([]);
   const [drugQuery, setDrugQuery] = useState("");
   const [drugResults, setDrugResults] = useState<Drug[]>([]);
   const [selectedDrug, setSelectedDrug] = useState<Drug | null>(null);
@@ -235,12 +240,32 @@ export default function ClinicianSOAPConsultation() {
         setDiagnoses(filtered);
       }
 
-      try {
-        const ordersRes = await api.get(`/orders?patient_id=${patientId}`, token);
+      const encounterId = triageRes?.data?.encounter?.id;
+
+      if (encounterId) {
+        const [ordersRes, prescriptionsRes, consultationRes] = await Promise.all([
+          api.get(`/orders?patient_id=${patientId}&encounter_id=${encounterId}`, token).catch(() => null),
+          api.get(`/prescriptions?encounter_id=${encounterId}`, token).catch(() => null),
+          api.get(`/encounters/${encounterId}/consultation`, token).catch(() => null),
+        ]);
+
         if (ordersRes?.data) {
           setOrders(Array.isArray(ordersRes.data) ? ordersRes.data : ordersRes.data.data || []);
         }
-      } catch { setOrders([]); }
+        if (prescriptionsRes?.data) {
+          setPrescriptions(Array.isArray(prescriptionsRes.data) ? prescriptionsRes.data : prescriptionsRes.data.data || []);
+        }
+        if (consultationRes?.data) {
+          const note = consultationRes.data.clinical_note;
+          if (note) {
+            if (note.physical_examination) setPhysicalExam(note.physical_examination);
+            else if (note.content && note.note_type === "physical_exam") setPhysicalExam(note.content);
+            if (note.plan) setPlanInstructions(note.plan);
+            else if (note.content && note.note_type === "consultation_plan") setPlanInstructions(note.content);
+            if (note.history_of_present_illness && !hpi) setHpi(note.history_of_present_illness);
+          }
+        }
+      }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to load consultation data.");
     } finally {
@@ -439,12 +464,13 @@ export default function ClinicianSOAPConsultation() {
     try {
       await api.post(`/encounters/${summary.encounter.id}/prescriptions`, {
         patient_id: parseInt(patientId),
+        drug_id: selectedDrug.id,
         drug_name: selectedDrug.name,
         generic_name: selectedDrug.generic_name,
         dosage: rxForm.dosage,
         route: rxForm.route,
         frequency: rxForm.frequency,
-        duration: rxForm.duration,
+        duration: rxForm.duration || null,
         quantity: parseInt(rxForm.quantity) || 30,
         notes: rxForm.notes || null,
         is_controlled: rxForm.is_controlled,
@@ -994,10 +1020,16 @@ export default function ClinicianSOAPConsultation() {
                           {prescriptions.map((rx) => (
                             <div key={rx.id} className="px-4 py-3 flex items-center justify-between">
                               <div className="min-w-0">
-                                <span className="font-medium text-sm">{rx.drug_name}</span>
+                                <span className="font-medium text-sm">{rx.drug?.name ?? `Drug #${rx.drug_id}`}</span>
                                 <span className="ml-2 font-mono text-xs text-muted-foreground">{rx.dosage} {rx.route} — {rx.frequency}</span>
+                                {rx.drug?.current_stock != null && rx.drug.current_stock <= 0 && (
+                                  <Badge variant="destructive" className="ml-2 text-[10px]">Out of Stock</Badge>
+                                )}
                                 {rx.is_controlled && (
                                   <Badge variant="destructive" className="ml-2 text-[10px]">Controlled</Badge>
+                                )}
+                                {rx.allergy_check && (
+                                  <Badge variant="destructive" className="ml-2 text-[10px]">Allergy Alert</Badge>
                                 )}
                               </div>
                               <StatusBadge label={rx.status} variant={rx.status?.toLowerCase() === "dispensed" ? "success" : "warning"} size="sm" />
@@ -1036,7 +1068,14 @@ export default function ClinicianSOAPConsultation() {
                                   className="w-full text-left px-4 py-2.5 hover:bg-muted/50 flex items-baseline justify-between transition-colors"
                                 >
                                   <span className="font-medium text-foreground">{drug.name}</span>
-                                  <span className="text-xs text-muted-foreground">{drug.formulation} {drug.strength}</span>
+                                  <span className="text-xs text-muted-foreground flex items-center gap-2">
+                                    {drug.current_stock != null && (
+                                      <span className={drug.current_stock <= 0 ? "text-destructive font-bold" : drug.current_stock <= (drug.reorder_level ?? 0) ? "text-amber-600" : ""}>
+                                        Stock: {drug.current_stock}
+                                      </span>
+                                    )}
+                                    <span>{drug.formulation} {drug.strength}</span>
+                                  </span>
                                 </button>
                               </li>
                             ))}
@@ -1045,11 +1084,16 @@ export default function ClinicianSOAPConsultation() {
                       </div>
 
                       {selectedDrug && (
-                        <div className="rounded-lg bg-emerald-50 border border-emerald-200 p-3 flex items-center justify-between">
+                        <div className={`rounded-lg border p-3 flex items-center justify-between ${selectedDrug.current_stock != null && selectedDrug.current_stock <= 0 ? "bg-red-50 border-red-200" : "bg-emerald-50 border-emerald-200"}`}>
                           <div>
-                            <span className="text-xs text-emerald-800 font-bold uppercase tracking-wider">Selected: </span>
-                            <span className="text-sm font-semibold text-emerald-950">{selectedDrug.name}</span>
-                            {selectedDrug.formulation && <span className="ml-2 text-xs text-emerald-700">{selectedDrug.formulation} {selectedDrug.strength}</span>}
+                            <span className={`text-xs font-bold uppercase tracking-wider ${selectedDrug.current_stock != null && selectedDrug.current_stock <= 0 ? "text-red-800" : "text-emerald-800"}`}>Selected: </span>
+                            <span className={`text-sm font-semibold ${selectedDrug.current_stock != null && selectedDrug.current_stock <= 0 ? "text-red-950" : "text-emerald-950"}`}>{selectedDrug.name}</span>
+                            {selectedDrug.formulation && <span className={`ml-2 text-xs ${selectedDrug.current_stock != null && selectedDrug.current_stock <= 0 ? "text-red-700" : "text-emerald-700"}`}>{selectedDrug.formulation} {selectedDrug.strength}</span>}
+                            {selectedDrug.current_stock != null && (
+                              <span className={`ml-3 text-xs font-bold ${selectedDrug.current_stock <= 0 ? "text-red-700" : selectedDrug.current_stock <= (selectedDrug.reorder_level ?? 0) ? "text-amber-700" : "text-emerald-700"}`}>
+                                {selectedDrug.current_stock <= 0 ? "OUT OF STOCK" : `Stock: ${selectedDrug.current_stock}`}
+                              </span>
+                            )}
                           </div>
                           <button type="button" onClick={() => { setSelectedDrug(null); setDrugQuery(""); }} className="text-xs text-muted-foreground hover:text-foreground font-bold uppercase">Clear</button>
                         </div>
