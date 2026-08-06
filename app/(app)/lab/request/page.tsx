@@ -6,6 +6,13 @@ import { useAuth } from "@/store/RoleContext";
 import { api } from "@/lib/api";
 import BillingConfirmation from "@/components/billing/BillingConfirmation";
 import { parseBilling, type BillingSummary } from "@/types/billing";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { FlaskConical, Search, ArrowLeft, Loader2, Check } from "lucide-react";
 
 interface EncounterOption {
@@ -134,202 +141,225 @@ export default function NewLabRequestPage() {
   };
 
   return (
-    <div className="max-w-3xl mx-auto space-y-6 font-sans">
-      <section className="flex items-center gap-3">
-        <button
-          onClick={() => router.back()}
-          className="inline-flex items-center gap-1.5 text-xs font-bold text-[#5f5e5e] hover:text-[#1b1c1c] uppercase tracking-wider cursor-pointer"
-        >
+    <div className="flex flex-col gap-6">
+      {/* Header */}
+      <div className="flex items-center gap-3">
+        <Button variant="outline" size="sm" nativeButton={false} onClick={() => router.back()}>
           <ArrowLeft className="h-3.5 w-3.5" /> Back
-        </button>
-        <div>
-          <span className="text-xs font-bold text-brand-green tracking-widest uppercase">Laboratory</span>
-          <h1 className="text-3xl font-bold text-[#1b1c1c] mt-1">New Lab Request</h1>
-          <p className="text-sm text-[#5f5e5e] mt-1">Order a diagnostic test and attach the charge to the patient&apos;s bill</p>
+        </Button>
+        <div className="flex flex-col gap-1">
+          <span className="text-xs font-semibold tracking-widest uppercase text-muted-foreground">Laboratory</span>
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground">New Lab Request</h1>
+          <p className="text-sm text-muted-foreground">Order a diagnostic test and attach the charge to the patient&apos;s bill</p>
         </div>
-      </section>
+      </div>
 
       {error && (
-        <div className="p-3 rounded bg-red-50 text-red-700 text-sm border border-red-200">{error}</div>
+        <div className="p-3 rounded-lg bg-red-50 text-red-700 text-sm border border-red-200">{error}</div>
       )}
       {successMsg && (
-        <div className="p-3 rounded bg-green-50 text-green-700 text-sm border border-green-200 flex items-center gap-2">
+        <div className="p-3 rounded-lg bg-green-50 text-green-700 text-sm border border-green-200 flex items-center gap-2">
           <Loader2 className="h-4 w-4 animate-spin" /> {successMsg}
         </div>
       )}
 
       <form onSubmit={handleSubmit} className="space-y-5">
-        <section className="bg-white rounded border border-[#becab7]/50 p-5">
-          <h2 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-1">Patient & Encounter</h2>
-          <p className="text-xs text-[#5f5e5e] mb-4">Charges are attached to the bill of the encounter&apos;s patient.</p>
+        {/* Patient & Encounter */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Patient & Encounter
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-xs text-muted-foreground mb-4">Charges are attached to the bill of the encounter&apos;s patient.</p>
 
-          {patientIdFromUrl ? (
-            <div className="px-3 py-2 border border-gray-200 rounded bg-gray-50 text-sm text-gray-800 font-medium">
-              Patient #{patientIdFromUrl}
-            </div>
-          ) : (
-            <div className="flex items-end gap-3">
-              <div className="flex-1">
-                <label className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide mb-1">
-                  Patient ID <span className="text-red-500">*</span>
+            {patientIdFromUrl ? (
+              <div className="px-3 py-2 border border-input rounded-lg bg-muted text-sm text-foreground font-medium">
+                Patient #{patientIdFromUrl}
+              </div>
+            ) : (
+              <div className="flex items-end gap-3">
+                <div className="flex-1">
+                  <label className="block text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1">
+                    Patient ID <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="number"
+                    required
+                    value={patientId}
+                    onChange={(e) => setPatientId(e.target.value)}
+                    placeholder="Enter patient ID"
+                    className="mt-1 block w-full px-3 py-2 border border-input rounded-lg text-sm focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary"
+                  />
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  nativeButton={false}
+                  onClick={handleLoadEncounters}
+                  disabled={loadingEncounters}
+                >
+                  {loadingEncounters ? <Loader2 className="h-4 w-4 animate-spin" /> : "Load Encounters"}
+                </Button>
+              </div>
+            )}
+
+            {loadingEncounters ? (
+              <p className="text-sm text-muted-foreground mt-3">Loading encounters...</p>
+            ) : encounters.length > 0 ? (
+              <div className="mt-3">
+                <label className="block text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1">
+                  Encounter <span className="text-red-500">*</span>
                 </label>
-                <input
-                  type="number"
+                <select
                   required
-                  value={patientId}
-                  onChange={(e) => setPatientId(e.target.value)}
-                  placeholder="Enter patient ID"
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary"
+                  value={encounterId}
+                  onChange={(e) => setEncounterId(e.target.value)}
+                  className="mt-1 block w-full px-3 py-2 border border-input rounded-lg text-sm bg-background focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary"
+                >
+                  <option value="">Select encounter</option>
+                  {encounters.map((enc) => (
+                    <option key={enc.id} value={enc.id}>
+                      #{enc.id} · {enc.encounter_type || "Visit"} · {enc.status} · {new Date(enc.created_at).toLocaleDateString()}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground mt-3">
+                {patientIdFromUrl || patientId ? "No encounters found for this patient." : "Enter a patient ID to load their encounters."}
+              </p>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Test Details */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Test Details
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-xs text-muted-foreground mb-4">Search the LOINC catalog to select a test.</p>
+
+            <div className="relative">
+              <label className="block text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1">
+                Test <span className="text-red-500">*</span>
+              </label>
+              <div className="relative mt-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <input
+                  type="text"
+                  value={loincQuery}
+                  onChange={(e) => { setLoincQuery(e.target.value); setSelectedLoinc(null); }}
+                  placeholder="Search by test name or LOINC code..."
+                  className="block w-full pl-9 pr-3 py-2 border border-input rounded-lg text-sm focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary"
                 />
               </div>
-              <button
-                type="button"
-                onClick={handleLoadEncounters}
-                disabled={loadingEncounters}
-                className="px-4 py-2 text-sm font-bold text-white bg-clinical-primary rounded hover:bg-clinical-primary-hover disabled:opacity-50"
-              >
-                {loadingEncounters ? "Loading..." : "Load Encounters"}
-              </button>
-            </div>
-          )}
-
-          {loadingEncounters ? (
-            <p className="text-sm text-[#5f5e5e] mt-3">Loading encounters...</p>
-          ) : encounters.length > 0 ? (
-            <div className="mt-3">
-              <label className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide mb-1">
-                Encounter <span className="text-red-500">*</span>
-              </label>
-              <select
-                required
-                value={encounterId}
-                onChange={(e) => setEncounterId(e.target.value)}
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded text-sm bg-white focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary"
-              >
-                <option value="">Select encounter</option>
-                {encounters.map((enc) => (
-                  <option key={enc.id} value={enc.id}>
-                    #{enc.id} · {enc.encounter_type || "Visit"} · {enc.status} · {new Date(enc.created_at).toLocaleDateString()}
-                  </option>
-                ))}
-              </select>
-            </div>
-          ) : (
-            <p className="text-sm text-[#5f5e5e] mt-3">
-              {patientIdFromUrl || patientId ? "No encounters found for this patient." : "Enter a patient ID to load their encounters."}
-            </p>
-          )}
-        </section>
-
-        <section className="bg-white rounded border border-[#becab7]/50 p-5">
-          <h2 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-1">Test Details</h2>
-          <p className="text-xs text-[#5f5e5e] mb-4">Search the LOINC catalog to select a test.</p>
-
-          <div className="relative">
-            <label className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide mb-1">
-              Test <span className="text-red-500">*</span>
-            </label>
-            <div className="relative mt-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-              <input
-                type="text"
-                value={loincQuery}
-                onChange={(e) => { setLoincQuery(e.target.value); setSelectedLoinc(null); }}
-                placeholder="Search by test name or LOINC code..."
-                className="block w-full pl-9 pr-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary"
-              />
-            </div>
-            {searchLoading && (
-              <div className="absolute left-0 right-0 mt-1 p-3 bg-white border border-gray-200 rounded shadow-lg text-xs text-[#5f5e5e] z-30">
-                Searching...
-              </div>
-            )}
-            {!searchLoading && loincResults.length > 0 && (
-              <ul className="absolute left-0 right-0 mt-1 bg-white border border-gray-200 rounded shadow-lg max-h-60 overflow-y-auto z-30 divide-y text-sm">
-                {loincResults.map((result) => (
-                  <li key={result.code}>
-                    <button
-                      type="button"
-                      onClick={() => { setSelectedLoinc(result); setLoincQuery(result.display_name); setLoincResults([]); }}
-                      className="w-full text-left px-4 py-2.5 hover:bg-gray-50 flex items-baseline justify-between transition-colors"
-                    >
-                      <span className="font-medium text-gray-900">{result.display_name}</span>
-                      <span className="font-mono text-xs text-[#5f5e5e] ml-3 shrink-0">{result.code}</span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-
-          {selectedLoinc && (
-            <div className="mt-3 rounded bg-emerald-50 border border-emerald-200 p-3 flex items-center justify-between">
-              <div className="flex items-center gap-2 min-w-0">
-                <Check className="h-4 w-4 text-emerald-600 shrink-0" />
-                <div className="min-w-0">
-                  <p className="text-sm font-semibold text-emerald-900 truncate">{selectedLoinc.display_name}</p>
-                  <p className="text-xs text-emerald-700 font-mono">{selectedLoinc.code}</p>
+              {searchLoading && (
+                <div className="absolute left-0 right-0 mt-1 p-3 bg-card border border-input rounded-lg shadow-lg text-xs text-muted-foreground z-30">
+                  Searching...
                 </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => { setSelectedLoinc(null); setLoincQuery(""); }}
-                className="text-xs font-bold text-[#5f5e5e] hover:text-gray-900 uppercase shrink-0 ml-3 cursor-pointer"
-              >
-                Clear
-              </button>
+              )}
+              {!searchLoading && loincResults.length > 0 && (
+                <ul className="absolute left-0 right-0 mt-1 bg-card border border-input rounded-lg shadow-lg max-h-60 overflow-y-auto z-30 divide-y text-sm">
+                  {loincResults.map((result) => (
+                    <li key={result.code}>
+                      <button
+                        type="button"
+                        onClick={() => { setSelectedLoinc(result); setLoincQuery(result.display_name); setLoincResults([]); }}
+                        className="w-full text-left px-4 py-2.5 hover:bg-muted flex items-baseline justify-between transition-colors"
+                      >
+                        <span className="font-medium text-foreground">{result.display_name}</span>
+                        <span className="font-mono text-xs text-muted-foreground ml-3 shrink-0">{result.code}</span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
-          )}
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-            <div>
-              <label className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide mb-1">Specimen Type</label>
-              <input
-                type="text"
-                value={specimenType}
-                onChange={(e) => setSpecimenType(e.target.value)}
-                placeholder="e.g., Whole blood, Serum"
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary"
+            {selectedLoinc && (
+              <div className="mt-3 rounded-lg bg-green-50 border border-green-200 p-3 flex items-center justify-between">
+                <div className="flex items-center gap-2 min-w-0">
+                  <Check className="h-4 w-4 text-green-600 shrink-0" />
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-green-900 truncate">{selectedLoinc.display_name}</p>
+                    <p className="text-xs text-green-700 font-mono">{selectedLoinc.code}</p>
+                  </div>
+                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  nativeButton={false}
+                  onClick={() => { setSelectedLoinc(null); setLoincQuery(""); }}
+                >
+                  Clear
+                </Button>
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1">
+                  Specimen Type
+                </label>
+                <input
+                  type="text"
+                  value={specimenType}
+                  onChange={(e) => setSpecimenType(e.target.value)}
+                  placeholder="e.g., Whole blood, Serum"
+                  className="mt-1 block w-full px-3 py-2 border border-input rounded-lg text-sm focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1">
+                  Priority
+                </label>
+                <select
+                  value={priority}
+                  onChange={(e) => setPriority(e.target.value as "Routine" | "Urgent" | "Stat")}
+                  className="mt-1 block w-full px-3 py-2 border border-input rounded-lg text-sm bg-background focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary"
+                >
+                  {priorityOptions.map((p) => (
+                    <option key={p} value={p}>{p}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="mt-4">
+              <label className="block text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1">
+                Clinical Indication
+              </label>
+              <textarea
+                rows={2}
+                value={clinicalIndication}
+                onChange={(e) => setClinicalIndication(e.target.value)}
+                placeholder="Reason for the test..."
+                className="mt-1 block w-full px-3 py-2 border border-input rounded-lg text-sm focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary"
               />
             </div>
-            <div>
-              <label className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide mb-1">Priority</label>
-              <select
-                value={priority}
-                onChange={(e) => setPriority(e.target.value as "Routine" | "Urgent" | "Stat")}
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded text-sm bg-white focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary"
-              >
-                {priorityOptions.map((p) => (
-                  <option key={p} value={p}>{p}</option>
-                ))}
-              </select>
-            </div>
-          </div>
+          </CardContent>
+        </Card>
 
-          <div className="mt-4">
-            <label className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide mb-1">Clinical Indication</label>
-            <textarea
-              rows={2}
-              value={clinicalIndication}
-              onChange={(e) => setClinicalIndication(e.target.value)}
-              placeholder="Reason for the test..."
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary"
-            />
-          </div>
-        </section>
-
+        {/* Actions */}
         <div className="flex gap-3 justify-end pt-1">
-          <button
+          <Button
             type="button"
+            variant="outline"
+            nativeButton={false}
             onClick={() => router.back()}
-            className="px-4 py-2 text-sm font-semibold text-gray-600 bg-white border border-gray-300 rounded hover:bg-gray-50 cursor-pointer"
           >
             Cancel
-          </button>
-          <button
+          </Button>
+          <Button
             type="submit"
+            nativeButton={false}
             disabled={submitting || !selectedLoinc || !encounterId.trim()}
-            className="inline-flex items-center gap-2 px-5 py-2 text-sm font-bold text-white bg-clinical-primary rounded hover:bg-clinical-primary-hover disabled:opacity-50 cursor-pointer"
           >
             {submitting ? (
               <>
@@ -340,7 +370,7 @@ export default function NewLabRequestPage() {
                 <FlaskConical className="h-4 w-4" /> Create Lab Request
               </>
             )}
-          </button>
+          </Button>
         </div>
       </form>
 
