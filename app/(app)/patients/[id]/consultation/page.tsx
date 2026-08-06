@@ -709,6 +709,21 @@ export default function ClinicianSOAPConsultation() {
     }
   }
 
+  async function handleSignOff() {
+    if (!activeEncounterId) return;
+    setSubmitLoading(true);
+    setError(null);
+    try {
+      await api.post(`/encounters/${activeEncounterId}/sign-off`, {}, token);
+      setSuccessMsg("Clinical notes signed off successfully.");
+      fetchConsultationData();
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to sign off.");
+    } finally {
+      setSubmitLoading(false);
+    }
+  }
+
   async function handleAcknowledgeAlert(alertId: number) {
     try {
       await api.post(`/alerts/${alertId}/acknowledge`, {}, token);
@@ -798,6 +813,18 @@ export default function ClinicianSOAPConsultation() {
                 {t.label}
               </Button>
             ))}
+            {can("consultation.sign_off") && (
+              <Button
+                size="sm"
+                variant="default"
+                onClick={handleSignOff}
+                disabled={submitLoading}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white"
+              >
+                {submitLoading && <Loader2 className="h-3 w-3 animate-spin mr-1" />}
+                Sign Off
+              </Button>
+            )}
           </div>
           <div className="flex items-center gap-4 text-sm text-muted-foreground">
             {summary?.allergies_confirmed && (
