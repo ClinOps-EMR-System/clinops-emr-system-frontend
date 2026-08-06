@@ -70,12 +70,16 @@ export const admissionsApi = {
     return api.get(`${ENDPOINT}/stats`, getToken(token)).then((res) => res.data);
   },
 
-  getNotifications(admissionId?: number, token?: string | null): Promise<NotificationData[]> {
+  getNotifications(admissionId?: number, token?: string | null): Promise<{ notifications: NotificationData[]; unread_count: number }> {
     const params = admissionId ? `?admission_id=${admissionId}` : '';
-    return api.get(`/notifications${params}`, getToken(token)).then((res) => res.data ?? []);
+    return api.get(`/notifications${params}`, getToken(token)).then((res) => res.data ?? { notifications: [], unread_count: 0 });
   },
 
   markNotificationRead(id: number, token?: string | null): Promise<NotificationData> {
-    return api.put(`/notifications/${id}`, { read: true, read_at: new Date().toISOString() }, getToken(token)).then((res) => res.data);
+    return api.post(`/notifications/${id}/read`, {}, getToken(token)).then((res) => res.data);
+  },
+
+  markAllNotificationsRead(token?: string | null): Promise<{ marked: number }> {
+    return api.post('/notifications/read-all', {}, getToken(token)).then((res) => res.data);
   },
 };

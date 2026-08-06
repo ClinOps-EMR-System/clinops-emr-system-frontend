@@ -1,11 +1,11 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "../../store/RoleContext";
 import { api } from "../../lib/api";
-import { X, Search, Bell, ChevronDown } from "lucide-react";
+import { X, Search, Bell, ChevronDown, Check } from "lucide-react";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 
 interface PatientResult {
@@ -17,6 +17,16 @@ interface PatientResult {
   patient_category: string;
   date_of_birth: string | null;
   registration_completed_at: string | null;
+}
+
+interface NotificationItem {
+  id: number;
+  patient_id: number | null;
+  type: string;
+  title: string;
+  message: string;
+  read: boolean;
+  created_at: string;
 }
 
 export default function Topbar() {
@@ -33,6 +43,11 @@ export default function Topbar() {
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const searchRef = React.useRef<HTMLDivElement>(null);
+
+  const [notifications, setNotifications] = useState<(NotificationItem & { relative_time: string })[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [notifOpen, setNotifOpen] = useState(false);
+  const notifRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedQuery(query), 300);
@@ -96,6 +111,66 @@ export default function Topbar() {
       mobileSearchInputRef.current.focus();
     }
   }, [mobileSearchOpen]);
+
+  const computeRelativeTime = (dateStr: string) => {
+    const diff = Date.now() - new Date(dateStr).getTime();
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1) return "Just now";
+    if (mins < 60) return `${mins}m ago`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return `${hrs}h ago`;
+    return `${Math.floor(hrs / 24)}d ago`;
+  };
+
+  const fetchNotifications = useCallback(async () => {
+    try {
+      const res = await api.get("/notifications", token);
+      const items = (res?.notifications ?? []).map((n: NotificationItem) => ({
+        ...n,
+        relative_time: computeRelativeTime(n.created_at),
+      }));
+      setNotifications(items);
+      setUnreadCount(res?.unread_count ?? 0);
+    } catch {
+      // silent
+    }
+  }, [token]);
+
+  useEffect(() => {
+    fetchNotifications(); // eslint-disable-line react-hooks/set-state-in-effect
+    const interval = setInterval(fetchNotifications, 30000);
+    return () => clearInterval(interval);
+  }, [fetchNotifications]);
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (notifRef.current && !notifRef.current.contains(e.target as Node)) {
+        setNotifOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
+
+  const handleMarkRead = async (id: number) => {
+    try {
+      await api.post(`/notifications/${id}/read`, {}, token);
+      setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
+      setUnreadCount((prev) => Math.max(0, prev - 1));
+    } catch {
+      // silent
+    }
+  };
+
+  const handleMarkAllRead = async () => {
+    try {
+      await api.post("/notifications/read-all", {}, token);
+      setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+      setUnreadCount(0);
+    } catch {
+      // silent
+    }
+  };
 
   const handleResultClick = (patient: PatientResult) => {
     setSearchOpen(false);
@@ -393,13 +468,76 @@ export default function Topbar() {
 
       {/* Right: Actions */}
       <div className="flex items-center gap-3 shrink-0">
-        <button
-          className="text-sidebar-foreground/70 hover:text-sidebar-foreground relative p-2 rounded-full hover:bg-sidebar-accent transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
-          aria-label="Notifications"
-        >
-          <Bell className="h-5 w-5" />
-          <span className="absolute top-2 right-2 block h-2 w-2 rounded-full bg-sidebar-primary ring-2 ring-sidebar" />
-        </button>
+        <div className="relative" ref={notifRef}>
+          <button
+            onClick={() => setNotifOpen(!notifOpen)}
+            className="text-sidebar-foreground/70 hover:text-sidebar-foreground relative p-2 rounded-full hover:bg-sidebar-accent transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
+            aria-label="Notifications"
+          >
+            <Bell className="h-5 w-5" />
+            {unreadCount > 0 && (
+              <span className="absolute top-1.5 right-1.5 flex items-center justify-center h-4 min-w-[16px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold ring-2 ring-sidebar">
+                {unreadCount > 99 ? "99+" : unreadCount}
+              </span>
+            )}
+          </button>
+
+          {notifOpen && (
+            <>
+              <div className="fixed inset-0 z-10" onClick={() => setNotifOpen(false)} />
+              <div className="absolute right-0 mt-2 w-80 rounded-lg bg-white shadow-xl border border-gray-200 z-20 overflow-hidden">
+                <div className="flex items-center justify-between px-4 py-2.5 border-b border-gray-100">
+                  <h3 className="text-sm font-bold text-gray-900">Notifications</h3>
+                  {unreadCount > 0 && (
+                    <button
+                      onClick={handleMarkAllRead}
+                      className="text-xs text-teal-600 hover:text-teal-700 font-semibold flex items-center gap-1"
+                    >
+                      <Check className="h-3 w-3" />
+                      Mark all read
+                    </button>
+                  )}
+                </div>
+                <div className="max-h-80 overflow-y-auto">
+                  {notifications.length === 0 ? (
+                    <div className="px-4 py-8 text-center text-sm text-gray-400">
+                      No notifications yet
+                    </div>
+                  ) : (
+                    notifications.slice(0, 10).map((n) => (
+                      <button
+                        key={n.id}
+                        onClick={() => {
+                          handleMarkRead(n.id);
+                          if (n.patient_id) {
+                            setNotifOpen(false);
+                            router.push(`/patients/${n.patient_id}`);
+                          }
+                        }}
+                        className={`w-full text-left px-4 py-3 border-b border-gray-50 hover:bg-gray-50 transition-colors ${
+                          !n.read ? "bg-teal-50/50" : ""
+                        }`}
+                      >
+                        <div className="flex items-start gap-2">
+                          {!n.read && (
+                            <span className="mt-1.5 h-2 w-2 rounded-full bg-teal-500 shrink-0" />
+                          )}
+                          <div className="min-w-0 flex-1">
+                            <p className="text-xs font-bold text-gray-900 truncate">{n.title}</p>
+                            <p className="text-xs text-gray-500 truncate mt-0.5">{n.message}</p>
+                            <p className="text-[10px] text-gray-400 mt-1 font-mono">
+                              {n.relative_time}
+                            </p>
+                          </div>
+                        </div>
+                      </button>
+                    ))
+                  )}
+                </div>
+              </div>
+            </>
+          )}
+        </div>
 
         <div className="relative">
           <button

@@ -119,13 +119,16 @@ export function useAdmissionDetail(
 
 interface UseNotificationsResult {
   notifications: NotificationData[];
+  unreadCount: number;
   loading: boolean;
   error: string | null;
   markRead: (id: number) => Promise<void>;
+  markAllRead: () => Promise<void>;
 }
 
 export function useNotifications(admissionId?: number): UseNotificationsResult {
   const [notifications, setNotifications] = useState<NotificationData[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -134,7 +137,8 @@ export function useNotifications(admissionId?: number): UseNotificationsResult {
       setLoading(true);
       setError(null);
       const res = await admissionsApi.getNotifications(admissionId);
-      setNotifications(res);
+      setNotifications(res.notifications);
+      setUnreadCount(res.unread_count);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to load notifications");
     } finally {
@@ -148,8 +152,19 @@ export function useNotifications(admissionId?: number): UseNotificationsResult {
       setNotifications((prev) =>
         prev.map((n) => (n.id === id ? { ...n, read: true, read_at: new Date().toISOString() } : n))
       );
+      setUnreadCount((prev) => Math.max(0, prev - 1));
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to mark notification as read");
+    }
+  }, []);
+
+  const markAllRead = useCallback(async () => {
+    try {
+      await admissionsApi.markAllNotificationsRead();
+      setNotifications((prev) => prev.map((n) => ({ ...n, read: true, read_at: new Date().toISOString() })));
+      setUnreadCount(0);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to mark all as read");
     }
   }, []);
 
@@ -157,5 +172,5 @@ export function useNotifications(admissionId?: number): UseNotificationsResult {
     fetchNotifications(); // eslint-disable-line react-hooks/set-state-in-effect
   }, [fetchNotifications]);
 
-  return { notifications, loading, error, markRead };
+  return { notifications, unreadCount, loading, error, markRead, markAllRead };
 }
