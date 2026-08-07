@@ -11,6 +11,7 @@ let socket: WebSocket | null = null;
 let status: RealtimeStatus = "offline";
 let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 let reconnectDelay = 1000;
+let manuallyClosed = false;
 
 function setStatus(next: RealtimeStatus) {
   if (status === next) return;
@@ -44,7 +45,7 @@ export function routeMessage(raw: string) {
 }
 
 function scheduleReconnect() {
-  if (reconnectTimer) return;
+  if (reconnectTimer || manuallyClosed) return;
   if (typeof navigator !== "undefined" && !navigator.onLine) return;
   reconnectTimer = setTimeout(() => {
     reconnectTimer = null;
@@ -54,7 +55,7 @@ function scheduleReconnect() {
 }
 
 function connect() {
-  if (typeof window === "undefined" || socket) return;
+  if (typeof window === "undefined" || socket || manuallyClosed) return;
   setStatus("connecting");
   const ws = new WebSocket(getWsUrl());
   socket = ws;
@@ -69,7 +70,7 @@ function connect() {
   ws.onclose = () => {
     if (socket === ws) socket = null;
     setStatus("offline");
-    scheduleReconnect();
+    if (!manuallyClosed) scheduleReconnect();
   };
 
   ws.onerror = () => {};
@@ -78,6 +79,7 @@ function connect() {
 export function subscribe(channel: string, handler: (data: unknown) => void) {
   if (!handlers.has(channel)) handlers.set(channel, new Set());
   handlers.get(channel)!.add(handler);
+  manuallyClosed = false;
   connect();
   return () => {
     handlers.get(channel)?.delete(handler);
@@ -85,6 +87,7 @@ export function subscribe(channel: string, handler: (data: unknown) => void) {
 }
 
 export function closeRealtime() {
+  manuallyClosed = true;
   if (reconnectTimer) {
     clearTimeout(reconnectTimer);
     reconnectTimer = null;

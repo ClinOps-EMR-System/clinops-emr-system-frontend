@@ -25,7 +25,9 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    return () => closeRealtime();
+    const onUnload = () => closeRealtime();
+    window.addEventListener("pagehide", onUnload);
+    return () => window.removeEventListener("pagehide", onUnload);
   }, []);
 
   return (
