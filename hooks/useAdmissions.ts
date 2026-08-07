@@ -117,14 +117,24 @@ export function useAdmissionDetail(
   return { admission, loading, error, refetch: fetchData };
 }
 
+interface UseNotificationsOptions {
+  interval?: number;
+}
+
 interface UseNotificationsResult {
   notifications: NotificationData[];
   loading: boolean;
   error: string | null;
+  refetch: () => void;
   markRead: (id: number) => Promise<void>;
+  markAllRead: () => Promise<void>;
 }
 
-export function useNotifications(admissionId?: number): UseNotificationsResult {
+export function useNotifications(
+  admissionId?: number,
+  options: UseNotificationsOptions = {}
+): UseNotificationsResult {
+  const { interval } = options;
   const [notifications, setNotifications] = useState<NotificationData[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -153,9 +163,28 @@ export function useNotifications(admissionId?: number): UseNotificationsResult {
     }
   }, []);
 
+  const markAllRead = useCallback(async () => {
+    try {
+      await admissionsApi.markAllNotificationsRead();
+      setNotifications((prev) =>
+        prev.map((n) => ({ ...n, read: true, read_at: n.read_at ?? new Date().toISOString() }))
+      );
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to mark notifications as read");
+    }
+  }, []);
+
   useEffect(() => {
     fetchNotifications(); // eslint-disable-line react-hooks/set-state-in-effect
   }, [fetchNotifications]);
 
-  return { notifications, loading, error, markRead };
+  useEffect(() => {
+    if (!interval || interval <= 0) return;
+    const id = setInterval(() => {
+      fetchNotifications();
+    }, interval);
+    return () => clearInterval(id);
+  }, [interval, fetchNotifications]);
+
+  return { notifications, loading, error, refetch: fetchNotifications, markRead, markAllRead };
 }

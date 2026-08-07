@@ -3,11 +3,14 @@
 import { useState } from "react";
 import { api } from "@/lib/api";
 import { useAuth } from "@/store/RoleContext";
-import { BillPreviewSkeleton } from "@/components/payments/BillPreviewSkeleton";
-import { PaymentFormSkeleton } from "@/components/payments/PaymentFormSkeleton";
-import { ReceiptPreviewSkeleton } from "@/components/payments/ReceiptPreviewSkeleton";
-import { BackendNote } from "@/components/payments/BackendNote";
+import { BillPicker } from "@/components/payments/BillPicker";
+import { BillPreview } from "@/components/payments/BillPreview";
+import { PaymentForm, type RecordedPayment } from "@/components/payments/PaymentForm";
+import { Receipt } from "@/components/payments/Receipt";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Banknote } from "lucide-react";
+import type { BillSummary, BillDetail, ReceiptData } from "@/types/payments";
+import type { PayChanguChargeResult } from "@/lib/services/admin";
 
 interface Patient {
   id: number;
@@ -21,6 +24,18 @@ export default function PaymentsPage() {
   const [patientQuery, setPatientQuery] = useState("");
   const [patientResults, setPatientResults] = useState<Patient[]>([]);
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
+
+  const [bills, setBills] = useState<BillSummary[]>([]);
+  const [billsLoading, setBillsLoading] = useState(false);
+  const [selectedBillId, setSelectedBillId] = useState<number | null>(null);
+
+  const [billDetail, setBillDetail] = useState<BillDetail | null>(null);
+  const [billLoading, setBillLoading] = useState(false);
+
+  const [receipt, setReceipt] = useState<ReceiptData | null>(null);
+  const [receiptLoading, setReceiptLoading] = useState(false);
+  const [highlightPaymentId, setHighlightPaymentId] = useState<number | undefined>(undefined);
+  const [pageError, setPageError] = useState<string | null>(null);
 
   async function searchPatients(query: string) {
     setPatientQuery(query);
@@ -36,40 +51,119 @@ export default function PaymentsPage() {
     }
   }
 
+  async function selectPatient(patient: Patient) {
+    setSelectedPatient(patient);
+    setPatientResults([]);
+    setPatientQuery("");
+    setSelectedBillId(null);
+    setBillDetail(null);
+    setReceipt(null);
+    setPageError(null);
+    setBillsLoading(true);
+    try {
+      const res = await api.get(`/bills?patient_id=${patient.id}`, token);
+      setBills((res?.data as BillSummary[]) ?? []);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Failed to load bills.";
+      setPageError(message);
+      setBills([]);
+    } finally {
+      setBillsLoading(false);
+    }
+  }
+
+  async function selectBill(billId: number) {
+    setSelectedBillId(billId);
+    setBillDetail(null);
+    setReceipt(null);
+    setPageError(null);
+    setBillLoading(true);
+    try {
+      const res = await api.get(`/bills/${billId}`, token);
+      setBillDetail((res?.data as BillDetail) ?? null);
+    } catch (err: unknown) {
+      setPageError(err instanceof Error ? err.message : "Failed to load bill.");
+    } finally {
+      setBillLoading(false);
+    }
+  }
+
+  async function loadReceipt(highlightId?: number) {
+    if (!selectedBillId || !token) return;
+    setHighlightPaymentId(highlightId);
+    setReceiptLoading(true);
+    try {
+      const res = await api.get(`/bills/${selectedBillId}/receipt`, token);
+      setReceipt((res?.data as ReceiptData) ?? null);
+    } catch (err: unknown) {
+      setPageError(err instanceof Error ? err.message : "Failed to load receipt.");
+    } finally {
+      setReceiptLoading(false);
+    }
+  }
+
+  const handlePaymentRecorded = (payment: RecordedPayment) => {
+    void loadReceipt(payment.id);
+  };
+
+  const handlePayChanguInitiated = () => {
+    // keep the form visible while the charge is pending (PaymentForm shows the notice)
+  };
+
+  const handlePayChanguCompleted = (charge: PayChanguChargeResult) => {
+    void loadReceipt(charge.payment_id);
+  };
+
+  const handleDone = () => {
+    setReceipt(null);
+    setBillDetail(null);
+    setSelectedBillId(null);
+    if (selectedPatient) selectPatient(selectedPatient);
+  };
+
+  const isPaid = billDetail?.payment_status?.toLowerCase() === "paid";
+
   return (
-    <div className="max-w-7xl mx-auto space-y-6 font-sans">
-      {/* Header */}
-      <section>
-        <span className="text-xs font-bold text-brand-green tracking-widest uppercase">Finance</span>
-        <h1 className="text-3xl font-bold text-[#1b1c1c] mt-1">Payments</h1>
-        <p className="text-sm text-[#5f5e5e] mt-1">Collect payment and print receipts</p>
+    <div className="max-w-7xl mx-auto space-y-6">
+      <section className="flex flex-col gap-1">
+        <span className="text-xs font-semibold tracking-widest uppercase text-muted-foreground">
+          Finance
+        </span>
+        <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+          Payments
+        </h1>
+        <p className="text-sm text-muted-foreground">
+          Collect payment and print receipts
+        </p>
       </section>
 
+      {pageError && (
+        <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-800 font-semibold">
+          {pageError}
+        </div>
+      )}
+
       {/* Patient Search */}
-      <section className="bg-white rounded border border-[#becab7]/50 p-4">
+      <section className="bg-card rounded-lg border p-4">
         <div className="relative">
           <input
             type="text"
             placeholder="Search patient by name or hospital number..."
             aria-label="Search patient for payment"
-            className="w-full px-4 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary"
+            className="w-full px-4 py-2 border border-input rounded-lg text-sm bg-background focus:outline-none focus:ring-2 focus:ring-ring"
             value={patientQuery}
             onChange={(e) => searchPatients(e.target.value)}
           />
           {patientResults.length > 0 && (
-            <div className="absolute z-10 mt-1 w-full border border-gray-200 rounded bg-white shadow-lg max-h-48 overflow-y-auto">
+            <div className="absolute z-10 mt-1 w-full border border-border rounded-lg bg-card shadow-lg max-h-48 overflow-y-auto">
               {patientResults.map((p) => (
                 <button
                   key={p.id}
-                  onClick={() => {
-                    setSelectedPatient(p);
-                    setPatientResults([]);
-                    setPatientQuery("");
-                  }}
-                  className="w-full text-left px-4 py-3 text-sm hover:bg-[#fcf9f8] flex items-center justify-between border-b border-gray-50 last:border-b-0"
+                  onClick={() => selectPatient(p)}
+                  className="w-full text-left px-4 py-3 text-sm hover:bg-muted flex items-center justify-between border-b border-border last:border-b-0"
                 >
-                  <span className="font-semibold text-gray-900">{p.first_name} {p.last_name}</span>
-                  <span className="text-xs text-gray-400 font-mono">{p.hospital_number}</span>
+                  <span className="font-semibold">{p.first_name} {p.last_name}</span>
+                  <span className="text-xs text-muted-foreground font-mono">{p.hospital_number}</span>
                 </button>
               ))}
             </div>
@@ -77,55 +171,76 @@ export default function PaymentsPage() {
         </div>
       </section>
 
-      {selectedPatient && (
-        <>
-          {/* Patient Info */}
-          <section className="bg-white rounded border border-[#becab7]/50 p-5">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-lg font-bold text-gray-900">
-                  {selectedPatient.first_name} {selectedPatient.last_name}
-                </h3>
-                <p className="text-sm text-gray-500 font-mono">{selectedPatient.hospital_number}</p>
-              </div>
-              <button
-                onClick={() => setSelectedPatient(null)}
-                className="text-xs font-bold text-red-600 hover:text-red-800 uppercase tracking-wider"
-              >
-                Clear
-              </button>
-            </div>
-          </section>
-
-          {/* Bill Preview (Skeleton) */}
-          <BillPreviewSkeleton />
-
-          {/* Payment Form (Skeleton) */}
-          <PaymentFormSkeleton />
-
-          {/* Receipt Preview (Skeleton) */}
-          <ReceiptPreviewSkeleton />
-        </>
-      )}
-
       {!selectedPatient && (
-        <div className="bg-white rounded border border-[#becab7]/50 p-12 text-center">
-          <Banknote className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-          <h3 className="text-lg font-bold text-gray-700">Search for a patient</h3>
-          <p className="text-sm text-gray-500 mt-2">Find a patient to view their bill and collect payment</p>
+        <div className="bg-card rounded-lg border p-12 text-center">
+          <Banknote className="h-12 w-12 text-muted-foreground mx-auto mb-4 opacity-40" />
+          <h3 className="text-lg font-bold">Search for a patient</h3>
+          <p className="text-sm text-muted-foreground mt-2">
+            Find a patient to view their bill and collect payment
+          </p>
         </div>
       )}
 
-      {/* Backend Note */}
-      <BackendNote
-        title="Billing Backend Required"
-        items={[
-          "Create apiResource('bills') with store, show, update endpoints",
-          "Add POST /bills/{id}/payments for payment recording",
-          "Add GET /bills/{id}/receipt for receipt generation",
-          "Bill, BillItem, Payment, and Service models already exist — just need controllers and routes",
-        ]}
-      />
+      {selectedPatient && !receipt && (
+        <>
+          <section className="bg-card rounded-lg border p-5 flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-bold">
+                {selectedPatient.first_name} {selectedPatient.last_name}
+              </h3>
+              <p className="text-sm text-muted-foreground font-mono">
+                {selectedPatient.hospital_number}
+              </p>
+            </div>
+            <button
+              onClick={() => {
+                setSelectedPatient(null);
+                setBills([]);
+                setBillDetail(null);
+                setReceipt(null);
+              }}
+              className="text-xs font-bold text-red-600 hover:text-red-800 uppercase tracking-wider"
+            >
+              Clear
+            </button>
+          </section>
+
+          {billDetail ? (
+            <>
+              <BillPreview bill={billDetail} loading={billLoading} />
+              <PaymentForm
+                token={token}
+                billId={billDetail.id}
+                billNumber={billDetail.bill_number}
+                balance={billDetail.balance}
+                disabled={isPaid}
+                onPaymentRecorded={handlePaymentRecorded}
+                onPayChanguInitiated={handlePayChanguInitiated}
+                onPayChanguCompleted={handlePayChanguCompleted}
+              />
+            </>
+          ) : (
+            <BillPicker
+              bills={bills}
+              selectedId={selectedBillId}
+              loading={billsLoading}
+              onSelect={(id) => void selectBill(id)}
+            />
+          )}
+        </>
+      )}
+
+      {(receiptLoading || receipt) && selectedPatient && (
+        <section>
+          {receiptLoading ? (
+            <div className="bg-card rounded-lg border p-6">
+              <Skeleton className="h-32 w-full" />
+            </div>
+          ) : receipt ? (
+            <Receipt receipt={receipt} highlightPaymentId={highlightPaymentId} onDone={handleDone} />
+          ) : null}
+        </section>
+      )}
     </div>
   );
 }

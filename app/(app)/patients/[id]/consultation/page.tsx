@@ -3,9 +3,12 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/store/RoleContext";
+import { useRealtime } from "@/store/RealtimeContext";
+import { useLabResultBus } from "@/store/LabResultBus";
 import { usePermissions } from "@/lib/hooks/usePermissions";
 import { api } from "@/lib/api";
 import type { Patient, Allergy } from "@/types/patient";
+import type { LabResult } from "@/types/lab";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import StatusBadge from "@/components/ui/StatusBadge";
@@ -15,7 +18,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
 import BillingConfirmation from "@/components/billing/BillingConfirmation";
-import { parseBilling, type BillingSummary } from "@/types/billing";
+import LabResultsPanel from "@/components/consultation/LabResultsPanel";
+import type { BillingSummary } from "@/types/billing";
 import { cn } from "@/lib/utils";
 import { getTemplatesByCategory } from "@/lib/clinical-templates";
 import {
@@ -70,19 +74,6 @@ interface Diagnosis {
   diagnosed_at: string;
 }
 
-interface LabResult {
-  id: number;
-  result_value_text: string | null;
-  result_value_numeric: number | null;
-  unit: string | null;
-  reference_range: string | null;
-  is_abnormal: boolean;
-  is_critical: boolean;
-  status: string;
-  verified_at: string | null;
-  released_at: string | null;
-}
-
 interface LabRequest {
   id: number;
   test_name: string;
@@ -90,7 +81,7 @@ interface LabRequest {
   status: string;
   specimen_collected_at: string | null;
   is_critical: boolean;
-  results: LabResult[];
+  results?: LabResult[];
 }
 
 interface Order {
@@ -104,7 +95,7 @@ interface Order {
   priority: string;
   status: string;
   ordered_at: string;
-  labRequests?: LabRequest[];
+  lab_requests?: LabRequest[];
 }
 
 interface Prescription {
@@ -151,7 +142,7 @@ interface BillLine {
   total: number;
 }
 
-type SubTab = "subjective" | "objective" | "assessment" | "plan" | "orders" | "prescriptions" | "timeline" | "billing";
+type SubTab = "subjective" | "objective" | "assessment" | "plan" | "orders" | "results" | "prescriptions" | "timeline" | "billing";
 
 const subTabs: { key: SubTab; label: string; icon: React.ReactNode }[] = [
   { key: "subjective", label: "Subjective (S)", icon: <ClipboardPen className="h-4 w-4" /> },
@@ -159,6 +150,7 @@ const subTabs: { key: SubTab; label: string; icon: React.ReactNode }[] = [
   { key: "assessment", label: "Assessment (A)", icon: <ClipboardList className="h-4 w-4" /> },
   { key: "plan", label: "Plan (P)", icon: <ClipboardPen className="h-4 w-4" /> },
   { key: "orders", label: "Orders", icon: <FlaskConical className="h-4 w-4" /> },
+  { key: "results", label: "Results", icon: <FlaskConical className="h-4 w-4" /> },
   { key: "prescriptions", label: "Rx", icon: <Pill className="h-4 w-4" /> },
   { key: "timeline", label: "Case Timeline", icon: <History className="h-4 w-4" /> },
   { key: "billing", label: "Billing", icon: <Receipt className="h-4 w-4" /> },
@@ -217,6 +209,8 @@ export default function ClinicianSOAPConsultation() {
   const params = useParams();
   const router = useRouter();
   const { token } = useAuth();
+  const { subscribe } = useRealtime();
+  const { openResult } = useLabResultBus();
   const { can } = usePermissions();
   const patientId = params.id as string;
 
@@ -242,6 +236,7 @@ export default function ClinicianSOAPConsultation() {
   const [certainty, setCertainty] = useState("confirmed");
 
   const [orders, setOrders] = useState<Order[]>([]);
+  const [resultsRefreshKey, setResultsRefreshKey] = useState(0);
   const [orderForm, setOrderForm] = useState({ test_name: "", clinical_indication: "", priority: "routine" });
 
   const [prescriptions, setPrescriptions] = useState<Prescription[]>([]);
@@ -265,6 +260,8 @@ export default function ClinicianSOAPConsultation() {
   const [criticalAlerts, setCriticalAlerts] = useState<CriticalAlert[]>([]);
 
   const [dispositionOpen, setDispositionOpen] = useState(false);
+  const [billingSummary, setBillingSummary] = useState<BillingSummary | null>(null);
+  const [pendingNav, setPendingNav] = useState<string | null>(null);
   const [handoverOpen, setHandoverOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"discharge" | "admit" | "refer" | "observe" | "deceased">("discharge");
 
@@ -272,7 +269,17 @@ export default function ClinicianSOAPConsultation() {
   const [billLoading, setBillLoading] = useState(false);
   const [serviceQuery, setServiceQuery] = useState("");
   const [serviceResults, setServiceResults] = useState<BillingServiceItem[]>([]);
+  const [allServices, setAllServices] = useState<BillingServiceItem[]>([]);
+  const [serviceCategory, setServiceCategory] = useState<string>("all");
   const [addingBillItem, setAddingBillItem] = useState(false);
+
+  const SERVICE_CATEGORIES: Array<[string, string]> = [
+    ["all", "All"],
+    ["Consultation", "Consultation"],
+    ["Lab", "Lab"],
+    ["Pharmacy", "Pharmacy"],
+    ["Misc", "Misc"],
+  ];
 
   async function fetchConsultationData() {
     try {
@@ -332,6 +339,20 @@ export default function ClinicianSOAPConsultation() {
         if (alertsRes?.data) {
           setCriticalAlerts(Array.isArray(alertsRes.data) ? alertsRes.data : []);
         }
+      } else {
+        try {
+          const ordersRes = await api.get(`/orders?patient_id=${patientId}`, token);
+          if (ordersRes?.data) {
+            setOrders(Array.isArray(ordersRes.data) ? ordersRes.data : ordersRes.data.data || []);
+          }
+        } catch { setOrders([]); }
+
+        try {
+          const rxRes = await api.get(`/prescriptions?patient_id=${patientId}`, token);
+          if (rxRes?.data) {
+            setPrescriptions(Array.isArray(rxRes.data) ? rxRes.data : rxRes.data.data || []);
+          }
+        } catch { setPrescriptions([]); }
       }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to load consultation data.");
@@ -343,6 +364,20 @@ export default function ClinicianSOAPConsultation() {
   useEffect(() => {
     if (token && patientId) fetchConsultationData(); // eslint-disable-line react-hooks/set-state-in-effect
   }, [token, patientId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (!token) return;
+    const off = subscribe("clinops_lab_results", (raw: unknown) => {
+      const ev = raw as { encounter_id?: number; patient_id?: number; lab_result_id?: number };
+      if (typeof ev?.lab_result_id !== "number") return;
+      if (ev.encounter_id !== undefined && ev.encounter_id !== summary?.encounter?.id) return;
+      if (ev.encounter_id === undefined && ev.patient_id !== undefined && ev.patient_id !== Number(patientId)) return;
+      setResultsRefreshKey((k) => k + 1);
+      void fetchConsultationData();
+    });
+    return off;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [subscribe, token, summary?.encounter?.id]);
 
   useEffect(() => {
     const delayDebounceFn = setTimeout(async () => {
@@ -393,6 +428,7 @@ export default function ClinicianSOAPConsultation() {
   useEffect(() => {
     if (activeSubTab === "billing" && token && summary?.encounter?.id) {
       void loadBill();
+      void loadAllServices();
     }
     if (activeSubTab === "objective" && token && patientId) {
       api.get(`/patients/${patientId}/vital-signs/trends?days=7`, token)
@@ -593,12 +629,40 @@ export default function ClinicianSOAPConsultation() {
       setServiceResults([]);
       return;
     }
+    const categoryParam = serviceCategory !== "all" ? `&category=${encodeURIComponent(serviceCategory)}` : "";
     try {
-      const res = await api.get(`/services?search=${encodeURIComponent(query)}&category=`, token);
+      const res = await api.get(`/services?search=${encodeURIComponent(query)}${categoryParam}`, token);
       setServiceResults(res?.data ?? []);
     } catch {
       setServiceResults([]);
     }
+  }
+
+  async function loadAllServices() {
+    if (allServices.length > 0) return;
+    try {
+      const res = await api.get("/services", token);
+      const data = res?.data ?? [];
+      const services = Array.isArray(data) ? data : data.data || [];
+      setAllServices(services);
+    } catch {
+      setAllServices([]);
+    }
+  }
+
+  function getFilteredServices(): BillingServiceItem[] {
+    let services = allServices;
+    if (serviceCategory !== "all") {
+      services = services.filter((s) => s.category === serviceCategory);
+    }
+    if (serviceQuery.length >= 2) {
+      services = services.filter(
+        (s) =>
+          s.name?.toLowerCase().includes(serviceQuery.toLowerCase()) ||
+          s.category?.toLowerCase().includes(serviceQuery.toLowerCase())
+      );
+    }
+    return services;
   }
 
   async function addServiceToBill(service: BillingServiceItem) {
@@ -715,6 +779,12 @@ export default function ClinicianSOAPConsultation() {
       setCriticalAlerts((prev) => prev.filter((a) => a.id !== alertId));
     } catch {}
   }
+
+  const pendingLabCount = orders.filter(
+    (o) =>
+      o.order_type?.toLowerCase() === "lab" &&
+      !["completed", "cancelled"].includes(o.status?.toLowerCase() ?? "")
+  ).length;
 
   const sidebarNav = (
     <nav className="flex flex-col gap-1">
@@ -1180,45 +1250,79 @@ export default function ClinicianSOAPConsultation() {
                       {orders.length > 0 ? (
                         <div className="divide-y divide-border rounded-lg border bg-card overflow-hidden">
                           {orders.map((order) => {
-                            const labReqs = order.labRequests ?? [];
-                            const hasResults = labReqs.some((lr) => lr.results.length > 0);
+                            const labReqs = order.lab_requests ?? [];
+                            const hasResults = labReqs.some((lr) => (lr.results?.length ?? 0) > 0);
                             return (
                               <div key={order.id} className="px-4 py-3">
-                                <div className="flex items-center justify-between">
+                                <div className="flex items-center justify-between gap-3">
                                   <div className="min-w-0">
-                                    <span className="font-medium text-sm">{order.test_name || order.order_type}</span>
-                                    {order.clinical_indication && (
-                                      <span className="ml-2 text-xs text-muted-foreground">— {order.clinical_indication}</span>
+                                    <span className="font-medium text-sm capitalize">{order.order_type}</span>
+                                    {order.ordered_at && (
+                                      <span className="ml-2 text-xs text-muted-foreground">
+                                        {new Date(order.ordered_at).toLocaleString(undefined, {
+                                          dateStyle: "medium",
+                                          timeStyle: "short",
+                                        })}
+                                      </span>
                                     )}
                                     {order.priority && order.priority.toLowerCase() !== "routine" && (
                                       <Badge variant={order.priority.toLowerCase() === "stat" ? "destructive" : "secondary"} className="ml-2 text-[10px]">{order.priority}</Badge>
                                     )}
-                                  </div>
-                                  <StatusBadge
-                                    label={order.status}
-                                    variant={order.status?.toLowerCase() === "completed" ? "success" : "warning"}
-                                    size="sm"
-                                  />
-                                </div>
-                                {hasResults && (
-                                  <div className="mt-2 ml-4 space-y-1.5">
-                                    {labReqs.map((lr) =>
-                                      lr.results.map((result) => (
-                                        <div key={result.id} className="flex items-center gap-2 text-xs">
-                                          <span className="font-medium text-foreground">{lr.test_name}:</span>
-                                          <span className={`font-mono ${result.is_abnormal ? "text-amber-600 font-bold" : "text-muted-foreground"}`}>
-                                            {result.result_value_numeric ?? result.result_value_text}
-                                            {result.unit ? ` ${result.unit}` : ""}
-                                          </span>
-                                          {result.reference_range && (
-                                            <span className="text-muted-foreground">(ref: {result.reference_range})</span>
-                                          )}
-                                          {result.is_critical && <Badge variant="destructive" className="text-[9px] px-1 py-0">CRITICAL</Badge>}
-                                          {result.is_abnormal && !result.is_critical && <Badge variant="secondary" className="text-[9px] px-1 py-0 bg-amber-100 text-amber-800">Abnormal</Badge>}
-                                          <Badge variant="outline" className="text-[9px] px-1 py-0">{result.status}</Badge>
-                                        </div>
-                                      ))
+                                    {order.clinical_indication && (
+                                      <p className="text-xs text-muted-foreground mt-0.5">{order.clinical_indication}</p>
                                     )}
+                                  </div>
+                                  <div className="flex items-center gap-2 shrink-0">
+                                    <StatusBadge
+                                      label={order.status}
+                                      variant={order.status?.toLowerCase() === "completed" ? "success" : "warning"}
+                                      size="sm"
+                                    />
+                                    {hasResults && (
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => {
+                                          const result = labReqs.flatMap((lr) => lr.results ?? [])[0];
+                                          if (result) openResult(result.id);
+                                        }}
+                                      >
+                                        View Result
+                                      </Button>
+                                    )}
+                                  </div>
+                                </div>
+                                {labReqs.length > 0 && (
+                                  <div className="mt-2 space-y-1">
+                                    {labReqs.map((lr) => (
+                                      <div key={lr.id}>
+                                        <div className="flex items-center justify-between text-xs">
+                                          <span className="font-medium text-sm text-foreground/90">
+                                            {lr.test_name || "Untitled test"}
+                                          </span>
+                                          <span className="text-muted-foreground capitalize">{lr.status}</span>
+                                        </div>
+                                        {lr.results && lr.results.length > 0 && (
+                                          <div className="ml-4 mt-0.5 space-y-1">
+                                            {lr.results.map((result) => (
+                                              <div key={result.id} className="flex items-center gap-2 text-xs flex-wrap">
+                                                <span className="font-medium text-foreground">{lr.test_name}:</span>
+                                                <span className={`font-mono ${result.is_abnormal ? "text-amber-600 font-bold" : "text-muted-foreground"}`}>
+                                                  {result.result_value_numeric ?? result.result_value_text}
+                                                  {result.unit ? ` ${result.unit}` : ""}
+                                                </span>
+                                                {result.reference_range && (
+                                                  <span className="text-muted-foreground">(ref: {result.reference_range})</span>
+                                                )}
+                                                {result.is_critical && <Badge variant="destructive" className="text-[9px] px-1 py-0">CRITICAL</Badge>}
+                                                {result.is_abnormal && !result.is_critical && <Badge variant="secondary" className="text-[9px] px-1 py-0 bg-amber-100 text-amber-800">Abnormal</Badge>}
+                                                <Badge variant="outline" className="text-[9px] px-1 py-0">{result.status}</Badge>
+                                              </div>
+                                            ))}
+                                          </div>
+                                        )}
+                                      </div>
+                                    ))}
                                   </div>
                                 )}
                               </div>
@@ -1279,6 +1383,15 @@ export default function ClinicianSOAPConsultation() {
                       </div>
                     </form>
                   </div>
+                )}
+
+                {activeSubTab === "results" && (
+                  <LabResultsPanel
+                    encounterId={activeEncounterId ?? null}
+                    token={token}
+                    pendingCount={pendingLabCount}
+                    refreshSignal={resultsRefreshKey}
+                  />
                 )}
 
                 {activeSubTab === "prescriptions" && (
@@ -1530,17 +1643,45 @@ export default function ClinicianSOAPConsultation() {
                         <CardHeader>
                           <CardTitle>Add billable service</CardTitle>
                         </CardHeader>
-                        <CardContent className="space-y-3">
+                        <CardContent className="space-y-4">
                           <div className="relative">
                             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                             <Input
                               className="pl-9"
-                              placeholder="Search services by name or code..."
+                              placeholder="Search services..."
                               value={serviceQuery}
                               onChange={(e) => void searchServices(e.target.value)}
                             />
                           </div>
-                          {serviceResults.length > 0 && (
+
+                          <section
+                            role="tablist"
+                            aria-label="Service category filter"
+                            className="flex w-full items-center gap-1 overflow-x-auto rounded-lg bg-muted p-1"
+                          >
+                            {SERVICE_CATEGORIES.map(([key, label]) => (
+                              <button
+                                key={key}
+                                role="tab"
+                                aria-selected={serviceCategory === key}
+                                onClick={() => {
+                                  setServiceCategory(key);
+                                  setServiceQuery("");
+                                  setServiceResults([]);
+                                }}
+                                className={cn(
+                                  "flex-shrink-0 rounded-md px-3 py-1.5 text-xs font-semibold whitespace-nowrap transition-all",
+                                  serviceCategory === key
+                                    ? "bg-background text-foreground shadow-sm"
+                                    : "text-muted-foreground hover:text-foreground"
+                                )}
+                              >
+                                {label}
+                              </button>
+                            ))}
+                          </section>
+
+                          {serviceResults.length > 0 ? (
                             <ul className="max-h-56 divide-y divide-border overflow-y-auto rounded-md border border-border">
                               {serviceResults.map((s) => (
                                 <li key={s.id} className="flex items-center justify-between px-3 py-2 text-sm">
@@ -1562,6 +1703,33 @@ export default function ClinicianSOAPConsultation() {
                                 </li>
                               ))}
                             </ul>
+                          ) : (
+                            <div className="max-h-64 overflow-y-auto space-y-1">
+                              {getFilteredServices().map((s) => (
+                                <div
+                                  key={s.id}
+                                  className="flex items-center justify-between px-3 py-2 rounded-lg border border-border hover:bg-muted/50 cursor-pointer"
+                                  onClick={() => void addServiceToBill(s)}
+                                >
+                                  <div className="flex-1">
+                                    <p className="font-medium text-sm">{s.name}</p>
+                                    <p className="text-xs text-muted-foreground">
+                                      {s.category || "—"} · MK {Number(s.unit_price).toLocaleString()}
+                                    </p>
+                                  </div>
+                                  {addingBillItem ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                  ) : (
+                                    <Plus className="h-4 w-4 text-muted-foreground" />
+                                  )}
+                                </div>
+                              ))}
+                              {getFilteredServices().length === 0 && (
+                                <p className="text-sm text-muted-foreground text-center py-4">
+                                  No services found.
+                                </p>
+                              )}
+                            </div>
                           )}
                         </CardContent>
                       </Card>
@@ -1654,9 +1822,25 @@ export default function ClinicianSOAPConsultation() {
         patientId={patientId}
         patientName={patient ? `${patient.first_name} ${patient.last_name}` : ""}
         onDisposed={() => { fetchConsultationData(); }}
+        onBilling={(billing) => {
+          setBillingSummary(billing);
+          setPendingNav(`/patients/${patientId}`);
+        }}
         activeTab={activeTab}
         onTabChange={setActiveTab}
       />
+
+      {billingSummary && (
+        <BillingConfirmation
+          billing={billingSummary}
+          onDone={() => {
+            const to = pendingNav;
+            setBillingSummary(null);
+            setPendingNav(null);
+            if (to) router.push(to);
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -44,6 +44,10 @@ interface CheckedInAppointment {
     hospital_number: string;
   };
   encounter_id?: number;
+  encounter?: {
+    id: number;
+    status: string;
+  };
   scheduled_for: string;
   reason: string | null;
   appointment_type: string;
@@ -155,6 +159,9 @@ export default function TriageQueuePage() {
 
     if (appointmentsRaw) {
       for (const ap of appointmentsRaw) {
+        if (ap.encounter && !["awaiting_triage", "being_triaged"].includes(ap.encounter.status)) {
+          continue;
+        }
         const waitMinutes = Math.round((now - new Date(ap.scheduled_for).getTime()) / 60000);
         result.push({
           id: `appt-${ap.id}`,

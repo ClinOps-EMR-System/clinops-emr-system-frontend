@@ -13,6 +13,41 @@ import type {
   Ward,
 } from "@/types/admin";
 
+export interface PayChanguOperator {
+  id: number;
+  name: string;
+  ref_id: string;
+  short_code: string;
+}
+
+export interface PayChanguChargeBody {
+  mobile: string;
+  operator_ref_id: string;
+  amount: number;
+  email?: string;
+  first_name?: string;
+  last_name?: string;
+}
+
+export interface PayChanguChargeResult {
+  charge_id: string;
+  trans_id: string;
+  status: string;
+  currency: string;
+  amount: number;
+  mobile: string;
+  operator: string;
+  payment_id: number;
+}
+
+export interface PayChanguVerifyResult {
+  status: string;
+  amount: number | null;
+  completed_at: string | null;
+  operator: string | null;
+  currency: string;
+}
+
 function unwrap<T>(res: unknown): T {
   if (res && typeof res === "object" && "data" in res) {
     return (res as { data: T }).data;
@@ -225,5 +260,28 @@ export const adminApi = {
       "/admin/reports/audit-summary",
       token,
       "audit-summary.csv",
+    ),
+
+  getPayChanguOperators: async (token: string | null) =>
+    unwrap<{ operators: PayChanguOperator[] }>(
+      await api.get("/paychangu/operators", token),
+    ),
+
+  initializePayChanguPayment: async (
+    token: string | null,
+    billId: number | string,
+    body: PayChanguChargeBody,
+  ) =>
+    unwrap<PayChanguChargeResult>(
+      await api.post(`/bills/${billId}/pay/charge`, body, token),
+    ),
+
+  verifyPayChanguPayment: async (
+    token: string | null,
+    billId: number | string,
+    chargeId: string,
+  ) =>
+    unwrap<PayChanguVerifyResult>(
+      await api.get(`/bills/${billId}/pay/${chargeId}/status`, token),
     ),
 };

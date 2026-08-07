@@ -7,6 +7,7 @@ import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Loader2, X, LogOut, DoorOpen, Stethoscope, HeartPulse, Skull } from "lucide-react";
+import { parseBilling, type BillingSummary } from "@/types/billing";
 import { cn } from "@/lib/utils";
 
 interface Ward {
@@ -42,9 +43,10 @@ interface DispositionModalProps {
   onDisposed: () => void;
   activeTab: DispositionTab;
   onTabChange: (tab: DispositionTab) => void;
+  onBilling?: (billing: BillingSummary) => void;
 }
 
-export default function DispositionModal({ open, onClose, encounterId, patientId, patientName, onDisposed, activeTab, onTabChange }: DispositionModalProps) {
+export default function DispositionModal({ open, onClose, encounterId, patientId, patientName, onDisposed, activeTab, onTabChange, onBilling }: DispositionModalProps) {
   const { token } = useAuth();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
@@ -140,10 +142,15 @@ export default function DispositionModal({ open, onClose, encounterId, patientId
           break;
       }
 
-      await api.post(`/encounters/${encounterId}/dispose`, payload, token);
+      const res = await api.post(`/encounters/${encounterId}/dispose`, payload, token);
+      const billing = parseBilling(res);
       onDisposed();
       handleClose();
-      router.push(`/patients/${patientId}`);
+      if (billing && onBilling) {
+        onBilling(billing);
+      } else {
+        router.push(`/patients/${patientId}`);
+      }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to complete disposition.");
     } finally {

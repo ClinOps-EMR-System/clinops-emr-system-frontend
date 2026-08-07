@@ -78,4 +78,8 @@ export const admissionsApi = {
   markNotificationRead(id: number, token?: string | null): Promise<NotificationData> {
     return api.put(`/notifications/${id}`, { read: true, read_at: new Date().toISOString() }, getToken(token)).then((res) => res.data);
   },
+
+  markAllNotificationsRead(token?: string | null): Promise<{ updated: number }> {
+    return api.put(`/notifications/read-all`, {}, getToken(token)).then((res) => res.data ?? { updated: 0 });
+  },
 };

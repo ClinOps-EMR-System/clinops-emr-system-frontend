@@ -11,6 +11,10 @@ export interface BillingSummary {
   items_added: BillingLine[];
   running_total: string;
   payment_status: string;
+  payment?: {
+    amount_paid: number;
+    payment_method: string;
+  };
 }
 
 export function parseBilling(payload: unknown): BillingSummary | null {
@@ -49,11 +53,19 @@ export function parseBilling(payload: unknown): BillingSummary | null {
     items.push(item as BillingLine);
   }
 
+  const payment = b.payment && typeof b.payment === "object"
+    ? {
+        amount_paid: Number((b.payment as Record<string, unknown>).amount_paid) || 0,
+        payment_method: String((b.payment as Record<string, unknown>).payment_method || ""),
+      }
+    : undefined;
+
   return {
     bill_id: b.bill_id,
     bill_number: b.bill_number,
     items_added: items,
     running_total: b.running_total,
     payment_status: b.payment_status,
+    payment,
   };
 }
