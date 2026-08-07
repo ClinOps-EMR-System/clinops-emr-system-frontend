@@ -15,6 +15,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
 import BillingConfirmation from "@/components/billing/BillingConfirmation";
+import LabResultsPanel from "@/components/consultation/LabResultsPanel";
 import { parseBilling, type BillingSummary } from "@/types/billing";
 import { cn } from "@/lib/utils";
 import {
@@ -118,7 +119,7 @@ interface BillLine {
   total: number;
 }
 
-type SubTab = "subjective" | "objective" | "assessment" | "plan" | "orders" | "prescriptions" | "timeline" | "billing";
+type SubTab = "subjective" | "objective" | "assessment" | "plan" | "orders" | "results" | "prescriptions" | "timeline" | "billing";
 
 const subTabs: { key: SubTab; label: string; icon: React.ReactNode }[] = [
   { key: "subjective", label: "Subjective (S)", icon: <ClipboardPen className="h-4 w-4" /> },
@@ -126,6 +127,7 @@ const subTabs: { key: SubTab; label: string; icon: React.ReactNode }[] = [
   { key: "assessment", label: "Assessment (A)", icon: <ClipboardList className="h-4 w-4" /> },
   { key: "plan", label: "Plan (P)", icon: <ClipboardPen className="h-4 w-4" /> },
   { key: "orders", label: "Orders", icon: <FlaskConical className="h-4 w-4" /> },
+  { key: "results", label: "Results", icon: <FlaskConical className="h-4 w-4" /> },
   { key: "prescriptions", label: "Rx", icon: <Pill className="h-4 w-4" /> },
   { key: "timeline", label: "Case Timeline", icon: <History className="h-4 w-4" /> },
   { key: "billing", label: "Billing", icon: <Receipt className="h-4 w-4" /> },
@@ -614,6 +616,12 @@ export default function ClinicianSOAPConsultation() {
 
   const activeEncounterId = summary?.encounter?.id;
 
+  const pendingLabCount = orders.filter(
+    (o) =>
+      o.order_type?.toLowerCase() === "lab" &&
+      !["completed", "cancelled"].includes(o.status?.toLowerCase() ?? "")
+  ).length;
+
   const sidebarNav = (
     <nav className="flex flex-col gap-1">
       {subTabs.map((tab) => {
@@ -1043,6 +1051,14 @@ export default function ClinicianSOAPConsultation() {
                       </div>
                     </form>
                   </div>
+                )}
+
+                {activeSubTab === "results" && (
+                  <LabResultsPanel
+                    encounterId={activeEncounterId ?? null}
+                    token={token}
+                    pendingCount={pendingLabCount}
+                  />
                 )}
 
                 {activeSubTab === "prescriptions" && (
