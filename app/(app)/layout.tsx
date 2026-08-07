@@ -2,6 +2,7 @@
 
 import React from "react";
 import Topbar from "../../components/layout/Topbar";
+import Breadcrumbs from "../../components/ui/Breadcrumbs";
 import { useAuth } from "../../store/RoleContext";
 import { ToastProvider } from "../../components/ui/Toast";
 import { SidebarProvider } from "../../components/ui/sidebar";
@@ -38,6 +39,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             tabIndex={-1}
             className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 bg-white text-clinical-text focus:outline-none"
           >
+            <Breadcrumbs />
             {children}
           </main>
         </div>

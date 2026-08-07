@@ -5,14 +5,14 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import Logo from "@/assets/logo/logo";
 import { NavItem, NavMain } from "@/components/shadcn-space/blocks/sidebar-01/nav-main";
 import { useAuth } from "@/store/RoleContext";
-import { LayoutDashboard, Calendar, Users, Stethoscope, ClipboardList, Pill, FlaskConical, DollarSign, CreditCard, ArrowRightLeft, DoorOpen, List, Shield, Package, Bell } from "lucide-react";
+import { LayoutDashboard, Calendar, Users, Stethoscope, ClipboardList, Pill, FlaskConical, DollarSign, CreditCard, ArrowRightLeft, DoorOpen, List, Shield, Package, Bell, HeartPulse } from "lucide-react";
 import { usePermissions } from "@/lib/hooks/usePermissions";
 
 const ROLE_NAV_MAP: Record<string, string[]> = {
   receptionist: ["receptionist", "appointments", "queue", "patients"],
-  nurse: ["nurse-station", "triage-queue", "consultation-queue", "patients", "admissions"],
-  doctor: ["patients", "triage-queue", "consultation-queue", "lab", "referrals", "admissions"],
-  "clinical officer": ["patients", "triage-queue", "consultation-queue", "lab", "referrals", "admissions"],
+  nurse: ["nurse-station", "triage-queue", "consultation-queue", "patients", "admissions", "resuscitation"],
+  doctor: ["patients", "triage-queue", "consultation-queue", "lab", "referrals", "admissions", "resuscitation"],
+  "clinical officer": ["patients", "triage-queue", "consultation-queue", "lab", "referrals", "admissions", "resuscitation"],
   pharmacist: ["pharmacy"],
   "lab technician": ["lab"],
   "billing officer": ["billing", "patients"],
@@ -26,6 +26,7 @@ const ALL_NAV_ITEMS: NavItem[] = [
   { title: "Patient Search", icon: Users, href: "/patients" },
 
   { label: "Clinical", isSection: true },
+  { title: "Resuscitation", icon: HeartPulse, href: "/resuscitation" },
   { title: "Nurse Station", icon: Stethoscope, href: "/nurse-station" },
   { title: "Triage Queue", icon: List, href: "/triage-queue" },
   { title: "Consultation Queue", icon: ClipboardList, href: "/consultation-queue" },
