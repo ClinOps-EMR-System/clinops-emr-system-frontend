@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Search, X, Stethoscope, Users } from "lucide-react";
@@ -31,12 +31,18 @@ interface QueueEntry {
   id: number;
   patient_id: number;
   encounter_id: number;
+  assigned_to: number | null;
   priority: number;
   position: number;
   patient: {
     hospital_number: string;
     full_name: string;
   };
+  assigned_to_user: {
+    id: number;
+    name: string;
+    email: string;
+  } | null;
   entered_queue_at: string;
   encounter_status: string;
   chief_complaint: string;
@@ -123,6 +129,32 @@ export default function ConsultationQueuePage() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [priorityFilter, setPriorityFilter] = useState<PriorityFilter>("all");
   const [startingId, setStartingId] = useState<number | null>(null);
+  const [clinicians, setClinicians] = useState<{ id: number; name: string }[]>([]);
+  const [assigningId, setAssigningId] = useState<number | null>(null);
+
+  const fetchClinicians = useCallback(async () => {
+    if (!token) return;
+    try {
+      const res = await api.get("/users?per_page=100", token);
+      const data = res.data?.data?.data ?? res.data?.data ?? [];
+      const filtered = Array.isArray(data)
+        ? data.filter((u: { roles?: { name: string }[] }) =>
+            u.roles?.some((r: { name: string }) =>
+              ["Doctor", "Clinical Officer"].includes(r.name)
+            )
+          )
+        : [];
+      setClinicians(filtered.map((u: { id: number; name: string }) => ({ id: u.id, name: u.name })));
+    } catch {
+      // silent
+    }
+  }, [token]);
+
+  /* eslint-disable react-hooks/set-state-in-effect */
+  useEffect(() => {
+    void fetchClinicians();
+  }, [fetchClinicians]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const entries = useMemo(() => queueRaw?.entries || [], [queueRaw]);
   const hasFilters = search !== "" || statusFilter !== "all" || priorityFilter !== "all";
@@ -173,6 +205,22 @@ export default function ConsultationQueuePage() {
       router.push(`/patients/${entry.patient_id}`);
     } catch {
       setStartingId(null);
+    }
+  };
+
+  const handleAssign = async (entryId: number, clinicianId: string) => {
+    if (!token) return;
+    setAssigningId(entryId);
+    try {
+      if (clinicianId) {
+        await api.post(`/queue/${entryId}/assign`, { assigned_to: Number(clinicianId) }, token);
+      } else {
+        await api.delete(`/queue/${entryId}/assign`, token);
+      }
+    } catch {
+      // silent
+    } finally {
+      setAssigningId(null);
     }
   };
 
@@ -245,6 +293,7 @@ export default function ConsultationQueuePage() {
                     <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Patient</TableHead>
                     <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Status</TableHead>
                     <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Priority</TableHead>
+                    <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Assigned To</TableHead>
                     <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Chief Complaint</TableHead>
                     <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Wait Time</TableHead>
                     <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Action</TableHead>
@@ -259,6 +308,7 @@ export default function ConsultationQueuePage() {
                       </TableCell>
                       <TableCell><Skeleton className="h-5 w-24 rounded-full" /></TableCell>
                       <TableCell><Skeleton className="h-5 w-20 rounded-full" /></TableCell>
+                      <TableCell><Skeleton className="h-4 w-24" /></TableCell>
                       <TableCell><Skeleton className="h-4 w-40" /></TableCell>
                       <TableCell><Skeleton className="h-4 w-12" /></TableCell>
                       <TableCell><Skeleton className="h-8 w-28 rounded-md" /></TableCell>
@@ -291,6 +341,7 @@ export default function ConsultationQueuePage() {
                     <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Patient</TableHead>
                     <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Status</TableHead>
                     <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Priority</TableHead>
+                    <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Assigned To</TableHead>
                     <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Chief Complaint</TableHead>
                     <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Wait Time</TableHead>
                     <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Action</TableHead>
@@ -330,6 +381,21 @@ export default function ConsultationQueuePage() {
                             variant={priorityBadge.variant}
                             pulse={priorityBadge.pulse}
                           />
+                        </TableCell>
+                        <TableCell>
+                          <select
+                            className="h-8 rounded-md border border-input bg-white px-2 text-xs"
+                            value={entry.assigned_to ?? ""}
+                            onChange={(e) => void handleAssign(entry.id, e.target.value)}
+                            disabled={assigningId === entry.id}
+                          >
+                            <option value="">Unassigned</option>
+                            {clinicians.map((c) => (
+                              <option key={c.id} value={c.id}>
+                                {c.name}
+                              </option>
+                            ))}
+                          </select>
                         </TableCell>
                         <TableCell className="text-muted-foreground max-w-[200px] truncate">
                           {entry.chief_complaint || "\u2014"}

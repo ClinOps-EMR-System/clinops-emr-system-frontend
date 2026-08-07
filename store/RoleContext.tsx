@@ -30,6 +30,16 @@ export interface User {
     id: number;
     name: string;
   };
+  cadre?: {
+    id: number;
+    name: string;
+    code?: string;
+  } | null;
+  rank?: {
+    id: number;
+    name: string;
+    grade?: number;
+  } | null;
   roles?: string[];
   permissions?: string[];
 }

@@ -123,6 +123,7 @@ interface UseNotificationsOptions {
 
 interface UseNotificationsResult {
   notifications: NotificationData[];
+  unreadCount: number;
   loading: boolean;
   error: string | null;
   refetch: () => void;
@@ -136,6 +137,7 @@ export function useNotifications(
 ): UseNotificationsResult {
   const { interval } = options;
   const [notifications, setNotifications] = useState<NotificationData[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -144,7 +146,8 @@ export function useNotifications(
       setLoading(true);
       setError(null);
       const res = await admissionsApi.getNotifications(admissionId);
-      setNotifications(res);
+      setNotifications(res.notifications);
+      setUnreadCount(res.unread_count);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to load notifications");
     } finally {
@@ -158,6 +161,7 @@ export function useNotifications(
       setNotifications((prev) =>
         prev.map((n) => (n.id === id ? { ...n, read: true, read_at: new Date().toISOString() } : n))
       );
+      setUnreadCount((prev) => Math.max(0, prev - 1));
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to mark notification as read");
     }
@@ -169,6 +173,7 @@ export function useNotifications(
       setNotifications((prev) =>
         prev.map((n) => ({ ...n, read: true, read_at: n.read_at ?? new Date().toISOString() }))
       );
+      setUnreadCount(0);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to mark notifications as read");
     }
@@ -186,5 +191,5 @@ export function useNotifications(
     return () => clearInterval(id);
   }, [interval, fetchNotifications]);
 
-  return { notifications, loading, error, refetch: fetchNotifications, markRead, markAllRead };
+  return { notifications, unreadCount, loading, error, refetch: fetchNotifications, markRead, markAllRead };
 }
