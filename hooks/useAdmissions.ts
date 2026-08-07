@@ -146,8 +146,9 @@ export function useNotifications(
       setLoading(true);
       setError(null);
       const res = await admissionsApi.getNotifications(admissionId);
-      setNotifications(res.notifications);
-      setUnreadCount(res.unread_count);
+      const list = Array.isArray(res.notifications) ? res.notifications : [];
+      setNotifications(list);
+      setUnreadCount(typeof res.unread_count === "number" ? res.unread_count : list.filter((n) => !n.read).length);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to load notifications");
     } finally {
