@@ -9,9 +9,8 @@ export interface LabResult {
   is_critical: boolean;
   status: string;
   released_at: string | null;
-  released_by: number | null;
+  released_by: { id: number; name: string } | null;
   lab_request?: { id: number; test_name: string; loinc_code: string | null; status: string };
-  releasedBy?: { id: number; name: string };
 }
 
 export interface LabOrder {

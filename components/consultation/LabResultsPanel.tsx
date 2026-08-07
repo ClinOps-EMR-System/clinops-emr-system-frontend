@@ -29,7 +29,7 @@ function ResultRow({ result }: { result: LabResult }) {
         <p className="text-sm font-semibold">{result.lab_request?.test_name ?? "Lab result"}</p>
         <p className="text-xs text-muted-foreground mt-0.5">
           {result.released_at
-            ? `Released ${formatDistanceToNow(new Date(result.released_at))} ago${result.releasedBy?.name ? ` · by ${result.releasedBy.name}` : ""}`
+            ? `Released ${formatDistanceToNow(new Date(result.released_at))} ago${result.released_by?.name ? ` · by ${result.released_by.name}` : ""}`
             : "Released"}
         </p>
       </div>

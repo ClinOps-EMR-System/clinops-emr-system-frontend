@@ -30,9 +30,8 @@ const base = {
   is_critical: false,
   status: "released",
   released_at: "2026-08-06T08:38:21.000000Z",
-  released_by: 3,
+  released_by: { id: 3, name: "Dr. Owen Banda" },
   lab_request: { id: 5, test_name: "CBC", loinc_code: "CBC001", status: "Completed" },
-  releasedBy: { id: 3, name: "Dr. Owen Banda" },
 };
 
 describe("LabResultsPanel", () => {
