@@ -10,7 +10,7 @@ export interface LabResult {
   status: string;
   released_at: string | null;
   released_by: { id: number; name: string } | null;
-  lab_request?: { id: number; test_name: string; loinc_code: string | null; status: string };
+  lab_request?: { id: number; test_name: string; loinc_code: string | null; status: string; ordered_by?: number | null };
 }
 
 export interface LabOrder {

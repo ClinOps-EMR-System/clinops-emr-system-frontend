@@ -38,7 +38,7 @@ function fallbackResult(ev: LabResultEvent): LabResult {
 
 export function LabResultBusProvider({ children }: { children: React.ReactNode }) {
   const { subscribe } = useRealtime();
-  const { token } = useAuth();
+  const { user, token } = useAuth();
   const toast = useToast();
   const [inbox, setInbox] = useState<LabResult[]>([]);
   const [activeResult, setActiveResult] = useState<LabResult | null>(null);
@@ -53,22 +53,31 @@ export function LabResultBusProvider({ children }: { children: React.ReactNode }
     const off = subscribe("clinops_lab_results", async (raw: unknown) => {
       const ev = raw as LabResultEvent;
       if (!ev || typeof ev.lab_result_id !== "number") return;
+      if (ev.status !== "released") return;
       if (inboxRef.current.some((r) => r.id === ev.lab_result_id)) return;
 
       let result: LabResult;
       try {
         const res = await api.get(`/lab-results/${ev.lab_result_id}`, token);
-        result = res?.data ?? fallbackResult(ev);
+        const fetched = (res?.data?.id ? res.data : res?.id ? res : undefined) as LabResult | undefined;
+        result = fetched ?? fallbackResult(ev);
       } catch {
         result = fallbackResult(ev);
       }
 
       setInbox((prev) => [result, ...prev].slice(0, MAX_INBOX));
-      toast.info(`Lab result received: ${result.lab_request?.test_name ?? `#${result.id}`}`);
+
+      const isOrderingDoctor = user?.id != null && result.lab_request?.ordered_by === user.id;
+      if (!isOrderingDoctor) return;
+
+      const testName = result.lab_request?.test_name ?? `Lab result #${result.id}`;
+      const value = result.result_value_text ?? result.result_value_numeric;
+      const detail = value != null ? ` — ${value}${result.unit ? ` ${result.unit}` : ""}` : "";
+      toast.info(`Lab result ready: ${testName}${detail}`);
     });
     return off;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [subscribe, token]);
+  }, [subscribe, token, user?.id]);
 
   const value = useMemo<LabResultBusValue>(
     () => ({
