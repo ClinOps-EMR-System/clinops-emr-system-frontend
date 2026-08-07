@@ -5,16 +5,17 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import Logo from "@/assets/logo/logo";
 import { NavItem, NavMain } from "@/components/shadcn-space/blocks/sidebar-01/nav-main";
 import { useAuth } from "@/store/RoleContext";
-import { LayoutDashboard, Calendar, Users, Stethoscope, ClipboardList, Pill, FlaskConical, DollarSign, CreditCard, ArrowRightLeft, DoorOpen, List, Shield, HeartPulse } from "lucide-react";
+import { LayoutDashboard, Calendar, Users, Stethoscope, ClipboardList, Pill, FlaskConical, ScanLine, DollarSign, CreditCard, ArrowRightLeft, DoorOpen, List, Shield, HeartPulse } from "lucide-react";
 import { usePermissions } from "@/lib/hooks/usePermissions";
 
 const ROLE_NAV_MAP: Record<string, string[]> = {
   receptionist: ["receptionist", "appointments", "queue", "patients"],
   nurse: ["nurse-station", "triage-queue", "consultation-queue", "patients", "admissions", "resuscitation"],
-  doctor: ["patients", "triage-queue", "consultation-queue", "lab", "referrals", "admissions", "resuscitation"],
-  "clinical officer": ["patients", "triage-queue", "consultation-queue", "lab", "referrals", "admissions", "resuscitation"],
+  doctor: ["patients", "triage-queue", "consultation-queue", "lab", "radiology", "referrals", "admissions", "resuscitation"],
+  "clinical officer": ["patients", "triage-queue", "consultation-queue", "lab", "radiology", "referrals", "admissions", "resuscitation"],
   pharmacist: ["pharmacy"],
   "lab technician": ["lab"],
+  radiographer: ["radiology"],
   "billing officer": ["billing", "patients"],
 };
 
@@ -45,6 +46,7 @@ const ALL_NAV_ITEMS: NavItem[] = [
     ],
   },
   { title: "Laboratory", icon: FlaskConical, href: "/lab" },
+  { title: "Radiology", icon: ScanLine, href: "/radiology" },
 
   { label: "Finance", isSection: true },
   { title: "Billing", icon: DollarSign, href: "/billing" },

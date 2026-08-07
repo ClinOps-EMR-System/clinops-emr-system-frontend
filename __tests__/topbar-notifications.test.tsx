@@ -54,6 +54,13 @@ vi.mock("@/components/ui/sidebar", () => ({
   SidebarTrigger: () => null,
 }));
 
+vi.mock("@/store/RealtimeContext", () => ({
+  useRealtime: () => ({
+    subscribe: () => () => {},
+    status: "offline",
+  }),
+}));
+
 const seededNotifications = [
   {
     id: 1,
