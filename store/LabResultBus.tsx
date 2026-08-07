@@ -83,14 +83,26 @@ export function LabResultBusProvider({ children }: { children: React.ReactNode }
     () => ({
       inbox,
       dismiss: (id) => setInbox((prev) => prev.filter((r) => r.id !== id)),
-      openResult: (id) => {
+      openResult: async (id) => {
         const found = inboxRef.current.find((r) => r.id === id);
-        if (found) setActiveResult(found);
+        if (found) {
+          setActiveResult(found);
+          return;
+        }
+        try {
+          const res = await api.get(`/lab-results/${id}`, token);
+          const fetched = (res?.data?.id ? res.data : res?.id ? res : undefined) as LabResult | undefined;
+          if (!fetched) return;
+          setActiveResult(fetched);
+          setInbox((prev) => [fetched, ...prev.filter((r) => r.id !== fetched.id)].slice(0, MAX_INBOX));
+        } catch {
+          // no-op
+        }
       },
       activeResult,
       clearActive: () => setActiveResult(null),
     }),
-    [inbox, activeResult]
+    [inbox, activeResult, token]
   );
 
   return (
