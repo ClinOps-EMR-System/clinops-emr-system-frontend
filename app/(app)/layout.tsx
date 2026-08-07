@@ -4,6 +4,8 @@ import React from "react";
 import Topbar from "../../components/layout/Topbar";
 import { useAuth } from "../../store/RoleContext";
 import { ToastProvider } from "../../components/ui/Toast";
+import { RealtimeProvider } from "../../store/RealtimeContext";
+import { LabResultBusProvider } from "../../store/LabResultBus";
 import { SidebarProvider } from "../../components/ui/sidebar";
 import { AppSidebar } from "../../components/shadcn-space/blocks/sidebar-01/app-sidebar";
 
@@ -29,19 +31,23 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <ToastProvider>
-      <SidebarProvider>
-        <AppSidebar />
-        <div className="flex flex-1 flex-col min-w-0">
-          <Topbar />
-          <main
-            id="main-content"
-            tabIndex={-1}
-            className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 bg-white text-clinical-text focus:outline-none"
-          >
-            {children}
-          </main>
-        </div>
-      </SidebarProvider>
+      <RealtimeProvider>
+        <LabResultBusProvider>
+          <SidebarProvider>
+            <AppSidebar />
+            <div className="flex flex-1 flex-col min-w-0">
+              <Topbar />
+              <main
+                id="main-content"
+                tabIndex={-1}
+                className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 bg-white text-clinical-text focus:outline-none"
+              >
+                {children}
+              </main>
+            </div>
+          </SidebarProvider>
+        </LabResultBusProvider>
+      </RealtimeProvider>
     </ToastProvider>
   );
 }
