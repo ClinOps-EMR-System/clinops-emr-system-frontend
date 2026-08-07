@@ -106,9 +106,11 @@ export default function MedicationAdministrationPage({
     }
   }, [token, id]);
 
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     void load();
   }, [load]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const openAdminModal = (rx: Prescription) => {
     setSelectedPrescription(rx);

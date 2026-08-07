@@ -5,7 +5,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import Logo from "@/assets/logo/logo";
 import { NavItem, NavMain } from "@/components/shadcn-space/blocks/sidebar-01/nav-main";
 import { useAuth } from "@/store/RoleContext";
-import { LayoutDashboard, Calendar, Users, Stethoscope, ClipboardList, Pill, FlaskConical, DollarSign, CreditCard, ArrowRightLeft, DoorOpen, List, Shield, Package, Bell, HeartPulse } from "lucide-react";
+import { LayoutDashboard, Calendar, Users, Stethoscope, ClipboardList, Pill, FlaskConical, DollarSign, CreditCard, ArrowRightLeft, DoorOpen, List, Shield, HeartPulse } from "lucide-react";
 import { usePermissions } from "@/lib/hooks/usePermissions";
 
 const ROLE_NAV_MAP: Record<string, string[]> = {

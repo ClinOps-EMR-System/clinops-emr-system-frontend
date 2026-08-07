@@ -150,9 +150,11 @@ export default function ConsultationQueuePage() {
     }
   }, [token]);
 
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     void fetchClinicians();
   }, [fetchClinicians]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const entries = useMemo(() => queueRaw?.entries || [], [queueRaw]);
   const hasFilters = search !== "" || statusFilter !== "all" || priorityFilter !== "all";

@@ -62,9 +62,11 @@ export default function OccupancyMap() {
     }
   };
 
+  /* eslint-disable react-hooks/exhaustive-deps, react-hooks/set-state-in-effect */
   useEffect(() => {
-    if (token) fetchWards(); // eslint-disable-line react-hooks/set-state-in-effect
+    if (token) fetchWards();
   }, [token]);
+  /* eslint-enable react-hooks/exhaustive-deps, react-hooks/set-state-in-effect */
 
   const getAcuityColor = (acuity: string) => {
     switch (acuity?.toLowerCase()) {

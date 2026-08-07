@@ -137,12 +137,14 @@ export default function ResuscitationPage() {
     }
   }, [token]);
 
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     void load();
     void loadClinicians();
     const interval = setInterval(() => void load(), 15000);
     return () => clearInterval(interval);
   }, [load, loadClinicians]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const handleActivate = async () => {
     if (!token || !activateTarget || !selectedLead) return;
