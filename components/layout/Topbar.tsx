@@ -1,12 +1,15 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "../../store/RoleContext";
 import { api } from "../../lib/api";
 import { X, Search, Bell, ChevronDown } from "lucide-react";
 import { SidebarTrigger } from "@/components/ui/sidebar";
+import { useNotifications } from "@/hooks/useAdmissions";
+import type { NotificationData } from "@/types/admission";
+import { formatDistanceToNow } from "date-fns";
 
 interface PatientResult {
   id: number;
@@ -19,13 +22,55 @@ interface PatientResult {
   registration_completed_at: string | null;
 }
 
+interface NotificationItem {
+  id: string;
+  type: "order" | "result" | "status";
+  title: string;
+  message: string;
+  patient?: string;
+  priority?: string;
+  timestamp: Date;
+  read: boolean;
+}
+
+function mapNotification(n: NotificationData): NotificationItem {
+  const type: NotificationItem["type"] = n.type.startsWith("order")
+    ? "order"
+    : n.type.includes("result")
+    ? "result"
+    : "status";
+
+  return {
+    id: String(n.id),
+    type,
+    title: n.title,
+    message: n.message,
+    timestamp: new Date(n.created_at),
+    read: Boolean(n.read),
+  };
+}
+
 export default function Topbar() {
   const pathname = usePathname();
   const router = useRouter();
   const { user, logout, token } = useAuth();
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
+  const [dismissedIds, setDismissedIds] = useState<number[]>([]);
   const mobileSearchInputRef = useRef<HTMLInputElement>(null);
+  const notificationsRef = useRef<HTMLDivElement>(null);
+
+  const {
+    notifications: dbNotifications,
+    markRead,
+    markAllRead,
+  } = useNotifications(undefined, { interval: 15000 });
+
+  const notifications = useMemo(
+    () => dbNotifications.filter((n) => !dismissedIds.includes(n.id)).map(mapNotification),
+    [dbNotifications, dismissedIds]
+  );
 
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
@@ -33,6 +78,8 @@ export default function Topbar() {
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const searchRef = React.useRef<HTMLDivElement>(null);
+
+  const unreadCount = notifications.filter((n) => !n.read).length;
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedQuery(query), 300);
@@ -69,6 +116,9 @@ export default function Topbar() {
       if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
         setSearchOpen(false);
       }
+      if (notificationsRef.current && !notificationsRef.current.contains(e.target as Node)) {
+        setNotificationsOpen(false);
+      }
     }
     document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
@@ -84,18 +134,30 @@ export default function Topbar() {
         setSearchOpen(false);
         setQuery("");
         setMobileSearchOpen(false);
+        setNotificationsOpen(false);
       }
     }
     document.addEventListener("keydown", handleKey);
     return () => document.removeEventListener("keydown", handleKey);
   }, []);
 
-  // Auto-focus mobile search input when expanded
   useEffect(() => {
     if (mobileSearchOpen && mobileSearchInputRef.current) {
       mobileSearchInputRef.current.focus();
     }
   }, [mobileSearchOpen]);
+
+  const markAsRead = (id: string) => {
+    markRead(Number(id));
+  };
+
+  const markAllAsRead = () => {
+    markAllRead();
+  };
+
+  const clearAll = () => {
+    setDismissedIds((prev) => [...new Set([...prev, ...dbNotifications.map((n) => n.id)])]);
+  };
 
   const handleResultClick = (patient: PatientResult) => {
     setSearchOpen(false);
@@ -152,7 +214,7 @@ export default function Topbar() {
 
       <SidebarTrigger className="lg:hidden text-sidebar-foreground/70 hover:text-sidebar-foreground p-1.5 rounded-md hover:bg-sidebar-accent transition-colors cursor-pointer" />
 
-      {/* Breadcrumbs — last crumb visible on mobile, full trail on sm+ */}
+      {/* Breadcrumbs */}
       <nav aria-label="Breadcrumb" className="flex items-center shrink-0">
         <ol className="flex items-center gap-1.5 text-[11px] font-bold font-mono tracking-wide">
           <li className="inline-flex items-center">
@@ -163,7 +225,6 @@ export default function Topbar() {
           </li>
           {breadcrumbs.map((crumb, idx) => {
             const isLast = idx === breadcrumbs.length - 1;
-            // On mobile, hide intermediate crumbs (show only last)
             if (!isLast && idx < breadcrumbs.length - 1) {
               return (
                 <li key={idx} className="inline-flex items-center gap-1.5 hidden sm:inline-flex">
@@ -190,9 +251,8 @@ export default function Topbar() {
         </ol>
       </nav>
 
-      {/* Global Patient Search — collapsible on mobile */}
+      {/* Global Patient Search */}
       <div className="flex-1 flex justify-center">
-        {/* Mobile: search icon button, expands to full bar on tap */}
         <div className="lg:hidden flex-1 flex justify-end" ref={searchRef}>
           {mobileSearchOpen ? (
             <div className="relative w-full flex items-center gap-2">
@@ -249,7 +309,6 @@ export default function Topbar() {
               <Search className="h-5 w-5" />
             </button>
           )}
-          {/* Search results dropdown for mobile */}
           {searchOpen && mobileSearchOpen && (
             <div className="absolute top-full left-0 right-0 mt-1.5 bg-white rounded-md shadow-2xl border border-gray-200 z-50 overflow-hidden mx-4">
               {results.length === 0 && !searchLoading ? (
@@ -299,24 +358,23 @@ export default function Topbar() {
           )}
         </div>
 
-        {/* Desktop: full search bar */}
         <div ref={searchRef} className="relative w-full max-w-md hidden lg:block">
           <div className="relative">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               {searchLoading ? (
-                  <svg className="h-4 w-4 text-sidebar-primary animate-spin" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                  </svg>
-                ) : (
-                  <Search className="h-4 w-4 text-sidebar-foreground/60" />
-                )}
-              </div>
-              <input
-                id="global-patient-search"
-                type="text"
-                autoComplete="off"
-                className="w-full pl-9 pr-16 py-2 rounded-md bg-sidebar-accent border border-sidebar-border text-sidebar-foreground placeholder-sidebar-foreground/60 text-sm focus:outline-none focus:border-sidebar-primary focus:ring-1 focus:ring-sidebar-primary transition"
+                <svg className="h-4 w-4 text-sidebar-primary animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+              ) : (
+                <Search className="h-4 w-4 text-sidebar-foreground/60" />
+              )}
+            </div>
+            <input
+              id="global-patient-search"
+              type="text"
+              autoComplete="off"
+              className="w-full pl-9 pr-16 py-2 rounded-md bg-sidebar-accent border border-sidebar-border text-sidebar-foreground placeholder-sidebar-foreground/60 text-sm focus:outline-none focus:border-sidebar-primary focus:ring-1 focus:ring-sidebar-primary transition"
               placeholder="Search patients by name, hospital #, ID..."
               value={query}
               onChange={(e) => setQuery(e.target.value)}
@@ -393,14 +451,119 @@ export default function Topbar() {
 
       {/* Right: Actions */}
       <div className="flex items-center gap-3 shrink-0">
-        <button
-          className="text-sidebar-foreground/70 hover:text-sidebar-foreground relative p-2 rounded-full hover:bg-sidebar-accent transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
-          aria-label="Notifications"
-        >
-          <Bell className="h-5 w-5" />
-          <span className="absolute top-2 right-2 block h-2 w-2 rounded-full bg-sidebar-primary ring-2 ring-sidebar" />
-        </button>
+        {/* Notification Bell */}
+        <div className="relative" ref={notificationsRef}>
+          <button
+            onClick={() => setNotificationsOpen(!notificationsOpen)}
+            className="text-sidebar-foreground/70 hover:text-sidebar-foreground relative p-2 rounded-full hover:bg-sidebar-accent transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
+            aria-label="Notifications"
+          >
+            <Bell className="h-5 w-5" />
+            {unreadCount > 0 && (
+              <span className="absolute top-2 right-2 block h-2 w-2 rounded-full bg-red-500 ring-2 ring-sidebar" />
+            )}
+          </button>
 
+          {/* Notifications Dropdown */}
+          {notificationsOpen && (
+            <>
+              <div className="fixed inset-0 z-10" onClick={() => setNotificationsOpen(false)} />
+              <div className="absolute right-0 mt-2 w-80 bg-white rounded-md shadow-2xl border border-gray-200 z-20 overflow-hidden" role="menu">
+                <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+                  <h3 className="text-sm font-semibold text-gray-900">Notifications</h3>
+                  <div className="flex items-center gap-2">
+                    {unreadCount > 0 && (
+                      <button
+                        onClick={markAllAsRead}
+                        className="text-xs text-blue-600 hover:text-blue-800 font-medium"
+                      >
+                        Mark all read
+                      </button>
+                    )}
+                    {notifications.length > 0 && (
+                      <button
+                        onClick={clearAll}
+                        className="text-xs text-gray-500 hover:text-gray-700 font-medium"
+                      >
+                        Clear all
+                      </button>
+                    )}
+                  </div>
+                </div>
+                <div className="overflow-y-auto max-h-80">
+                  {notifications.length === 0 ? (
+                    <div className="px-4 py-8 text-center text-sm text-gray-400">
+                      No notifications yet
+                    </div>
+                  ) : (
+                    notifications.map((notification) => (
+                      <div
+                        key={notification.id}
+                        onClick={() => markAsRead(notification.id)}
+                        className={`px-4 py-3 border-b border-gray-100 cursor-pointer hover:bg-gray-50 transition-colors ${
+                          !notification.read ? "bg-blue-50" : ""
+                        }`}
+                      >
+                        <div className="flex items-start gap-3">
+                          <div
+                            className={`shrink-0 mt-0.5 p-1.5 rounded-full ${
+                              notification.type === "order"
+                                ? "bg-blue-100"
+                                : notification.type === "result"
+                                ? "bg-green-100"
+                                : "bg-amber-100"
+                            }`}
+                          >
+                            {notification.type === "order" && (
+                              <svg className="h-3.5 w-3.5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                              </svg>
+                            )}
+                            {notification.type === "result" && (
+                              <svg className="h-3.5 w-3.5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                              </svg>
+                            )}
+                            {notification.type === "status" && (
+                              <svg className="h-3.5 w-3.5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                              </svg>
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className={`text-sm font-medium ${!notification.read ? "text-gray-900" : "text-gray-700"}`}>
+                              {notification.title}
+                            </p>
+                            <p className="text-sm text-gray-600 truncate">{notification.message}</p>
+                            {notification.patient && (
+                              <p className="text-xs text-gray-500 mt-1">Patient: {notification.patient}</p>
+                            )}
+                            {notification.priority && (
+                              <span className={`inline-block mt-1 px-1.5 py-0.5 text-[10px] font-bold rounded uppercase ${
+                                notification.priority === "Stat"
+                                  ? "bg-red-100 text-red-700"
+                                  : notification.priority === "Urgent"
+                                  ? "bg-amber-100 text-amber-700"
+                                  : "bg-gray-100 text-gray-600"
+                              }`}>
+                                {notification.priority}
+                              </span>
+                            )}
+                            <p className="text-xs text-gray-400 mt-1">
+                              {formatDistanceToNow(notification.timestamp, { addSuffix: true })}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* User Menu */}
         <div className="relative">
           <button
             onClick={() => setDropdownOpen(!dropdownOpen)}
