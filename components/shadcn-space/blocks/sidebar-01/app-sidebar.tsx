@@ -5,7 +5,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import Logo from "@/assets/logo/logo";
 import { NavItem, NavMain } from "@/components/shadcn-space/blocks/sidebar-01/nav-main";
 import { useAuth } from "@/store/RoleContext";
-import { LayoutDashboard, Calendar, Users, Stethoscope, ClipboardList, Pill, FlaskConical, ScanLine, DollarSign, CreditCard, ArrowRightLeft, DoorOpen, List, Shield, ShieldCheck, HeartPulse } from "lucide-react";
+import { LayoutDashboard, Calendar, Users, Stethoscope, ClipboardList, Pill, FlaskConical, ScanLine, DollarSign, CreditCard, ArrowRightLeft, DoorOpen, List, Shield, ShieldCheck, HeartPulse, GraduationCap } from "lucide-react";
 import { usePermissions } from "@/lib/hooks/usePermissions";
 
 const ALL_NAV_ITEMS: NavItem[] = [
@@ -23,6 +23,7 @@ const ALL_NAV_ITEMS: NavItem[] = [
 
   { label: "Supervision", isSection: true },
   { title: "Verification", icon: ShieldCheck, href: "/supervision", permissions: ["supervisor.review"] },
+  { title: "Students", icon: GraduationCap, href: "/supervision/students", permissions: ["supervisor.assign"] },
 
   { label: "Services", isSection: true },
   {
