@@ -5,14 +5,14 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import Logo from "@/assets/logo/logo";
 import { NavItem, NavMain } from "@/components/shadcn-space/blocks/sidebar-01/nav-main";
 import { useAuth } from "@/store/RoleContext";
-import { LayoutDashboard, Calendar, Users, Stethoscope, ClipboardList, Pill, FlaskConical, ScanLine, DollarSign, CreditCard, ArrowRightLeft, DoorOpen, List, Shield, HeartPulse } from "lucide-react";
+import { LayoutDashboard, Calendar, Users, Stethoscope, ClipboardList, Pill, FlaskConical, ScanLine, DollarSign, CreditCard, ArrowRightLeft, DoorOpen, List, Shield, ShieldCheck, HeartPulse } from "lucide-react";
 import { usePermissions } from "@/lib/hooks/usePermissions";
 
 const ROLE_NAV_MAP: Record<string, string[]> = {
   receptionist: ["receptionist", "appointments", "queue", "patients"],
   nurse: ["nurse-station", "triage-queue", "consultation-queue", "patients", "admissions", "resuscitation"],
-  doctor: ["patients", "triage-queue", "consultation-queue", "lab", "radiology", "referrals", "admissions", "resuscitation"],
-  "clinical officer": ["patients", "triage-queue", "consultation-queue", "lab", "radiology", "referrals", "admissions", "resuscitation"],
+  doctor: ["patients", "triage-queue", "consultation-queue", "lab", "radiology", "referrals", "admissions", "resuscitation", "supervision"],
+  "clinical officer": ["patients", "triage-queue", "consultation-queue", "lab", "radiology", "referrals", "admissions", "resuscitation", "supervision"],
   pharmacist: ["pharmacy"],
   "lab technician": ["lab"],
   radiographer: ["radiology"],
@@ -31,6 +31,9 @@ const ALL_NAV_ITEMS: NavItem[] = [
   { title: "Nurse Station", icon: Stethoscope, href: "/nurse-station" },
   { title: "Triage Queue", icon: List, href: "/triage-queue" },
   { title: "Consultation Queue", icon: ClipboardList, href: "/consultation-queue" },
+
+  { label: "Supervision", isSection: true },
+  { title: "Verification", icon: ShieldCheck, href: "/supervision" },
 
   { label: "Services", isSection: true },
   {
@@ -74,7 +77,7 @@ const ALL_NAV_ITEMS: NavItem[] = [
 
 export function AppSidebar() {
   const { user } = useAuth();
-  const { canAccessAdmin } = usePermissions();
+  const { canAccessAdmin, can } = usePermissions();
 
   const departmentName = user?.department?.name || "Clinical Operations";
   const userRoles = (user?.roles || []).map((r) => r.toLowerCase());
@@ -108,6 +111,12 @@ export function AppSidebar() {
         { title: "System Admin", icon: Shield, href: "/system" },
       ];
     }
+  }
+
+  if (!can("supervisor.review")) {
+    filteredItems = filteredItems.filter(
+      (item) => item.href !== "/supervision" && item.label !== "Supervision",
+    );
   }
 
   return (
