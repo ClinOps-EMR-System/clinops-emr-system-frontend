@@ -8,64 +8,55 @@ import { useAuth } from "@/store/RoleContext";
 import { LayoutDashboard, Calendar, Users, Stethoscope, ClipboardList, Pill, FlaskConical, ScanLine, DollarSign, CreditCard, ArrowRightLeft, DoorOpen, List, Shield, ShieldCheck, HeartPulse } from "lucide-react";
 import { usePermissions } from "@/lib/hooks/usePermissions";
 
-const ROLE_NAV_MAP: Record<string, string[]> = {
-  receptionist: ["receptionist", "appointments", "queue", "patients"],
-  nurse: ["nurse-station", "triage-queue", "consultation-queue", "patients", "admissions", "resuscitation"],
-  doctor: ["patients", "triage-queue", "consultation-queue", "lab", "radiology", "referrals", "admissions", "resuscitation", "supervision"],
-  "clinical officer": ["patients", "triage-queue", "consultation-queue", "lab", "radiology", "referrals", "admissions", "resuscitation", "supervision"],
-  pharmacist: ["pharmacy"],
-  "lab technician": ["lab"],
-  radiographer: ["radiology"],
-  "billing officer": ["billing", "patients"],
-};
-
 const ALL_NAV_ITEMS: NavItem[] = [
   { label: "Front Desk", isSection: true },
-  { title: "Dashboard", icon: LayoutDashboard, href: "/dashboard" },
-  { title: "Front Desk", icon: Users, href: "/receptionist" },
-  { title: "Appointments", icon: Calendar, href: "/appointments" },
-  { title: "Patient Search", icon: Users, href: "/patients" },
+  { title: "Dashboard", icon: LayoutDashboard, href: "/dashboard", permissions: ["dashboard.view"] },
+  { title: "Front Desk", icon: Users, href: "/receptionist", permissions: ["registration.create", "registration.edit"] },
+  { title: "Appointments", icon: Calendar, href: "/appointments", permissions: ["appointment.view"] },
+  { title: "Patient Search", icon: Users, href: "/patients", permissions: ["patient.view"] },
 
   { label: "Clinical", isSection: true },
-  { title: "Resuscitation", icon: HeartPulse, href: "/resuscitation" },
-  { title: "Nurse Station", icon: Stethoscope, href: "/nurse-station" },
-  { title: "Triage Queue", icon: List, href: "/triage-queue" },
-  { title: "Consultation Queue", icon: ClipboardList, href: "/consultation-queue" },
+  { title: "Resuscitation", icon: HeartPulse, href: "/resuscitation", permissions: ["triage.view", "triage.create", "vital.create"] },
+  { title: "Nurse Station", icon: Stethoscope, href: "/nurse-station", permissions: ["vital.create", "vital.view", "medication.administer"] },
+  { title: "Triage Queue", icon: List, href: "/triage-queue", permissions: ["triage.view"] },
+  { title: "Consultation Queue", icon: ClipboardList, href: "/consultation-queue", permissions: ["consultation.view"] },
 
   { label: "Supervision", isSection: true },
-  { title: "Verification", icon: ShieldCheck, href: "/supervision" },
+  { title: "Verification", icon: ShieldCheck, href: "/supervision", permissions: ["supervisor.review"] },
 
   { label: "Services", isSection: true },
   {
     title: "Pharmacy",
     icon: Pill,
     href: "/pharmacy",
+    permissions: ["pharmacy.view", "pharmacy.dispense", "pharmacy.stock.view", "pharmacy.stock.manage", "pharmacy.verify"],
     children: [
-      { title: "Overview", href: "/pharmacy" },
-      { title: "Dispensing", href: "/pharmacy/dispensing" },
-      { title: "Inventory", href: "/pharmacy/inventory" },
-      { title: "Stock Management", href: "/pharmacy/stock" },
-      { title: "Stock Alerts", href: "/pharmacy/alerts" },
+      { title: "Overview", href: "/pharmacy", permissions: ["pharmacy.view"] },
+      { title: "Dispensing", href: "/pharmacy/dispensing", permissions: ["pharmacy.dispense"] },
+      { title: "Inventory", href: "/pharmacy/inventory", permissions: ["pharmacy.stock.view"] },
+      { title: "Stock Management", href: "/pharmacy/stock", permissions: ["pharmacy.stock.manage"] },
+      { title: "Stock Alerts", href: "/pharmacy/alerts", permissions: ["pharmacy.stock.view"] },
     ],
   },
-  { title: "Laboratory", icon: FlaskConical, href: "/lab" },
-  { title: "Radiology", icon: ScanLine, href: "/radiology" },
+  { title: "Laboratory", icon: FlaskConical, href: "/lab", permissions: ["lab.order", "lab.view", "lab.view_results"] },
+  { title: "Radiology", icon: ScanLine, href: "/radiology", permissions: ["imaging.order", "imaging.view", "imaging.report"] },
 
   { label: "Finance", isSection: true },
-  { title: "Billing", icon: DollarSign, href: "/billing" },
-  { title: "Payments", icon: CreditCard, href: "/payments" },
+  { title: "Billing", icon: DollarSign, href: "/billing", permissions: ["billing.view", "billing.create", "billing.waiver"] },
+  { title: "Payments", icon: CreditCard, href: "/payments", permissions: ["billing.create", "billing.waiver"] },
 
   { label: "Other", isSection: true },
-  { title: "Queue", icon: ArrowRightLeft, href: "/queue" },
-  { title: "Referrals", icon: ArrowRightLeft, href: "/referrals" },
+  { title: "Queue", icon: ArrowRightLeft, href: "/queue", permissions: ["queue.view"] },
+  { title: "Referrals", icon: ArrowRightLeft, href: "/referrals", permissions: ["consultation.edit", "note.edit", "lab.view_results", "imaging.order"] },
   {
     title: "Admissions",
     icon: DoorOpen,
     href: "/admissions",
+    permissions: ["admission.view", "ward.view", "ward.edit"],
     children: [
-      { title: "Overview", href: "/admissions" },
-      { title: "Ward Occupancy", href: "/wards/occupancy" },
-      { title: "Ward Management", href: "/wards" },
+      { title: "Overview", href: "/admissions", permissions: ["admission.view"] },
+      { title: "Ward Occupancy", href: "/wards/occupancy", permissions: ["ward.view"] },
+      { title: "Ward Management", href: "/wards", permissions: ["ward.view", "ward.edit"] },
     ],
   },
 
@@ -80,44 +71,8 @@ export function AppSidebar() {
   const { canAccessAdmin, can } = usePermissions();
 
   const departmentName = user?.department?.name || "Clinical Operations";
-  const userRoles = (user?.roles || []).map((r) => r.toLowerCase());
 
-  const displayRole =
-    userRoles.find((r) => ROLE_NAV_MAP[r]) ||
-    (departmentName.toLowerCase().includes("registration") || departmentName.toLowerCase().includes("reception") ? "receptionist" : "") ||
-    (departmentName.toLowerCase().includes("pharm") ? "pharmacist" : "") ||
-    (departmentName.toLowerCase().includes("lab") ? "lab technician" : "") ||
-    (departmentName.toLowerCase().includes("bill") || departmentName.toLowerCase().includes("finance") ? "billing officer" : "");
-
-  const isAdmin = userRoles.includes("admin");
-  const matchedRole = displayRole || userRoles.find((r) => ROLE_NAV_MAP[r]);
-  const allowedHrefs = isAdmin ? null : matchedRole ? ROLE_NAV_MAP[matchedRole] : null;
-
-  let filteredItems = allowedHrefs
-    ? filterNavItems(ALL_NAV_ITEMS, allowedHrefs)
-    : ALL_NAV_ITEMS;
-
-  // Non-admins with admin permissions still get System Admin; pure clinical roles do not.
-  if (!isAdmin && !canAccessAdmin) {
-    filteredItems = filteredItems.filter(
-      (item) => item.href !== "/system" && item.label !== "Admin",
-    );
-  } else if (!isAdmin && canAccessAdmin) {
-    const hasSystem = filteredItems.some((i) => i.href === "/system");
-    if (!hasSystem) {
-      filteredItems = [
-        ...filteredItems,
-        { label: "Admin", isSection: true },
-        { title: "System Admin", icon: Shield, href: "/system" },
-      ];
-    }
-  }
-
-  if (!can("supervisor.review")) {
-    filteredItems = filteredItems.filter(
-      (item) => item.href !== "/supervision" && item.label !== "Supervision",
-    );
-  }
+  const filteredItems = filterNavItems(ALL_NAV_ITEMS, can, canAccessAdmin);
 
   return (
     <Sidebar className="px-0 h-full **:data-[slot=sidebar-inner]:h-full">
@@ -157,7 +112,19 @@ export function AppSidebar() {
   );
 }
 
-function filterNavItems(items: NavItem[], allowed: string[]): NavItem[] {
+function filterNavItems(
+  items: NavItem[],
+  can: (permission: string) => boolean,
+  canAccessAdmin: boolean,
+): NavItem[] {
+  const isVisible = (item: NavItem): boolean => {
+    if (item.href === "/system") return canAccessAdmin;
+    if (item.permissions && item.permissions.length > 0) {
+      return item.permissions.some((p) => can(p));
+    }
+    return true;
+  };
+
   const result: NavItem[] = [];
   let i = 0;
   while (i < items.length) {
@@ -169,17 +136,19 @@ function filterNavItems(items: NavItem[], allowed: string[]): NavItem[] {
         sectionItems.push(items[i]);
         i++;
       }
-      const visibleItems = sectionItems.filter((item) => {
-        const segment = item.href?.split("/")[1] || "";
-        return allowed.includes(segment);
-      });
+      const visibleItems: NavItem[] = [];
+      for (const item of sectionItems) {
+        if (!isVisible(item)) continue;
+        const children = item.children?.filter(isVisible);
+        if (item.children && children && children.length === 0) continue;
+        visibleItems.push(children ? { ...item, children } : item);
+      }
       if (visibleItems.length > 0) {
         result.push(sectionLabel);
         result.push(...visibleItems);
       }
     } else {
-      const segment = items[i].href?.split("/")[1] || "";
-      if (allowed.includes(segment)) {
+      if (isVisible(items[i])) {
         result.push(items[i]);
       }
       i++;
