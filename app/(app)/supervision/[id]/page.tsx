@@ -273,7 +273,8 @@ export default function ReviewDetailPage() {
         <>
           <Card>
             <CardHeader>
-              <CardTitle className="text-sm uppercase tracking-widest text-muted-foreground">
+              <CardTitle className="flex items-center gap-2 text-sm uppercase tracking-widest text-muted-foreground">
+                <Pill className="h-4 w-4" />
                 Prescription
               </CardTitle>
             </CardHeader>
