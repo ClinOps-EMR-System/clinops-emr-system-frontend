@@ -7,9 +7,11 @@ import type {
   AdminUser,
   AuditLogEntry,
   BillableService,
+  Cadre,
   Department,
   HospitalSettings,
   LoincCode,
+  Rank,
   Ward,
 } from "@/types/admin";
 
@@ -82,6 +84,28 @@ export const adminApi = {
   ) =>
     unwrap<AdminUser>(
       await api.put(`/users/${id}/roles`, { roles }, token),
+    ),
+
+  listCadres: async (token: string | null) =>
+    unwrap<Cadre[]>(await api.get("/cadres", token)) ?? [],
+
+  listCadreRanks: async (token: string | null, cadreId: number | string) =>
+    unwrap<Rank[]>(await api.get(`/cadres/${cadreId}/ranks`, token)) ?? [],
+
+  assignSupervisor: async (
+    token: string | null,
+    userId: number | string,
+    supervisorId: number | null,
+  ) =>
+    unwrap<AdminUser>(
+      await api.put(`/users/${userId}/supervisor`, {
+        supervisor_id: supervisorId,
+      }, token),
+    ),
+
+  getSupervision: async (token: string | null, userId: number | string) =>
+    unwrap<{ supervisor: AdminUser | null; supervisees: AdminUser[] }>(
+      await api.get(`/users/${userId}/supervision`, token),
     ),
 
   listRoles: async (token: string | null) =>

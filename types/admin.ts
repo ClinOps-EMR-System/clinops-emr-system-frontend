@@ -1,3 +1,23 @@
+export interface Cadre {
+  id: number;
+  name: string;
+  code: string;
+  default_role?: string | null;
+  description?: string | null;
+  is_active: boolean;
+  ranks?: Rank[];
+}
+
+export interface Rank {
+  id: number;
+  cadre_id: number;
+  name: string;
+  code: string;
+  grade: number;
+  can_sign_off: boolean;
+  is_supervisor: boolean;
+}
+
 export interface AdminUser {
   id: number;
   name: string;
@@ -7,6 +27,9 @@ export interface AdminUser {
   last_login?: string | null;
   roles?: { id: number; name: string }[];
   department?: { id: number; name: string } | null;
+  cadre?: { id: number; name: string; code?: string; default_role?: string } | null;
+  rank?: { id: number; name: string; grade?: number } | null;
+  supervisor?: { id: number; name: string; email?: string } | null;
   created_at?: string;
 }
 
