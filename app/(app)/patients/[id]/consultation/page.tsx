@@ -208,15 +208,17 @@ function Sparkline({ data, color = "bg-primary", height = 32 }: { data: { value:
 export default function ClinicianSOAPConsultation() {
   const params = useParams();
   const router = useRouter();
-  const { token } = useAuth();
+  const { token, user } = useAuth();
   const { subscribe } = useRealtime();
   const { openResult } = useLabResultBus();
   const { can } = usePermissions();
+  const isStudent = (user?.roles ?? []).some((r) => String(r).toLowerCase() === "medical student");
   const patientId = params.id as string;
 
   const [activeSubTab, setActiveSubTab] = useState<SubTab>("subjective");
   const [patient, setPatient] = useState<Patient | null>(null);
   const [summary, setSummary] = useState<TriageSummary | null>(null);
+  const [verification, setVerification] = useState<{ id: number; status: string; comments: string | null; submitted_at: string } | null>(null);
   const [diagnoses, setDiagnoses] = useState<Diagnosis[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitLoading, setSubmitLoading] = useState(false);
@@ -327,6 +329,7 @@ export default function ClinicianSOAPConsultation() {
           setPrescriptions(Array.isArray(prescriptionsRes.data) ? prescriptionsRes.data : prescriptionsRes.data.data || []);
         }
         if (consultationRes?.data) {
+          setVerification(consultationRes.data.verification ?? null);
           const note = consultationRes.data.clinical_note;
           if (note) {
             if (note.physical_examination) setPhysicalExam(note.physical_examination);
@@ -723,6 +726,7 @@ export default function ClinicianSOAPConsultation() {
     orders_pending: "Orders Pending",
     awaiting_results: "Awaiting Results",
     results_review: "Results to Review",
+    pending_review: "Pending Review",
     observation: "Observation",
     admitted: "Admitted",
     referred: "Referred",
@@ -735,6 +739,7 @@ export default function ClinicianSOAPConsultation() {
     orders_pending: "warning",
     awaiting_results: "warning",
     results_review: "info",
+    pending_review: "warning",
     observation: "neutral",
     admitted: "info",
     referred: "info",
@@ -783,6 +788,21 @@ export default function ClinicianSOAPConsultation() {
       fetchConsultationData();
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to sign off.");
+    } finally {
+      setSubmitLoading(false);
+    }
+  }
+
+  async function handleSubmitReview() {
+    if (!activeEncounterId) return;
+    setSubmitLoading(true);
+    setError(null);
+    try {
+      await api.post(`/encounters/${activeEncounterId}/submit-review`, {}, token);
+      setSuccessMsg("Consultation submitted for supervisor review.");
+      void fetchConsultationData();
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to submit for review.");
     } finally {
       setSubmitLoading(false);
     }
@@ -840,7 +860,7 @@ export default function ClinicianSOAPConsultation() {
         description={`${patient.first_name} ${patient.last_name} · #${patient.hospital_number} · SOAP Workbench`}
         action={
           <div className="flex gap-2">
-            {activeEncounterId ? (
+            {activeEncounterId && (!isStudent || verification?.status === "approved") ? (
               <>
                 <Button
                   variant="outline"
@@ -871,6 +891,18 @@ export default function ClinicianSOAPConsultation() {
             {patient.patient_category && <Badge variant="outline">{patient.patient_category}</Badge>}
           </div>
           <div className="flex items-center gap-2 flex-wrap">
+            {isStudent && encounterStatus === "in_consultation" && verification?.status !== "approved" && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleSubmitReview}
+                disabled={submitLoading}
+                className="border-amber-500 text-amber-700 hover:bg-amber-50"
+              >
+                {submitLoading && <Loader2 className="h-3 w-3 animate-spin mr-1" />}
+                Submit for Review
+              </Button>
+            )}
             {(transitionTargets[encounterStatus] ?? []).map((t) => (
               <Button
                 key={t.target}
@@ -910,6 +942,22 @@ export default function ClinicianSOAPConsultation() {
           </div>
         </CardContent>
       </Card>
+
+      {verification?.status === "pending" && (
+        <div className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800 font-semibold flex items-center gap-2">
+          <Clock className="h-4 w-4" /> Pending supervisor review. Disposal is locked until approved.
+        </div>
+      )}
+      {verification?.status === "approved" && (
+        <div className="rounded-lg border border-emerald-300 bg-emerald-50 px-4 py-3 text-sm text-emerald-800 font-semibold flex items-center gap-2">
+          <Check className="h-4 w-4" /> Verified by supervisor. You may now dispose the patient.
+        </div>
+      )}
+      {verification?.status === "rejected" && (
+        <div className="rounded-lg border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-800 font-semibold flex items-center gap-2">
+          <TriangleAlert className="h-4 w-4" /> Sent back: {verification.comments ?? "No comment provided."}
+        </div>
+      )}
 
       {criticalAlerts.length > 0 && (
         <div className="rounded-lg border border-red-300 bg-red-50 p-4 space-y-2">
