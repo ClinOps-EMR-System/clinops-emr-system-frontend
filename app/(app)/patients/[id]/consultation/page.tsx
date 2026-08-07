@@ -3,9 +3,12 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/store/RoleContext";
+import { useRealtime } from "@/store/RealtimeContext";
+import { useLabResultBus } from "@/store/LabResultBus";
 import { usePermissions } from "@/lib/hooks/usePermissions";
 import { api } from "@/lib/api";
 import type { Patient, Allergy } from "@/types/patient";
+import type { LabResult } from "@/types/lab";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import StatusBadge from "@/components/ui/StatusBadge";
@@ -78,6 +81,12 @@ interface Order {
   priority: string;
   status: string;
   ordered_at: string;
+  lab_requests?: {
+    id: number;
+    test_name: string;
+    status: string;
+    results: LabResult[];
+  }[];
 }
 
 interface Prescription {
@@ -163,6 +172,8 @@ export default function ClinicianSOAPConsultation() {
   const params = useParams();
   const router = useRouter();
   const { token } = useAuth();
+  const { subscribe } = useRealtime();
+  const { openResult } = useLabResultBus();
   const { can } = usePermissions();
   const patientId = params.id as string;
 
@@ -188,6 +199,7 @@ export default function ClinicianSOAPConsultation() {
   const [certainty, setCertainty] = useState("confirmed");
 
   const [orders, setOrders] = useState<Order[]>([]);
+  const [resultsRefreshKey, setResultsRefreshKey] = useState(0);
   const [orderForm, setOrderForm] = useState({ test_name: "", clinical_indication: "", priority: "routine" });
 
   const [prescriptions, setPrescriptions] = useState<Prescription[]>([]);
@@ -275,6 +287,20 @@ export default function ClinicianSOAPConsultation() {
   useEffect(() => {
     if (token && patientId) fetchConsultationData(); // eslint-disable-line react-hooks/set-state-in-effect
   }, [token, patientId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (!token) return;
+    const off = subscribe("clinops_lab_results", (raw: unknown) => {
+      const ev = raw as { encounter_id?: number; patient_id?: number; lab_result_id?: number };
+      if (typeof ev?.lab_result_id !== "number") return;
+      if (ev.encounter_id !== undefined && ev.encounter_id !== summary?.encounter?.id) return;
+      if (ev.encounter_id === undefined && ev.patient_id !== undefined && ev.patient_id !== Number(patientId)) return;
+      setResultsRefreshKey((k) => k + 1);
+      void fetchConsultationData();
+    });
+    return off;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [subscribe, token, summary?.encounter?.id]);
 
   useEffect(() => {
     const delayDebounceFn = setTimeout(async () => {
@@ -989,11 +1015,25 @@ export default function ClinicianSOAPConsultation() {
                                   <span className="ml-2 text-xs text-muted-foreground">— {order.clinical_indication}</span>
                                 )}
                               </div>
-                              <StatusBadge
-                                label={order.status}
-                                variant={order.status?.toLowerCase() === "completed" ? "success" : "warning"}
-                                size="sm"
-                              />
+                              <div className="flex items-center gap-2 shrink-0">
+                                <StatusBadge
+                                  label={order.status}
+                                  variant={order.status?.toLowerCase() === "completed" ? "success" : "warning"}
+                                  size="sm"
+                                />
+                                {order.lab_requests?.some((lr) => lr.results?.length) && (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => {
+                                      const result = order.lab_requests?.flatMap((lr) => lr.results ?? [])[0];
+                                      if (result) openResult(result.id);
+                                    }}
+                                  >
+                                    View Result
+                                  </Button>
+                                )}
+                              </div>
                             </div>
                           ))}
                         </div>
@@ -1058,6 +1098,7 @@ export default function ClinicianSOAPConsultation() {
                     encounterId={activeEncounterId ?? null}
                     token={token}
                     pendingCount={pendingLabCount}
+                    refreshSignal={resultsRefreshKey}
                   />
                 )}
 

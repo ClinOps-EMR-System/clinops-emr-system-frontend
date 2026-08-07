@@ -59,7 +59,7 @@ export default function LabResultsPanel({ encounterId, token, pendingCount, refr
   const { results, loading, error, refetch } = useLabResults(encounterId, token, encounterId !== null);
 
   useEffect(() => {
-    if (refreshSignal) void refetch(); // eslint-disable-line react-hooks/set-state-in-effect
+    if (refreshSignal) void refetch();
   }, [refreshSignal, refetch]);
 
   return (

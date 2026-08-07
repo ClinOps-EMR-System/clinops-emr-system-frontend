@@ -43,8 +43,11 @@ export function LabResultBusProvider({ children }: { children: React.ReactNode }
   const [inbox, setInbox] = useState<LabResult[]>([]);
   const [activeResult, setActiveResult] = useState<LabResult | null>(null);
 
-  const inboxRef = useRef(inbox);
-  inboxRef.current = inbox;
+  const inboxRef = useRef<LabResult[]>(inbox);
+
+  useEffect(() => {
+    inboxRef.current = inbox;
+  }, [inbox]);
 
   useEffect(() => {
     const off = subscribe("clinops_lab_results", async (raw: unknown) => {
