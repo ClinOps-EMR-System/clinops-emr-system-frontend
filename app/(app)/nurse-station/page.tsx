@@ -480,7 +480,10 @@ export default function NurseStationPage() {
                     const waitMinutes = entry.wait_minutes;
 
                     return (
-                      <TableRow key={entry.id}>
+                      <TableRow
+                        key={entry.id}
+                        className={cn(entry.source === "emergency" && "bg-red-50/60 dark:bg-red-950/20")}
+                      >
                         <TableCell>
                           <Link
                             href={`/patients/${entry.patient_id}`}
@@ -516,15 +519,28 @@ export default function NurseStationPage() {
                           </span>
                         </TableCell>
                         <TableCell>
-                          <Button
-                            size="sm"
-                            render={
-                              <Link href={`/patients/${entry.patient_id}/triage`} />
-                            }
-                          >
-                            <Stethoscope className="h-4 w-4 mr-1" />
-                            Start Triage
-                          </Button>
+                          {entry.source === "emergency" ? (
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              render={
+                                <Link href={`/patients/${entry.patient_id}/emergency-triage`} />
+                              }
+                            >
+                              <AlertTriangle className="h-4 w-4 mr-1" />
+                              Rapid Triage
+                            </Button>
+                          ) : (
+                            <Button
+                              size="sm"
+                              render={
+                                <Link href={`/patients/${entry.patient_id}/triage`} />
+                              }
+                            >
+                              <Stethoscope className="h-4 w-4 mr-1" />
+                              Start Triage
+                            </Button>
+                          )}
                         </TableCell>
                       </TableRow>
                     );
