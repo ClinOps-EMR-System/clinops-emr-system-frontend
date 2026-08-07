@@ -24,7 +24,9 @@ export function getStatus() {
 
 export function onStatusChange(cb: (s: RealtimeStatus) => void) {
   statusListeners.add(cb);
-  return () => statusListeners.delete(cb);
+  return () => {
+    statusListeners.delete(cb);
+  };
 }
 
 export function routeMessage(raw: string) {
