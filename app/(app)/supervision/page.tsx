@@ -10,14 +10,17 @@ import { SectionHeader } from "@/components/ui/PageLayout";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useRealtimeNotifications } from "@/hooks/useRealtimeNotifications";
 import StatusBadge from "@/components/ui/StatusBadge";
-import { ShieldCheck, TriangleAlert } from "lucide-react";
+import { Pill, ShieldCheck, TriangleAlert } from "lucide-react";
 
 interface ReviewItem {
   id: number;
+  type: "consultation" | "prescription";
   status: "pending" | "approved" | "rejected";
   submitted_at: string;
   encounter_id: number | null;
   chief_complaint: string | null;
+  drug: { id: number; name: string; strength: string | null } | null;
+  prescription_status: string | null;
   patient: { id: number; hospital_number: string; full_name: string } | null;
   student: { id: number; name: string } | null;
 }
@@ -75,7 +78,7 @@ export default function SupervisionPage() {
     <div className="max-w-7xl mx-auto space-y-6">
       <SectionHeader
         title="Supervision"
-        description="Verify student consultations submitted by your supervisees."
+        description="Verify student consultations and prescriptions submitted by your supervisees."
       />
 
       <div className="flex gap-2 border-b">
@@ -110,7 +113,7 @@ export default function SupervisionPage() {
         <Card>
           <CardContent className="p-10 text-center text-sm text-muted-foreground">
             <ShieldCheck className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
-            No {activeTab === "all" ? "" : activeTab} consultations to show.
+            No {activeTab === "all" ? "" : activeTab} reviews to show.
           </CardContent>
         </Card>
       ) : (
@@ -122,23 +125,32 @@ export default function SupervisionPage() {
               className="w-full flex items-center justify-between gap-4 px-5 py-4 text-left hover:bg-muted/30 transition-colors"
             >
               <div className="min-w-0">
-                <p className="font-semibold text-sm truncate">
-                  {item.patient?.full_name ?? "Unknown patient"}
-                </p>
+                <div className="flex items-center gap-2">
+                  {item.type === "prescription" && <Pill className="h-4 w-4 text-muted-foreground" />}
+                  <p className="font-semibold text-sm truncate">
+                    {item.patient?.full_name ?? "Unknown patient"}
+                  </p>
+                </div>
                 <p className="text-xs text-muted-foreground mt-0.5">
                   #{item.patient?.hospital_number ?? "—"} · {item.student?.name ?? "Unknown"} ·{" "}
                   {new Date(item.submitted_at).toLocaleString()}
                 </p>
-                {item.chief_complaint && (
-                  <p className="text-xs text-muted-foreground mt-1 truncate">
-                    {item.chief_complaint}
-                  </p>
-                )}
+                <p className="text-xs text-muted-foreground mt-1 truncate">
+                  {item.type === "prescription"
+                    ? `${item.drug?.name ?? "Medication"} · ${item.prescription_status ?? "—"}`
+                    : (item.chief_complaint ?? "")}
+                </p>
               </div>
-              <StatusBadge
-                label={item.status}
-                variant={item.status === "pending" ? "warning" : item.status === "approved" ? "success" : "error"}
-              />
+              <div className="flex items-center gap-2 shrink-0">
+                <StatusBadge
+                  label={item.type === "prescription" ? "Rx" : "Consultation"}
+                  variant={item.type === "prescription" ? "purple" : "neutral"}
+                />
+                <StatusBadge
+                  label={item.status}
+                  variant={item.status === "pending" ? "warning" : item.status === "approved" ? "success" : "error"}
+                />
+              </div>
             </button>
           ))}
         </div>

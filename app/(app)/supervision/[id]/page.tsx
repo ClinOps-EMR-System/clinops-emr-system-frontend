@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SectionHeader } from "@/components/ui/PageLayout";
 import { Skeleton } from "@/components/ui/skeleton";
 import StatusBadge from "@/components/ui/StatusBadge";
-import { ArrowLeft, Check, Loader2, TriangleAlert } from "lucide-react";
+import { ArrowLeft, Check, Loader2, Pill, TriangleAlert } from "lucide-react";
 
 interface ReviewDetail {
   verification_request: {
@@ -20,12 +20,27 @@ interface ReviewDetail {
     submitted_by: { id: number; name: string };
     reviewed_by: { id: number; name: string } | null;
   };
-  consultation: {
+  consultation?: {
     encounter: { id: number; status: string; chief_complaint: string | null };
     clinical_note: { content?: string; history_of_present_illness?: string | null; physical_examination?: string | null; plan?: string | null; assessment?: string | null } | null;
     diagnoses: { id: number; code: string; description: string; diagnosis_type: string; certainty: string | null }[];
     orders: { id: number; order_type: string; test_name: string | null; clinical_indication: string | null; priority: string; status: string }[];
     prescriptions: { id: number; drug_name: string; dosage: string; route: string; frequency: string; duration: string | null; status: string }[];
+  };
+  prescription?: {
+    id: number;
+    patient: { id: number; hospital_number: string; full_name: string } | null;
+    drug: { id: number; name: string; strength: string | null; formulation: string | null; unit: string | null } | null;
+    dosage: string;
+    route: string;
+    frequency: string;
+    duration: string | null;
+    instructions: string | null;
+    allergy_check: boolean;
+    interaction_check: boolean;
+    is_pediatric: boolean;
+    status: string;
+    prescribed_by: { id: number; name: string } | null;
   };
 }
 
@@ -105,13 +120,14 @@ export default function ReviewDetailPage() {
   }
 
   const req = data.verification_request;
-  const note = data.consultation.clinical_note;
+  const note = data.consultation?.clinical_note;
+  const isPrescription = !!data.prescription;
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
       <SectionHeader
-        title="Review Consultation"
-        description={`Submitted by ${req.submitted_by.name} · ${new Date(req.submitted_at).toLocaleString()} · #${data.consultation.encounter.id}`}
+        title={isPrescription ? "Review Prescription" : "Review Consultation"}
+        description={`Submitted by ${req.submitted_by.name} · ${new Date(req.submitted_at).toLocaleString()}${data.prescription?.patient ? ` · ${data.prescription.patient.full_name}` : ""}`}
         action={
           <Button variant="ghost" onClick={() => router.push("/supervision")}>
             <ArrowLeft className="h-4 w-4" />
@@ -151,103 +167,182 @@ export default function ReviewDetailPage() {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-sm uppercase tracking-widest text-muted-foreground">
-            Subjective / Objective
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4 text-sm">
-          <div>
-            <p className="font-semibold">Chief complaint</p>
-            <p className="text-muted-foreground">{data.consultation.encounter.chief_complaint ?? "—"}</p>
-          </div>
-          {note?.history_of_present_illness && (
-            <div>
-              <p className="font-semibold">History of present illness</p>
-              <p className="text-muted-foreground whitespace-pre-wrap">{note.history_of_present_illness}</p>
-            </div>
-          )}
-          {note?.physical_examination && (
-            <div>
-              <p className="font-semibold">Physical examination</p>
-              <p className="text-muted-foreground whitespace-pre-wrap">{note.physical_examination}</p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-sm uppercase tracking-widest text-muted-foreground">Assessment</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {data.consultation.diagnoses.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No diagnoses recorded.</p>
-          ) : (
-            <div className="divide-y divide-border rounded-lg border">
-              {data.consultation.diagnoses.map((d) => (
-                <div key={d.id} className="px-4 py-2.5 flex items-center gap-2.5">
-                  <StatusBadge label={d.code} variant="neutral" />
-                  <span className="text-sm">{d.description}</span>
-                  <span className="text-xs text-muted-foreground ml-auto">{d.diagnosis_type}</span>
+      {!isPrescription && data.consultation && (
+        <>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm uppercase tracking-widest text-muted-foreground">
+                Subjective / Objective
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4 text-sm">
+              <div>
+                <p className="font-semibold">Chief complaint</p>
+                <p className="text-muted-foreground">{data.consultation.encounter.chief_complaint ?? "—"}</p>
+              </div>
+              {note?.history_of_present_illness && (
+                <div>
+                  <p className="font-semibold">History of present illness</p>
+                  <p className="text-muted-foreground whitespace-pre-wrap">{note.history_of_present_illness}</p>
                 </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+              )}
+              {note?.physical_examination && (
+                <div>
+                  <p className="font-semibold">Physical examination</p>
+                  <p className="text-muted-foreground whitespace-pre-wrap">{note.physical_examination}</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-sm uppercase tracking-widest text-muted-foreground">Plan</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground whitespace-pre-wrap">{note?.plan ?? "—"}</p>
-        </CardContent>
-      </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm uppercase tracking-widest text-muted-foreground">Assessment</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {data.consultation.diagnoses.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No diagnoses recorded.</p>
+              ) : (
+                <div className="divide-y divide-border rounded-lg border">
+                  {data.consultation.diagnoses.map((d) => (
+                    <div key={d.id} className="px-4 py-2.5 flex items-center gap-2.5">
+                      <StatusBadge label={d.code} variant="neutral" />
+                      <span className="text-sm">{d.description}</span>
+                      <span className="text-xs text-muted-foreground ml-auto">{d.diagnosis_type}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm uppercase tracking-widest text-muted-foreground">Orders</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {data.consultation.orders.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No orders.</p>
-            ) : (
-              <div className="divide-y divide-border rounded-lg border">
-                {data.consultation.orders.map((o) => (
-                  <div key={o.id} className="px-4 py-2.5">
-                    <p className="text-sm font-medium">{o.test_name ?? o.order_type}</p>
-                    <p className="text-xs text-muted-foreground">{o.priority} · {o.status}</p>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm uppercase tracking-widest text-muted-foreground">Plan</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground whitespace-pre-wrap">{note?.plan ?? "—"}</p>
+            </CardContent>
+          </Card>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm uppercase tracking-widest text-muted-foreground">Orders</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {data.consultation.orders.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No orders.</p>
+                ) : (
+                  <div className="divide-y divide-border rounded-lg border">
+                    {data.consultation.orders.map((o) => (
+                      <div key={o.id} className="px-4 py-2.5">
+                        <p className="text-sm font-medium">{o.test_name ?? o.order_type}</p>
+                        <p className="text-xs text-muted-foreground">{o.priority} · {o.status}</p>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+                )}
+              </CardContent>
+            </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm uppercase tracking-widest text-muted-foreground">Prescriptions</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {data.consultation.prescriptions.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No prescriptions.</p>
-            ) : (
-              <div className="divide-y divide-border rounded-lg border">
-                {data.consultation.prescriptions.map((p) => (
-                  <div key={p.id} className="px-4 py-2.5">
-                    <p className="text-sm font-medium">{p.drug_name}</p>
-                    <p className="text-xs text-muted-foreground">{p.dosage} {p.route} ({p.frequency}){p.duration ? ` · ${p.duration}` : ""} · {p.status}</p>
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm uppercase tracking-widest text-muted-foreground">Prescriptions</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {data.consultation.prescriptions.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No prescriptions.</p>
+                ) : (
+                  <div className="divide-y divide-border rounded-lg border">
+                    {data.consultation.prescriptions.map((p) => (
+                      <div key={p.id} className="px-4 py-2.5">
+                        <p className="text-sm font-medium">{p.drug_name}</p>
+                        <p className="text-xs text-muted-foreground">{p.dosage} {p.route} ({p.frequency}){p.duration ? ` · ${p.duration}` : ""} · {p.status}</p>
+                      </div>
+                    ))}
                   </div>
-                ))}
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </>
+      )}
+
+      {isPrescription && data.prescription && (
+        <>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm uppercase tracking-widest text-muted-foreground">
+                Prescription
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+              <div>
+                <p className="font-semibold">Patient</p>
+                <p className="text-muted-foreground">{data.prescription.patient?.full_name ?? "—"}</p>
+                <p className="text-xs text-muted-foreground font-mono">#{data.prescription.patient?.hospital_number ?? "—"}</p>
               </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+              <div>
+                <p className="font-semibold">Drug</p>
+                <p className="text-muted-foreground">
+                  {data.prescription.drug?.name ?? "—"}
+                  {data.prescription.drug?.strength ? ` · ${data.prescription.drug.strength}` : ""}
+                </p>
+              </div>
+              <div>
+                <p className="font-semibold">Dosage</p>
+                <p className="text-muted-foreground font-mono">
+                  {data.prescription.dosage} {data.prescription.route}
+                </p>
+              </div>
+              <div>
+                <p className="font-semibold">Frequency / Duration</p>
+                <p className="text-muted-foreground">
+                  {data.prescription.frequency}
+                  {data.prescription.duration ? ` · ${data.prescription.duration}` : ""}
+                </p>
+              </div>
+              <div>
+                <p className="font-semibold">Status</p>
+                <p className="text-muted-foreground">{data.prescription.status}</p>
+              </div>
+              <div>
+                <p className="font-semibold">Prescriber</p>
+                <p className="text-muted-foreground">{data.prescription.prescribed_by?.name ?? "—"}</p>
+              </div>
+            </CardContent>
+          </Card>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm uppercase tracking-widest text-muted-foreground">
+                  Instructions
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                  {data.prescription.instructions ?? "—"}
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm uppercase tracking-widest text-muted-foreground">
+                  Safety Checks
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2 text-sm">
+                <p><span className="font-semibold">Allergy check:</span> {data.prescription.allergy_check ? "Flagged" : "Clear"}</p>
+                <p><span className="font-semibold">Interaction check:</span> {data.prescription.interaction_check ? "Flagged" : "Clear"}</p>
+                <p><span className="font-semibold">Pediatric:</span> {data.prescription.is_pediatric ? "Yes" : "No"}</p>
+              </CardContent>
+            </Card>
+          </div>
+        </>
+      )}
 
       {modalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setModalOpen(false)}>
