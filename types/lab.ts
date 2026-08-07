@@ -18,3 +18,19 @@ export interface LabOrder {
   order_type: string;
   status: string;
 }
+
+export interface LabResultEvent {
+  event: string;
+  lab_result_id: number;
+  lab_request_id: number;
+  encounter_id: number;
+  patient_id: number | null;
+  result_value: string | null;
+  unit: string | null;
+  is_critical: boolean;
+  is_abnormal: boolean;
+  status: string;
+  color: string | null;
+  priority: string | null;
+  occurred_at: string;
+}
