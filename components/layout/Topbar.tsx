@@ -7,7 +7,7 @@ import { useAuth } from "../../store/RoleContext";
 import { api } from "../../lib/api";
 import { X, Search, Bell, ChevronDown } from "lucide-react";
 import { SidebarTrigger } from "@/components/ui/sidebar";
-import { useNotifications } from "@/hooks/useAdmissions";
+import { useRealtimeNotifications } from "@/hooks/useRealtimeNotifications";
 import type { NotificationData } from "@/types/admission";
 import { formatDistanceToNow } from "date-fns";
 
@@ -28,6 +28,7 @@ interface NotificationItem {
   title: string;
   message: string;
   patient?: string;
+  patientId?: number;
   priority?: string;
   timestamp: Date;
   read: boolean;
@@ -45,6 +46,7 @@ function mapNotification(n: NotificationData): NotificationItem {
     type,
     title: n.title,
     message: n.message,
+    patientId: n.patient_id ?? undefined,
     timestamp: new Date(n.created_at),
     read: Boolean(n.read),
   };
@@ -65,7 +67,7 @@ export default function Topbar() {
     notifications: dbNotifications,
     markRead,
     markAllRead,
-  } = useNotifications(undefined, { interval: 15000 });
+  } = useRealtimeNotifications();
 
   const notifications = useMemo(
     () => dbNotifications.filter((n) => !dismissedIds.includes(n.id)).map(mapNotification),
@@ -499,7 +501,13 @@ export default function Topbar() {
                     notifications.map((notification) => (
                       <div
                         key={notification.id}
-                        onClick={() => markAsRead(notification.id)}
+                        onClick={() => {
+                          markAsRead(notification.id);
+                          if (notification.patientId) {
+                            setNotificationsOpen(false);
+                            router.push(`/patients/${notification.patientId}/consultation`);
+                          }
+                        }}
                         className={`px-4 py-3 border-b border-gray-100 cursor-pointer hover:bg-gray-50 transition-colors ${
                           !notification.read ? "bg-blue-50" : ""
                         }`}

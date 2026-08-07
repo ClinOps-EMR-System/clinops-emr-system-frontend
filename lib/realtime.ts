@@ -4,6 +4,14 @@ import { getWsUrl } from "./config";
 
 export type RealtimeStatus = "connecting" | "connected" | "offline";
 
+export const EMR_CHANNELS = [
+  "clinops_lab_results",
+  "clinops_lab_requests",
+  "clinops_vital_signs",
+  "clinops_consultation_queue",
+  "clinops_chart_edited",
+] as const;
+
 const handlers = new Map<string, Set<(data: unknown) => void>>();
 const statusListeners = new Set<(s: RealtimeStatus) => void>();
 
