@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { FlaskConical, RefreshCw, TriangleAlert } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { Badge } from "@/components/ui/badge";
@@ -15,6 +16,7 @@ interface LabResultsPanelProps {
   encounterId: number | null;
   token: string | null;
   pendingCount: number;
+  refreshSignal?: number;
 }
 
 function ResultRow({ result }: { result: LabResult }) {
@@ -53,8 +55,12 @@ function ResultRow({ result }: { result: LabResult }) {
   );
 }
 
-export default function LabResultsPanel({ encounterId, token, pendingCount }: LabResultsPanelProps) {
+export default function LabResultsPanel({ encounterId, token, pendingCount, refreshSignal }: LabResultsPanelProps) {
   const { results, loading, error, refetch } = useLabResults(encounterId, token, encounterId !== null);
+
+  useEffect(() => {
+    if (refreshSignal) void refetch(); // eslint-disable-line react-hooks/set-state-in-effect
+  }, [refreshSignal, refetch]);
 
   return (
     <Card>
