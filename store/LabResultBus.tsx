@@ -4,6 +4,7 @@ import React, { createContext, useContext, useEffect, useMemo, useRef, useState 
 import { useAuth } from "@/store/RoleContext";
 import { useRealtime } from "@/store/RealtimeContext";
 import { useToast } from "@/components/ui/Toast";
+import { playNotificationSound } from "@/lib/notificationSound";
 import LabResultModal from "@/components/consultation/LabResultModal";
 import { api } from "@/lib/api";
 import type { LabResult, LabResultEvent } from "@/types/lab";
@@ -70,6 +71,7 @@ export function LabResultBusProvider({ children }: { children: React.ReactNode }
       const isOrderingDoctor = user?.id != null && result.lab_request?.ordered_by === user.id;
       if (!isOrderingDoctor) return;
 
+      playNotificationSound();
       const testName = result.lab_request?.test_name ?? `Lab result #${result.id}`;
       const value = result.result_value_text ?? result.result_value_numeric;
       const detail = value != null ? ` — ${value}${result.unit ? ` ${result.unit}` : ""}` : "";

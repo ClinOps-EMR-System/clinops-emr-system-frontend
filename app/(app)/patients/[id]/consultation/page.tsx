@@ -1008,32 +1008,54 @@ export default function ClinicianSOAPConsultation() {
                       {orders.length > 0 ? (
                         <div className="divide-y divide-border rounded-lg border bg-card overflow-hidden">
                           {orders.map((order) => (
-                            <div key={order.id} className="px-4 py-3 flex items-center justify-between">
-                              <div className="min-w-0">
-                                <span className="font-medium text-sm">{order.order_type}</span>
-                                {order.clinical_indication && (
-                                  <span className="ml-2 text-xs text-muted-foreground">— {order.clinical_indication}</span>
-                                )}
-                              </div>
-                              <div className="flex items-center gap-2 shrink-0">
-                                <StatusBadge
-                                  label={order.status}
-                                  variant={order.status?.toLowerCase() === "completed" ? "success" : "warning"}
-                                  size="sm"
-                                />
-                                {order.lab_requests?.some((lr) => lr.results?.length) && (
-                                  <Button
-                                    variant="outline"
+                            <div key={order.id} className="px-4 py-3">
+                              <div className="flex items-center justify-between gap-3">
+                                <div className="min-w-0">
+                                  <span className="font-medium text-sm capitalize">{order.order_type}</span>
+                                  {order.ordered_at && (
+                                    <span className="ml-2 text-xs text-muted-foreground">
+                                      {new Date(order.ordered_at).toLocaleString(undefined, {
+                                        dateStyle: "medium",
+                                        timeStyle: "short",
+                                      })}
+                                    </span>
+                                  )}
+                                  {order.clinical_indication && (
+                                    <p className="text-xs text-muted-foreground mt-0.5">{order.clinical_indication}</p>
+                                  )}
+                                </div>
+                                <div className="flex items-center gap-2 shrink-0">
+                                  <StatusBadge
+                                    label={order.status}
+                                    variant={order.status?.toLowerCase() === "completed" ? "success" : "warning"}
                                     size="sm"
-                                    onClick={() => {
-                                      const result = order.lab_requests?.flatMap((lr) => lr.results ?? [])[0];
-                                      if (result) openResult(result.id);
-                                    }}
-                                  >
-                                    View Result
-                                  </Button>
-                                )}
+                                  />
+                                  {order.lab_requests?.some((lr) => lr.results?.length) && (
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => {
+                                        const result = order.lab_requests?.flatMap((lr) => lr.results ?? [])[0];
+                                        if (result) openResult(result.id);
+                                      }}
+                                    >
+                                      View Result
+                                    </Button>
+                                  )}
+                                </div>
                               </div>
+                              {order.lab_requests && order.lab_requests.length > 0 && (
+                                <div className="mt-2 space-y-1">
+                                  {order.lab_requests.map((lr) => (
+                                    <div key={lr.id} className="flex items-center justify-between text-xs">
+                                      <span className="font-medium text-sm text-foreground/90">
+                                        {lr.test_name || "Untitled test"}
+                                      </span>
+                                      <span className="text-muted-foreground capitalize">{lr.status}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
                             </div>
                           ))}
                         </div>
