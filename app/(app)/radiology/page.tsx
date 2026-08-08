@@ -23,8 +23,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import StatusBadge from "../../../components/ui/StatusBadge";
 import EmptyState from "../../../components/ui/EmptyState";
 import Modal from "../../../components/ui/Modal";
+import ImagingUploadModal, { type ImagingUploadTarget } from "@/components/radiology/ImagingUploadModal";
 import { cn } from "../../../lib/utils";
-import { ScanLine, Search, Clock, AlertTriangle, RefreshCw, FileText } from "lucide-react";
+import { ScanLine, Search, Clock, AlertTriangle, RefreshCw, FileText, ImagePlus } from "lucide-react";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -64,6 +65,8 @@ export default function RadiologyPage() {
   // Report modal
   const [reportModalOpen, setReportModalOpen] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState<ImagingRequest | null>(null);
+  const [uploadModalOpen, setUploadModalOpen] = useState(false);
+  const [uploadRequest, setUploadRequest] = useState<ImagingUploadTarget | null>(null);
   const [reportForm, setReportForm] = useState({
     technique: "",
     findings: "",
@@ -130,6 +133,16 @@ export default function RadiologyPage() {
     setSelectedRequest(null);
     setSubmitError(null);
     setSubmitSuccess(null);
+  };
+
+  const openUploadModal = (req: ImagingRequest) => {
+    setUploadRequest({
+      imaging_request_id: req.imaging_request_id,
+      imaging_type: req.imaging_type,
+      body_site: req.body_site,
+      patient: req.patient,
+    });
+    setUploadModalOpen(true);
   };
 
   const handleMarkPerformed = async (req: ImagingRequest) => {
@@ -364,8 +377,13 @@ export default function RadiologyPage() {
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
+                          <Button size="sm" onClick={() => openUploadModal(req)}>
+                            <ImagePlus className="h-3 w-3 mr-1" />
+                            Upload Results
+                          </Button>
                           <Button
                             size="sm"
+                            variant="outline"
                             onClick={() => handleMarkPerformed(req)}
                           >
                             Mark Performed
@@ -424,9 +442,13 @@ export default function RadiologyPage() {
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
+                          <Button size="sm" onClick={() => openUploadModal(req)}>
+                            <ImagePlus className="h-3 w-3 mr-1" />
+                            Upload Results
+                          </Button>
                           <Button
                             size="sm"
-                            variant={req.has_draft_report ? "outline" : "default"}
+                            variant="outline"
                             onClick={() => openReportModal(req)}
                           >
                             <FileText className="h-3 w-3 mr-1" />
@@ -609,6 +631,14 @@ export default function RadiologyPage() {
           )}
         </form>
       </Modal>
+
+      <ImagingUploadModal
+        open={uploadModalOpen}
+        onClose={() => setUploadModalOpen(false)}
+        request={uploadRequest}
+        token={token}
+        onComplete={fetchData}
+      />
     </div>
   );
 }
