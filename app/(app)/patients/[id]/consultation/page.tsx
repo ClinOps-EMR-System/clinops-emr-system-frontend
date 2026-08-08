@@ -1582,7 +1582,7 @@ export default function ClinicianSOAPConsultation() {
                               <li key={drug.id}>
                                 <button
                                   type="button"
-                                  onClick={() => { setSelectedDrug(drug); setDrugQuery(drug.name); setDrugResults([]); }}
+                                  onClick={() => { setSelectedDrug(drug); setDrugQuery(drug.name); setDrugResults([]); setAllergyWarnings([]); setOverrideReason(""); }}
                                   className="w-full text-left px-4 py-2.5 hover:bg-muted/50 flex items-baseline justify-between transition-colors"
                                 >
                                   <span className="font-medium text-foreground">{drug.name}</span>
