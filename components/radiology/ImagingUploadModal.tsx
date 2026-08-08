@@ -65,7 +65,11 @@ export default function ImagingUploadModal({ open, onClose, request, token, onCo
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!request || !findings.trim() || !impression.trim()) return;
+    if (!request) return;
+    if (!findings.trim() || !impression.trim()) {
+      setError("Findings and Impression are required to submit the report.");
+      return;
+    }
     setSubmitting(true);
     setError(null);
     try {
@@ -99,7 +103,7 @@ export default function ImagingUploadModal({ open, onClose, request, token, onCo
             {success ? "Close" : "Cancel"}
           </Button>
           {!success && (
-            <Button onClick={handleSubmit} disabled={submitting || !findings.trim() || !impression.trim()}>
+            <Button onClick={handleSubmit} disabled={submitting}>
               {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
               {submitting ? "Submitting..." : "Upload Results & Release"}
             </Button>

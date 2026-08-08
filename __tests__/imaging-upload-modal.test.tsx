@@ -30,12 +30,11 @@ describe("ImagingUploadModal", () => {
     expect(screen.getByPlaceholderText(/Describe the radiological findings/)).toBeInTheDocument();
   });
 
-  it("disables submit until findings and impression are provided", () => {
+  it("shows an inline error and does not call the API when submitting without findings or impression", async () => {
     render(<ImagingUploadModal open request={target} token="t" onClose={vi.fn()} />);
-    expect(screen.getByRole("button", { name: /Upload Results & Release/ })).toBeDisabled();
-    fireEvent.change(screen.getByPlaceholderText(/Describe the radiological findings/), { target: { value: "F" } });
-    fireEvent.change(screen.getByPlaceholderText(/Radiologist's diagnostic impression/), { target: { value: "I" } });
-    expect(screen.getByRole("button", { name: /Upload Results & Release/ })).toBeEnabled();
+    fireEvent.click(screen.getByRole("button", { name: /Upload Results & Release/ }));
+    expect(await screen.findByText(/Findings and Impression are required/)).toBeInTheDocument();
+    expect(apiMock.post).not.toHaveBeenCalled();
   });
 
   it("submits a FormData with images[] and report fields", async () => {
