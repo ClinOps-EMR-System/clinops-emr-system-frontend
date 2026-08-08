@@ -37,6 +37,7 @@ import {
   Search,
   Plus,
   Ambulance,
+  GitMerge,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -115,6 +116,19 @@ interface Appointment {
   appointment_type: string;
 }
 
+interface MergeCandidate {
+  id: number;
+  hospital_number: string;
+  first_name: string;
+  last_name: string;
+  date_of_birth: string | null;
+  gender: string | null;
+  phone: string | null;
+  patient_category: string | null;
+  active_encounter: string | null;
+  flagged_at: string;
+}
+
 function getTimeOfDay(): string {
   const hour = new Date().getHours();
   if (hour < 12) return "morning";
@@ -160,6 +174,15 @@ export default function ReceptionistDashboard() {
   const { data: appointmentsData, loading: apptLoading, refetch: refetchAppointments } = useFetch<Appointment[]>(
     `/appointments?date=${new Date().toLocaleDateString("en-CA")}`
   );
+
+  const canMerge = (user?.permissions ?? []).includes("patient.merge");
+  const {
+    data: mergeCandidatesData,
+    loading: mergeLoading,
+    refetch: refetchMergeCandidates,
+  } = useFetch<MergeCandidate[]>("/patients/merge-candidates", { immediate: canMerge });
+
+  const mergeCandidates = mergeCandidatesData ?? [];
 
   const loading = dashLoading || queueLoading || queueDataLoading || emergencyLoading || apptLoading;
   const appointments = appointmentsData ?? [];
@@ -280,6 +303,56 @@ export default function ReceptionistDashboard() {
         <QueuePreview queue={queue} emergencyWaiting={emergencyWaiting} />
         <QuickActions />
       </div>
+
+      {/* Pending Consolidation */}
+      {canMerge && !mergeLoading && mergeCandidates.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+              <GitMerge className="size-3.5" />
+              Pending Consolidation
+            </CardTitle>
+            <CardAction>
+              <button
+                type="button"
+                onClick={refetchMergeCandidates}
+                className="text-xs font-semibold text-clinical-primary hover:text-clinical-primary-hover"
+              >
+                Refresh
+              </button>
+            </CardAction>
+          </CardHeader>
+          <CardContent className="px-0">
+            <div className="divide-y divide-border overflow-hidden rounded border border-border">
+              {mergeCandidates.slice(0, 5).map((c) => (
+                <div key={c.id} className="p-3 flex items-center justify-between gap-2 text-xs hover:bg-muted/30 transition-colors">
+                  <div className="min-w-0">
+                    <p className="font-semibold text-foreground">
+                      <Link href={`/patients/${c.id}`} className="hover:text-clinical-primary hover:underline">
+                        {c.first_name} {c.last_name}
+                      </Link>
+                    </p>
+                    <p className="text-muted-foreground font-mono mt-0.5">
+                      #{c.hospital_number}
+                      {c.date_of_birth ? ` · DOB ${new Date(c.date_of_birth).toLocaleDateString()}` : ""}
+                      {c.active_encounter ? ` · ${c.active_encounter}` : ""}
+                    </p>
+                  </div>
+                  <Link
+                    href={`/patients/${c.id}`}
+                    className="text-xs font-bold text-clinical-primary hover:text-clinical-primary-hover shrink-0 ml-2"
+                  >
+                    Review &amp; Merge
+                  </Link>
+                </div>
+              ))}
+            </div>
+            <p className="px-4 pt-2 text-[11px] text-muted-foreground">
+              Emergency rapid registrations awaiting identity confirmation. Verify the patient, then merge into their existing record.
+            </p>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Check-in feedback */}
       {checkinSuccess && (

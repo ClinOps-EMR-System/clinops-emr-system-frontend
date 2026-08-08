@@ -51,12 +51,29 @@ export interface Allergy {
   atc_code?: string | null;
 }
 
+export type DuplicateConfidence = "High" | "Medium" | "Low";
+
 export interface DuplicatePatient {
   id: number;
   hospital_number: string;
   first_name: string;
   last_name: string;
   date_of_birth: string;
+  gender?: string | null;
+  phone?: string | null;
   village: string;
   district: string;
+  score?: number;
+  confidence?: DuplicateConfidence;
+  match_reasons?: string[];
+}
+
+export interface DuplicateCheckResponse {
+  summary: {
+    total: number;
+    high: number;
+    medium: number;
+    low: number;
+  };
+  matches: DuplicatePatient[];
 }
