@@ -79,7 +79,7 @@ export default function ImagingUploadModal({ open, onClose, request, token, onCo
       formData.append("impression", impression);
       if (technique.trim()) formData.append("technique", technique.trim());
       if (conclusion.trim()) formData.append("conclusion", conclusion.trim());
-      formData.append("is_critical", String(isCritical));
+      formData.append("is_critical", isCritical ? "1" : "0");
       await api.post(`/imaging-requests/${request.imaging_request_id}/complete`, formData, token);
       setSuccess("Report submitted and released to the clinical team.");
       onComplete?.();

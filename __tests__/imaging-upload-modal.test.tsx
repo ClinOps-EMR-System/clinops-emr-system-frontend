@@ -54,6 +54,7 @@ describe("ImagingUploadModal", () => {
     expect(body).toBeInstanceOf(FormData);
     expect(body.get("findings")).toBe("Findings text");
     expect(body.get("impression")).toBe("Impression text");
+    expect(body.get("is_critical")).toBe("0");
     expect(body.getAll("images[]")).toHaveLength(1);
   });
 
