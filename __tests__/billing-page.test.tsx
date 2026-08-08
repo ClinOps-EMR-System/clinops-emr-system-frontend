@@ -1,17 +1,21 @@
 import React from "react";
-import { render, screen, act, fireEvent } from "@testing-library/react";
+import { render, screen, act, fireEvent, waitFor } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import BillingPage from "../app/(app)/billing/page";
 
 const mocks = vi.hoisted(() => ({
   get: vi.fn(),
+  post: vi.fn(),
   subscribe: vi.fn(),
+  success: vi.fn(),
+  error: vi.fn(),
   realtimeHandlers: new Map<string, (data: unknown) => void>(),
 }));
 
 vi.mock("@/lib/api", () => ({
   api: {
     get: mocks.get,
+    post: mocks.post,
   },
 }));
 
@@ -23,6 +27,20 @@ vi.mock("@/store/RealtimeContext", () => ({
   useRealtime: () => ({
     subscribe: mocks.subscribe,
     status: "connected",
+  }),
+}));
+
+vi.mock("@/components/ui/Toast", () => ({
+  useToast: () => ({ success: mocks.success, error: mocks.error }),
+}));
+
+vi.mock("@/lib/hooks/usePermissions", () => ({
+  usePermissions: () => ({
+    can: (permission: string) => permission === "billing.waiver",
+    permissions: new Set(["billing.waiver"]),
+    roles: [],
+    isAdmin: false,
+    canAccessAdmin: false,
   }),
 }));
 
@@ -125,5 +143,75 @@ describe("BillingPage", () => {
     expect(screen.getByText("MK 3,000")).toBeInTheDocument();
     expect(screen.getAllByText("MK 5,000").length).toBeGreaterThan(0);
     expect(screen.getByRole("link", { name: /open patient record/i })).toHaveAttribute("href", "/patients/1");
+  });
+
+  it("waives a full bill when the Waive button is used with a reason", async () => {
+    mocks.post.mockResolvedValue({ status: 200, data: { id: 1, payment_status: "Waived", balance: 0, waived_amount: 5000 } });
+
+    render(<BillingPage />);
+
+    await screen.findByText("BLL202608070001");
+    fireEvent.click(screen.getByRole("button", { name: "Waive" }));
+
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(screen.getByText(/leave empty to waive the full/i)).toBeInTheDocument();
+
+    fireEvent.change(screen.getByPlaceholderText(/hardship case/i), { target: { value: "Hardship case approved by facility administrator." } });
+    fireEvent.click(screen.getByRole("button", { name: "Confirm Waiver" }));
+
+    await waitFor(() =>
+      expect(mocks.success).toHaveBeenCalledWith("Bill waived successfully. Admins, finance, and clinical staff have been notified in realtime.")
+    );
+    expect(mocks.post).toHaveBeenCalledWith("/bills/1/waive", { reason: "Hardship case approved by facility administrator." }, "test-token");
+    expect(mocks.get).toHaveBeenCalledWith("/bills", "test-token");
+  });
+
+  it("sends the partial amount when a waiver amount is entered", async () => {
+    mocks.post.mockResolvedValue({ status: 200, data: { id: 1, payment_status: "Partially Waived", balance: 3000, waived_amount: 2000 } });
+
+    render(<BillingPage />);
+
+    await screen.findByText("BLL202608070001");
+    fireEvent.click(screen.getByRole("button", { name: "Waive" }));
+
+    fireEvent.change(screen.getByPlaceholderText(/leave empty to waive/i), { target: { value: "2000" } });
+    fireEvent.change(screen.getByPlaceholderText(/hardship case/i), { target: { value: "Partial support." } });
+    fireEvent.click(screen.getByRole("button", { name: "Confirm Waiver" }));
+
+    await waitFor(() => expect(mocks.post).toHaveBeenCalledWith("/bills/1/waive", { amount: 2000, reason: "Partial support." }, "test-token"));
+  });
+
+  it("shows a server error inside the waive dialog when the waiver is rejected", async () => {
+    mocks.post.mockRejectedValue({ status: 422, message: "The waiver amount cannot exceed the outstanding balance.", errors: {} });
+
+    render(<BillingPage />);
+
+    await screen.findByText("BLL202608070001");
+    fireEvent.click(screen.getByRole("button", { name: "Waive" }));
+    fireEvent.change(screen.getByPlaceholderText(/hardship case/i), { target: { value: "Over-waive." } });
+    fireEvent.click(screen.getByRole("button", { name: "Confirm Waiver" }));
+
+    expect(await screen.findByText("The waiver amount cannot exceed the outstanding balance.")).toBeInTheDocument();
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+  });
+
+  it("shows the specific unsupported-method message when a payment method is rejected", async () => {
+    mocks.post.mockRejectedValue({
+      status: 422,
+      message: "The selected payment method is invalid.",
+      errors: { payment_method: ["The selected payment method is invalid."] },
+    });
+
+    render(<BillingPage />);
+
+    await screen.findByText("BLL202608070001");
+    fireEvent.click(screen.getByRole("button", { name: "Pay" }));
+    fireEvent.click(screen.getByRole("button", { name: /record payment/i }));
+
+    expect(
+      await screen.findByText(
+        "This payment method is not supported. Choose: Cash, Bank Transfer, Mobile Money, Insurance, Card."
+      )
+    ).toBeInTheDocument();
   });
 });

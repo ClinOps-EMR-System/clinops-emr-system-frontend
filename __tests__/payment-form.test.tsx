@@ -109,4 +109,26 @@ describe("PaymentForm", () => {
       await screen.findByText("The patient must be discharged before this bill can be paid.")
     ).toBeInTheDocument();
   });
+
+  it("shows the specific unsupported-method message when payment_method fails validation", async () => {
+    const err = new Error("The selected payment method is invalid.") as Error & {
+      status?: number;
+      errors?: Record<string, string[]>;
+    };
+    err.status = 422;
+    err.errors = { payment_method: ["The selected payment method is invalid."] };
+    mockedApi.post.mockRejectedValueOnce(err);
+
+    render(<PaymentForm {...baseProps} />);
+
+    fireEvent.change(screen.getByLabelText(/amount/i), { target: { value: "6000" } });
+    fireEvent.change(screen.getByLabelText(/method/i), { target: { value: "Cash" } });
+    fireEvent.click(screen.getByRole("button", { name: /record payment/i }));
+
+    expect(
+      await screen.findByText(
+        "This payment method is not supported. Choose: Cash, Bank Transfer, Mobile Money, Insurance, Card."
+      )
+    ).toBeInTheDocument();
+  });
 });

@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 import { usePayChanguCharge } from "@/lib/hooks/usePayChanguCharge";
+import { getPaymentMethodError } from "@/lib/billing/payments";
 import type { PayChanguChargeResult } from "@/lib/services/admin";
 
 export interface RecordedPayment {
@@ -106,8 +107,9 @@ export function PaymentForm({
     } catch (err: unknown) {
       const apiError = err as { status?: number; message?: string; errors?: Record<string, string[]> };
        if (apiError.status === 422) {
+         const methodError = getPaymentMethodError(err);
          const first = apiError.errors ? Object.values(apiError.errors)[0]?.[0] : undefined;
-         const msg = first || apiError.message || "Invalid payment details.";
+         const msg = methodError || first || apiError.message || "Invalid payment details.";
          setFormError(msg);
        } else if (apiError.status === 502) {
          const msg = isPayChangu ? "Unable to initialize payment with PayChangu." : "A gateway error occurred. Please try again.";

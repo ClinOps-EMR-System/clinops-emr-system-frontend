@@ -25,7 +25,10 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import Modal from "@/components/ui/Modal";
-import { DollarSign, Search, Receipt, AlertTriangle, CheckCircle } from "lucide-react";
+import { useToast } from "@/components/ui/Toast";
+import { usePermissions } from "@/lib/hooks/usePermissions";
+import { getPaymentMethodError } from "@/lib/billing/payments";
+import { DollarSign, Search, Receipt, AlertTriangle, CheckCircle, ShieldCheck } from "lucide-react";
 
 interface Bill {
   id: number;
@@ -35,6 +38,10 @@ interface Bill {
   total_amount: number;
   paid_amount: number;
   balance: number;
+  waived_amount?: number;
+  waiver_approved?: boolean;
+  waiver_approved_by?: number | null;
+  waiver_reason?: string | null;
   payment_status: string;
   insurance_provider: string | null;
   created_at: string;
@@ -77,12 +84,13 @@ interface Service {
   unit_price: number;
 }
 
-type StatusFilter = "all" | "unpaid" | "partially_paid" | "paid" | "waived";
+type StatusFilter = "all" | "unpaid" | "partially_paid" | "partially_waived" | "paid" | "waived";
 
 const FILTER_TABS: Array<[StatusFilter, string]> = [
   ["all", "All"],
   ["unpaid", "Unpaid"],
   ["partially_paid", "Partial"],
+  ["partially_waived", "Part. Waived"],
   ["paid", "Paid"],
   ["waived", "Waived"],
 ];
@@ -92,8 +100,12 @@ function getStatusVariant(status: string): "success" | "warning" | "error" | "in
   if (s === "paid") return "success";
   if (s === "partially_paid") return "warning";
   if (s === "unpaid") return "error";
-  if (s === "waived") return "info";
+  if (s === "waived" || s === "partially_waived") return "info";
   return "neutral";
+}
+
+function statusKey(status: string): string {
+  return status?.toLowerCase().replaceAll(" ", "_") || "";
 }
 
 const PAYCHANGU_POLL_INTERVAL_MS = 5000;
@@ -101,6 +113,8 @@ const PAYCHANGU_POLL_LIMIT_MS = 2 * 60 * 1000;
 
 export default function BillingPage() {
   const { token } = useAuth();
+  const { can } = usePermissions();
+  const toast = useToast();
   const { subscribe } = useRealtime();
   const [bills, setBills] = useState<Bill[]>([]);
   const [, setServices] = useState<Service[]>([]);
@@ -114,6 +128,11 @@ export default function BillingPage() {
   const [detailsBill, setDetailsBill] = useState<Bill | null>(null);
   const [paymentForm, setPaymentForm] = useState({ amount: "", payment_method: "cash", reference: "" });
   const [processing, setProcessing] = useState(false);
+  const [waiveModalOpen, setWaiveModalOpen] = useState(false);
+  const [waiveBill, setWaiveBill] = useState<Bill | null>(null);
+  const [waiveForm, setWaiveForm] = useState({ amount: "", reason: "" });
+  const [waiveError, setWaiveError] = useState<string | null>(null);
+  const [waiving, setWaiving] = useState(false);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [paychanguOperators, setPaychanguOperators] = useState<PayChanguOperator[]>([]);
   const [paychanguOperatorsLoading, setPaychanguOperatorsLoading] = useState(false);
@@ -230,6 +249,48 @@ export default function BillingPage() {
     setDetailsBill(null);
   };
 
+  const handleOpenWaiveModal = (bill: Bill) => {
+    setWaiveError(null);
+    setWaiveBill(bill);
+    setWaiveForm({ amount: "", reason: "" });
+    setWaiveModalOpen(true);
+  };
+
+  const handleCloseWaiveModal = () => {
+    if (waiving) return;
+    setWaiveModalOpen(false);
+    setWaiveBill(null);
+    setWaiveForm({ amount: "", reason: "" });
+    setWaiveError(null);
+  };
+
+  const handleSubmitWaive = async (e?: { preventDefault?: () => void }) => {
+    e?.preventDefault?.();
+    if (!waiveBill) return;
+    if (!waiveForm.reason.trim()) {
+      setWaiveError("A reason is required to waive a bill.");
+      return;
+    }
+    setWaiving(true);
+    setWaiveError(null);
+    try {
+      const body: { reason: string; amount?: number } = { reason: waiveForm.reason.trim() };
+      if (waiveForm.amount) body.amount = parseFloat(waiveForm.amount);
+      await api.post(`/bills/${waiveBill.id}/waive`, body, token);
+      setWaiveModalOpen(false);
+      setWaiveBill(null);
+      setWaiveForm({ amount: "", reason: "" });
+      toast.success("Bill waived successfully. Admins, finance, and clinical staff have been notified in realtime.");
+      fetchData();
+    } catch (err: unknown) {
+      const apiError = err as { status?: number; message?: string; errors?: Record<string, string[]> };
+      const firstError = apiError.errors ? Object.values(apiError.errors)[0]?.[0] : undefined;
+      setWaiveError(firstError || apiError.message || "Failed to waive the bill.");
+    } finally {
+      setWaiving(false);
+    }
+  };
+
   const handlePayChanguRetry = () => {
     setPaychanguError(null);
     setPaychanguPolling(true);
@@ -285,23 +346,24 @@ export default function BillingPage() {
       b.bill_number?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       b.patient?.hospital_number?.includes(searchQuery) ||
       b.patient?.first_name?.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesStatus = statusFilter === "all" || b.payment_status?.toLowerCase() === statusFilter.toLowerCase();
+    const matchesStatus = statusFilter === "all" || statusKey(b.payment_status) === statusFilter.toLowerCase();
     return matchesSearch && matchesStatus;
   });
 
   const counts = {
     all: bills.length,
-    unpaid: bills.filter((b) => b.payment_status?.toLowerCase() === "unpaid").length,
-    partially_paid: bills.filter((b) => b.payment_status?.toLowerCase() === "partially_paid").length,
-    paid: bills.filter((b) => b.payment_status?.toLowerCase() === "paid").length,
-    waived: bills.filter((b) => b.payment_status?.toLowerCase() === "waived").length,
+    unpaid: bills.filter((b) => statusKey(b.payment_status) === "unpaid").length,
+    partially_paid: bills.filter((b) => statusKey(b.payment_status) === "partially_paid").length,
+    partially_waived: bills.filter((b) => statusKey(b.payment_status) === "partially_waived").length,
+    paid: bills.filter((b) => statusKey(b.payment_status) === "paid").length,
+    waived: bills.filter((b) => statusKey(b.payment_status) === "waived").length,
   };
 
   const totalOutstanding = bills.reduce((sum, b) => sum + (Number(b.balance) || 0), 0);
-  const unpaidCount = counts.unpaid + counts.partially_paid;
+  const unpaidCount = counts.unpaid + counts.partially_paid + counts.partially_waived;
   const paidToday = bills.filter((b) => {
     const today = new Date().toISOString().split("T")[0];
-    return b.payment_status?.toLowerCase() === "paid" && b.created_at?.startsWith(today);
+    return statusKey(b.payment_status) === "paid" && b.created_at?.startsWith(today);
   }).length;
 
   const isSubmitDisabled =
@@ -357,7 +419,12 @@ export default function BillingPage() {
       } else if (apiError.status === 404) {
         setError("Billing module is not yet configured on the backend. Payments cannot be recorded at this time.");
       } else {
-        setError(apiError.message || "Failed to record payment");
+        const methodError = getPaymentMethodError(err);
+        if (methodError) {
+          setError(methodError);
+        } else {
+          setError(apiError.message || "Failed to record payment");
+        }
       }
     } finally {
       setProcessing(false);
@@ -532,13 +599,14 @@ export default function BillingPage() {
                         bill.payment_status?.toLowerCase() === "unpaid" && "bg-red-50 text-red-700 border border-red-200",
                         bill.payment_status?.toLowerCase() === "partially_paid" && "bg-amber-50 text-amber-700 border border-amber-200",
                         bill.payment_status?.toLowerCase() === "waived" && "bg-sky-50 text-sky-700 border border-sky-200",
+                        bill.payment_status?.toLowerCase() === "partially_waived" && "bg-indigo-50 text-indigo-700 border border-indigo-200",
                       )}>
                         {bill.payment_status?.replace("_", " ")}
                       </span>
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
-                        {(bill.payment_status?.toLowerCase() === "unpaid" || bill.payment_status?.toLowerCase() === "partially_paid") && (
+                        {(statusKey(bill.payment_status) === "unpaid" || statusKey(bill.payment_status) === "partially_paid") && (
                           <Button
                             size="sm"
                             variant="outline"
@@ -546,6 +614,19 @@ export default function BillingPage() {
                             onClick={() => handleOpenPaymentModal(bill)}
                           >
                             Pay
+                          </Button>
+                        )}
+                        {can("billing.waiver") &&
+                          (statusKey(bill.payment_status) === "unpaid" ||
+                            statusKey(bill.payment_status) === "partially_paid" ||
+                            statusKey(bill.payment_status) === "partially_waived") && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 text-xs text-indigo-600 border-indigo-200 hover:bg-indigo-50"
+                            onClick={() => handleOpenWaiveModal(bill)}
+                          >
+                            Waive
                           </Button>
                         )}
                         <Button
@@ -794,12 +875,95 @@ export default function BillingPage() {
                 <span className="text-muted-foreground">Paid</span>
                 <span className="font-medium font-mono text-emerald-600">MK {Number(detailsBill.paid_amount).toLocaleString()}</span>
               </div>
+              {Number(detailsBill.waived_amount) > 0 && (
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Waived</span>
+                  <span className="font-medium font-mono text-sky-600">MK {Number(detailsBill.waived_amount).toLocaleString()}</span>
+                </div>
+              )}
               <div className="flex items-center justify-between">
                 <span className="text-muted-foreground">Balance</span>
                 <span className="font-medium font-mono text-red-600">MK {Number(detailsBill.balance).toLocaleString()}</span>
               </div>
+              {detailsBill.waiver_reason && (
+                <div className="pt-2 border-t border-border">
+                  <div className="flex items-center gap-1.5 text-xs font-semibold text-sky-600 uppercase tracking-wider">
+                    <ShieldCheck className="h-3.5 w-3.5" />
+                    Waiver
+                  </div>
+                  <p className="mt-1 text-sm text-muted-foreground">{detailsBill.waiver_reason}</p>
+                </div>
+              )}
             </div>
           </div>
+        )}
+      </Modal>
+
+      {/* Waive Bill Modal */}
+      <Modal
+        open={waiveModalOpen}
+        onClose={handleCloseWaiveModal}
+        title="Waive Bill"
+        subtitle={
+          waiveBill
+            ? `${waiveBill.bill_number} — Balance: MK ${waiveBill.balance?.toLocaleString()}`
+            : ""
+        }
+        footer={
+          <>
+            <button
+              onClick={handleCloseWaiveModal}
+              disabled={waiving}
+              className="px-4 py-2 text-sm font-semibold text-muted-foreground bg-background border border-border rounded-lg hover:bg-muted disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSubmitWaive}
+              disabled={waiving}
+              className="px-4 py-2 text-sm font-bold text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 disabled:opacity-50"
+            >
+              {waiving ? "Waiving..." : "Confirm Waiver"}
+            </button>
+          </>
+        }
+      >
+        {waiveBill && (
+          <form onSubmit={handleSubmitWaive} className="space-y-4">
+            {waiveError && (
+              <div className="rounded-md border border-destructive/50 bg-destructive/5 p-3 text-sm text-destructive">
+                {waiveError}
+              </div>
+            )}
+            <div>
+              <label className="block text-xs font-semibold text-foreground uppercase tracking-wide mb-1.5">Amount (MK)</label>
+              <input
+                type="number"
+                step="0.01"
+                min="0.01"
+                max={waiveBill.balance}
+                className="block w-full px-3 py-2 border border-input rounded-lg text-sm bg-background focus:outline-none focus:ring-2 focus:ring-ring font-mono"
+                value={waiveForm.amount}
+                onChange={(e) => setWaiveForm({ ...waiveForm, amount: e.target.value })}
+                placeholder={`Leave empty to waive full balance (MK ${Number(waiveBill.balance).toLocaleString()})`}
+              />
+              <p className="mt-1 text-xs text-muted-foreground">
+                Leave empty to waive the full outstanding balance.
+              </p>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-foreground uppercase tracking-wide mb-1.5">Reason *</label>
+              <textarea
+                required
+                maxLength={500}
+                rows={3}
+                className="block w-full px-3 py-2 border border-input rounded-lg text-sm bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+                value={waiveForm.reason}
+                onChange={(e) => setWaiveForm({ ...waiveForm, reason: e.target.value })}
+                placeholder="e.g. Hardship case approved by facility administrator"
+              />
+            </div>
+          </form>
         )}
       </Modal>
     </div>
