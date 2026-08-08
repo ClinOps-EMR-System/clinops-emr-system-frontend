@@ -60,6 +60,15 @@ interface Prescription {
   prescribedBy?: {
     name: string;
   };
+  is_student_prescription: boolean;
+  verification: {
+    id: number;
+    status: string;
+    submitted_at: string | null;
+    reviewed_by: number | null;
+    reviewed_at: string | null;
+    comments: string | null;
+  } | null;
 }
 
 interface StockBatch {
@@ -87,6 +96,13 @@ function getStatusVariant(status: string): "success" | "warning" | "error" | "in
     case "cancelled": return "error";
     default: return "neutral";
   }
+}
+
+function getVerificationBadge(rx: Prescription): { label: string; variant: "warning" | "error" | "info" } | null {
+  if (!rx.verification) return null;
+  if (rx.verification.status === "pending") return { label: "Awaiting supervisor review", variant: "warning" };
+  if (rx.verification.status === "rejected") return { label: "Supervisor sent back", variant: "error" };
+  return { label: "Supervisor approved", variant: "info" };
 }
 
 export default function DispensingPage() {
@@ -377,63 +393,87 @@ export default function DispensingPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredPrescriptions.map((rx) => (
-                    <TableRow key={rx.id}>
-                      <TableCell>
-                        <Link
-                          href={`/patients/${rx.patient_id}`}
-                          className="font-medium text-foreground hover:text-primary hover:underline"
-                        >
-                          {rx.patient ? `${rx.patient.first_name} ${rx.patient.last_name}` : `Patient #${rx.patient_id}`}
-                        </Link>
-                        <div className="text-xs text-muted-foreground font-mono">
-                          {rx.patient?.hospital_number}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="font-medium">{rx.drug?.name || "—"}</div>
-                        {rx.drug?.is_controlled && (
-                          <StatusBadge label="Controlled" variant="error" />
-                        )}
-                      </TableCell>
-                      <TableCell className="hidden md:table-cell text-muted-foreground font-mono text-sm">
-                        {rx.dosage} {rx.route}
-                      </TableCell>
-                      <TableCell className="hidden lg:table-cell text-muted-foreground text-sm">
-                        {rx.frequency}
-                      </TableCell>
-                      <TableCell>
-                        <StatusBadge label={rx.status} variant={getStatusVariant(rx.status)} />
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          {rx.status?.toLowerCase() === "prescribed" && (
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => handleVerify(rx)}
-                            >
-                              Verify
-                            </Button>
-                          )}
-                          {(rx.status?.toLowerCase() === "verified" || rx.status?.toLowerCase() === "prescribed") && (
-                            <Button
-                              size="sm"
-                              onClick={() => openDispenseModal(rx)}
-                            >
-                              Dispense
-                            </Button>
-                          )}
+                  {filteredPrescriptions.map((rx) => {
+                    const verificationBadge = getVerificationBadge(rx);
+                    const locked =
+                      rx.is_student_prescription &&
+                      verificationBadge !== null &&
+                      verificationBadge.variant !== "info";
+                    return (
+                      <TableRow key={rx.id}>
+                        <TableCell>
                           <Link
                             href={`/patients/${rx.patient_id}`}
-                            className="text-sm font-medium text-primary hover:underline"
+                            className="font-medium text-foreground hover:text-primary hover:underline"
                           >
-                            <User className="h-4 w-4" />
+                            {rx.patient ? `${rx.patient.first_name} ${rx.patient.last_name}` : `Patient #${rx.patient_id}`}
                           </Link>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                          <div className="text-xs text-muted-foreground font-mono">
+                            {rx.patient?.hospital_number}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="font-medium">{rx.drug?.name || "—"}</div>
+                          {rx.drug?.is_controlled && (
+                            <StatusBadge label="Controlled" variant="error" />
+                          )}
+                          {rx.is_student_prescription && (
+                            <div className="text-xs text-muted-foreground mt-1">
+                              Prescribed by {rx.prescribedBy?.name ?? "student"} (student)
+                            </div>
+                          )}
+                        </TableCell>
+                        <TableCell className="hidden md:table-cell text-muted-foreground font-mono text-sm">
+                          {rx.dosage} {rx.route}
+                        </TableCell>
+                        <TableCell className="hidden lg:table-cell text-muted-foreground text-sm">
+                          {rx.frequency}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex flex-col items-start gap-1">
+                            <StatusBadge label={rx.status} variant={getStatusVariant(rx.status)} />
+                            {verificationBadge && (
+                              <StatusBadge label={verificationBadge.label} variant={verificationBadge.variant} />
+                            )}
+                            {rx.verification?.status === "rejected" && rx.verification.comments && (
+                              <div className="text-xs text-muted-foreground max-w-[220px]">
+                                {rx.verification.comments}
+                              </div>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            {rx.status?.toLowerCase() === "prescribed" && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => handleVerify(rx)}
+                                disabled={locked}
+                              >
+                                Verify
+                              </Button>
+                            )}
+                            {(rx.status?.toLowerCase() === "verified" || rx.status?.toLowerCase() === "prescribed") && (
+                              <Button
+                                size="sm"
+                                onClick={() => openDispenseModal(rx)}
+                                disabled={locked}
+                              >
+                                Dispense
+                              </Button>
+                            )}
+                            <Link
+                              href={`/patients/${rx.patient_id}`}
+                              className="text-sm font-medium text-primary hover:underline"
+                            >
+                              <User className="h-4 w-4" />
+                            </Link>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
               <div className="px-6 py-3 border-t text-xs text-muted-foreground font-mono">

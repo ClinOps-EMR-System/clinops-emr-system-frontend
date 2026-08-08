@@ -28,6 +28,8 @@ export type NavItem = {
   icon?: LucideIcon;
   href?: string;
   children?: NavItem[];
+  /** Any-of permissions required to see this item. Admin and `/system` bypass via canAccessAdmin. */
+  permissions?: string[];
 };
 
 function routeMatches(pathname: string, href?: string, exact = false, allItems: NavItem[] = []): boolean {

@@ -122,16 +122,12 @@ export default function ResuscitationPage() {
   const loadClinicians = useCallback(async () => {
     if (!token) return;
     try {
-      const res = await api.get("/users?per_page=100", token);
-      const data = res.data?.data?.data ?? res.data?.data ?? [];
-      const filtered = Array.isArray(data)
-        ? data.filter((u: { roles?: { name: string }[] }) =>
-            u.roles?.some((r: { name: string }) =>
-              ["Doctor", "Clinical Officer"].includes(r.name)
-            )
-          )
+      const res = await api.get("/resuscitation/team-leads", token);
+      const data = res.data?.data ?? res.data ?? [];
+      const leads = Array.isArray(data)
+        ? data.map((u: { id: number; name: string }) => ({ id: u.id, name: u.name }))
         : [];
-      setClinicians(filtered.map((u: { id: number; name: string }) => ({ id: u.id, name: u.name })));
+      setClinicians(leads);
     } catch {
       // silent
     }

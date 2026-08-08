@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/store/RoleContext";
+import { useRealtime } from "@/store/RealtimeContext";
 import { api } from "@/lib/api";
 import {
   Card, CardContent, CardHeader, CardTitle,
@@ -50,6 +51,7 @@ const tabs: { key: TabKey; label: string; apiStatus: string; icon: React.ReactNo
 
 export default function PharmacyOverviewPage() {
   const { token } = useAuth();
+  const { subscribe } = useRealtime();
   const [activeTab, setActiveTab] = useState<TabKey>("pending");
   const [items, setItems] = useState<PharmacyWorklistItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -60,9 +62,9 @@ export default function PharmacyOverviewPage() {
   const lowStockCount = alerts?.low_stock?.length ?? 0;
   const expiringCount = alerts?.expiring_soon?.length ?? 0;
 
-  async function fetchWorklist() {
+  async function fetchWorklist(silent = false) {
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       setError(null);
       const currentTab = tabs.find((t) => t.key === activeTab)!;
       const res = await api.get(`/worklist/pharmacy?status=${encodeURIComponent(currentTab.apiStatus)}`, token);
@@ -90,6 +92,15 @@ export default function PharmacyOverviewPage() {
     }
   }, [token, activeTab]);
   /* eslint-enable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
+
+  useEffect(() => {
+    if (!token) return;
+    const off = subscribe("clinops_pharmacy_queue", () => {
+      void fetchWorklist(true);
+    });
+    return off;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [subscribe, token, activeTab]);
 
   // ── Verify prescription ──
   const handleVerify = async (prescriptionId: number) => {

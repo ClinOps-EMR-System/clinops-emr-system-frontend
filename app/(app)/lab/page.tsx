@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { useAuth } from "../../../store/RoleContext";
+import { useRealtime } from "../../../store/RealtimeContext";
 import { api } from "../../../lib/api";
 import {
   Card,
@@ -86,29 +87,39 @@ interface LabResult {
   };
 }
 
+interface Service {
+  id: number;
+  name: string;
+  category: string;
+  unit_price: number | string;
+}
+
 export default function LabPage() {
   const { token, user } = useAuth();
+  const { subscribe } = useRealtime();
   const [activeTab, setActiveTab] = useState<"pending" | "results" | "verified">("pending");
   const [orders, setOrders] = useState<LabOrder[]>([]);
   const [results, setResults] = useState<LabResult[]>([]);
+  const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [resultModalOpen, setResultModalOpen] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<LabOrder | null>(null);
-  const [resultForm, setResultForm] = useState({ result_value_text: "", result_value_numeric: "", unit: "", reference_range: "", interpretation: "", is_abnormal: false, is_critical: false });
+  const [resultForm, setResultForm] = useState({ result_value_text: "", result_value_numeric: "", unit: "", reference_range: "", interpretation: "", is_abnormal: false, is_critical: false, billable_price: "" });
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitSuccess, setSubmitSuccess] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async (silent = false) => {
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       setError(null);
-      const [ordersRes, resultsRes] = await Promise.all([
+      const [ordersRes, resultsRes, servicesRes] = await Promise.all([
         api.get("/orders", token),
         api.get("/lab-results", token),
+        api.get("/services?category=Lab&per_page=100", token),
       ]);
       if (ordersRes && ordersRes.data) {
         const allOrders = ordersRes.data.data || ordersRes.data;
@@ -120,6 +131,10 @@ export default function LabPage() {
       if (resultsRes && resultsRes.data) {
         const allResults = resultsRes.data.data || resultsRes.data;
         setResults(Array.isArray(allResults) ? allResults : []);
+      }
+      if (servicesRes && servicesRes.data) {
+        const allServices = servicesRes.data.data || servicesRes.data;
+        setServices(Array.isArray(allServices) ? allServices : []);
       }
       setLastUpdated(new Date());
     } catch (err: unknown) {
@@ -135,6 +150,15 @@ export default function LabPage() {
   }, [token]);
   /* eslint-enable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
 
+  useEffect(() => {
+    if (!token) return;
+    const off = subscribe("clinops_lab_requests", () => {
+      void fetchData(true);
+    });
+    return off;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [subscribe, token]);
+
   const filteredOrders = orders.filter((o) => {
     const matchesSearch = !searchQuery ||
       o.lab_request?.test_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -147,6 +171,21 @@ export default function LabPage() {
   const inProgressOrders = filteredOrders.filter((o) => o.status?.toLowerCase() === "in_progress" || o.status?.toLowerCase() === "collected");
   const enteredResults = results.filter((r) => r.status === "entered" && !r.verified_at);
   const completedResults = results.filter((r) => r.verified_at || r.released_at);
+
+  const handleOpenResultModal = (order: LabOrder) => {
+    const testName = order.lab_request?.test_name?.toLowerCase();
+    const match = testName
+      ? services.find((s) => s.name.toLowerCase() === testName)
+      : undefined;
+    setSelectedOrder(order);
+    setResultForm((prev) => ({
+      ...prev,
+      billable_price: match ? String(match.unit_price) : "",
+    }));
+    setSubmitError(null);
+    setSubmitSuccess(null);
+    setResultModalOpen(true);
+  };
 
   const handleSubmitResult = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -166,6 +205,7 @@ export default function LabPage() {
         reference_range: resultForm.reference_range || null,
         is_abnormal: resultForm.is_abnormal,
         is_critical: resultForm.is_critical,
+        billable_price: parseFloat(resultForm.billable_price),
       };
       if (resultForm.result_value_numeric && !isNaN(parseFloat(resultForm.result_value_numeric))) {
         payload.result_value_numeric = parseFloat(resultForm.result_value_numeric);
@@ -179,7 +219,7 @@ export default function LabPage() {
           ? "Result submitted successfully. It will appear under Results Entry until verified."
           : "Result submitted successfully and released to the clinical team."
       );
-      setResultForm({ result_value_text: "", result_value_numeric: "", unit: "", reference_range: "", interpretation: "", is_abnormal: false, is_critical: false });
+      setResultForm({ result_value_text: "", result_value_numeric: "", unit: "", reference_range: "", interpretation: "", is_abnormal: false, is_critical: false, billable_price: "" });
       fetchData();
     } catch (err: unknown) {
       setSubmitError(err instanceof Error ? err.message : "Failed to submit result");
@@ -360,7 +400,7 @@ export default function LabPage() {
                           <Button
                             size="sm"
                             variant="ghost"
-                            onClick={() => { setSelectedOrder(order); setResultModalOpen(true); }}
+                            onClick={() => handleOpenResultModal(order)}
                           >
                             <Plus className="h-3 w-3" />
                             Enter Result
@@ -434,7 +474,7 @@ export default function LabPage() {
                             <Button
                               size="sm"
                               variant="ghost"
-                              onClick={() => { setSelectedOrder(order); setResultModalOpen(true); }}
+                              onClick={() => handleOpenResultModal(order)}
                             >
                               Enter Result
                             </Button>
@@ -509,7 +549,7 @@ export default function LabPage() {
               {!submitSuccess && (
                 <Button
                   onClick={handleSubmitResult}
-                  disabled={submitting || (!resultForm.result_value_text.trim() && !resultForm.result_value_numeric.trim())}
+                  disabled={submitting || (!resultForm.result_value_text.trim() && !resultForm.result_value_numeric.trim()) || resultForm.billable_price === ""}
                 >
                   {submitting ? "Submitting..." : "Submit Result"}
                 </Button>
@@ -570,17 +610,35 @@ export default function LabPage() {
                 placeholder="e.g., 12.0-16.0"
               />
             </div>
-            <div>
-              <label className="block text-xs font-semibold uppercase tracking-wide text-muted-foreground">Interpretation</label>
-              <input
-                type="text"
-                className="mt-1 block w-full px-3 py-2 border border-input rounded-lg text-sm focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary"
-                value={resultForm.interpretation}
-                onChange={(e) => setResultForm({ ...resultForm, interpretation: e.target.value })}
-                placeholder="Clinical interpretation"
-              />
-            </div>
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-wide text-muted-foreground">Interpretation</label>
+            <input
+              type="text"
+              className="mt-1 block w-full px-3 py-2 border border-input rounded-lg text-sm focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary"
+              value={resultForm.interpretation}
+              onChange={(e) => setResultForm({ ...resultForm, interpretation: e.target.value })}
+              placeholder="Clinical interpretation"
+            />
           </div>
+        </div>
+        <div>
+          <label className="block text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Billable Price (MK) <span className="text-red-600">*</span>
+          </label>
+          <input
+            type="number"
+            step="0.01"
+            min="0"
+            required
+            className="mt-1 block w-full px-3 py-2 border border-input rounded-lg text-sm focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary font-mono"
+            value={resultForm.billable_price}
+            onChange={(e) => setResultForm({ ...resultForm, billable_price: e.target.value })}
+            placeholder="e.g., 3500"
+          />
+          <p className="mt-1 text-xs text-muted-foreground">
+            This amount is added to the patient&apos;s bill when the result is submitted.
+          </p>
+        </div>
           <div className="flex gap-6">
             <label className="flex items-center gap-2 text-sm">
               <input

@@ -1,11 +1,13 @@
 import React from "react";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import LabPage from "../app/(app)/lab/page";
 
 const mocks = vi.hoisted(() => ({
   get: vi.fn(),
   post: vi.fn(),
+  subscribe: vi.fn(),
+  realtimeHandlers: new Map<string, (data: unknown) => void>(),
 }));
 
 vi.mock("@/lib/api", () => ({
@@ -17,6 +19,13 @@ vi.mock("@/lib/api", () => ({
 
 vi.mock("@/store/RoleContext", () => ({
   useAuth: () => ({ token: "test-token", user: { id: 1, roles: ["Lab Technician"] } }),
+}));
+
+vi.mock("@/store/RealtimeContext", () => ({
+  useRealtime: () => ({
+    subscribe: mocks.subscribe,
+    status: "connected",
+  }),
 }));
 
 const releasedResult = {
@@ -69,12 +78,20 @@ const pendingOrder = {
 describe("LabPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.realtimeHandlers.clear();
+    mocks.subscribe.mockImplementation((channel: string, handler: (data: unknown) => void) => {
+      mocks.realtimeHandlers.set(channel, handler);
+      return () => mocks.realtimeHandlers.delete(channel);
+    });
     mocks.get.mockImplementation((endpoint: string) => {
       if (endpoint === "/orders") {
         return Promise.resolve({ data: { data: [pendingOrder] } });
       }
       if (endpoint === "/lab-results") {
         return Promise.resolve({ data: { data: [] } });
+      }
+      if (endpoint.startsWith("/services")) {
+        return Promise.resolve({ data: [] });
       }
       return Promise.resolve({ data: [] });
     });
@@ -136,17 +153,85 @@ describe("LabPage", () => {
       target: { value: "13.5" },
     });
 
+    fireEvent.change(screen.getByPlaceholderText("e.g., 3500"), {
+      target: { value: "1500" },
+    });
+
     fireEvent.click(screen.getByRole("button", { name: /Submit Result/ }));
 
     await waitFor(() => {
       expect(mocks.post).toHaveBeenCalledWith(
         "/lab-results",
-        expect.objectContaining({ lab_request_id: 5, result_value_numeric: 13.5 }),
+        expect.objectContaining({ lab_request_id: 5, result_value_numeric: 13.5, billable_price: 1500 }),
         "test-token"
       );
     });
 
     expect(await screen.findByText(/released/i)).toBeInTheDocument();
     expect(screen.queryByText(/until verified/i)).not.toBeInTheDocument();
+  });
+
+  it("prefills the billable price from the services catalog when opening the result modal", async () => {
+    mocks.get.mockImplementation((endpoint: string) => {
+      if (endpoint === "/orders") {
+        return Promise.resolve({ data: { data: [pendingOrder] } });
+      }
+      if (endpoint === "/lab-results") {
+        return Promise.resolve({ data: { data: [] } });
+      }
+      if (endpoint.startsWith("/services")) {
+        return Promise.resolve({ data: [{ id: 1, name: "CBC", category: "Lab", unit_price: 3500 }] });
+      }
+      return Promise.resolve({ data: [] });
+    });
+
+    render(<LabPage />);
+
+    const enterButton = await screen.findByRole("button", { name: /Enter Result/ });
+    fireEvent.click(enterButton);
+
+    const priceInput = screen.getByPlaceholderText("e.g., 3500");
+    expect(priceInput).toBeInTheDocument();
+    expect(priceInput).toHaveValue(3500);
+  });
+
+  it("refetches the worklist when a lab request arrives on the realtime channel", async () => {
+    render(<LabPage />);
+
+    await screen.findByText("CBC");
+
+    const newOrder = {
+      ...pendingOrder,
+      id: 2,
+      lab_request: { id: 6, test_name: "Malaria RDT", loinc_code: "MRDT1", specimen_type: null, status: "Ordered" },
+    };
+    mocks.get.mockImplementation((endpoint: string) => {
+      if (endpoint === "/orders") {
+        return Promise.resolve({ data: { data: [newOrder] } });
+      }
+      if (endpoint === "/lab-results") {
+        return Promise.resolve({ data: { data: [] } });
+      }
+      return Promise.resolve({ data: [] });
+    });
+
+    const handler = mocks.realtimeHandlers.get("clinops_lab_requests");
+    expect(handler).toBeDefined();
+
+    await act(async () => {
+      handler!({
+        event: "INSERT",
+        lab_request_id: 6,
+        encounter_id: 2,
+        patient_id: 1,
+        is_critical: false,
+        status: "ordered",
+        color: "blue",
+        priority: "normal",
+        occurred_at: "2026-08-07T10:00:00.000Z",
+      });
+    });
+
+    expect(await screen.findByText("Malaria RDT")).toBeInTheDocument();
   });
 });
