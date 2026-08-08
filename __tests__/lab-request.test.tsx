@@ -1,6 +1,7 @@
 import React from "react";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { ToastProvider } from "@/components/ui/Toast";
 import NewLabRequestPage from "../app/(app)/lab/request/page";
 
 const mocks = vi.hoisted(() => ({
@@ -62,7 +63,7 @@ describe("NewLabRequestPage", () => {
   });
 
   it("renders the form and loads the patient's encounters", async () => {
-    render(<NewLabRequestPage />);
+    render(<ToastProvider><NewLabRequestPage /></ToastProvider>);
 
     expect(screen.getByRole("heading", { name: "New Lab Request" })).toBeInTheDocument();
     expect(screen.getByText(/Patient #1/)).toBeInTheDocument();
@@ -74,7 +75,7 @@ describe("NewLabRequestPage", () => {
   });
 
   it("submits a lab request and shows the billing confirmation modal", async () => {
-    render(<NewLabRequestPage />);
+    render(<ToastProvider><NewLabRequestPage /></ToastProvider>);
 
     await waitFor(() => expect(screen.getAllByRole("combobox").length).toBe(2));
     const selects = screen.getAllByRole("combobox");
@@ -108,7 +109,7 @@ describe("NewLabRequestPage", () => {
   });
 
   it("navigates to the lab page when Done is pressed", async () => {
-    render(<NewLabRequestPage />);
+    render(<ToastProvider><NewLabRequestPage /></ToastProvider>);
 
     await waitFor(() => expect(screen.getAllByRole("combobox").length).toBe(2));
     const selects = screen.getAllByRole("combobox");
@@ -131,7 +132,7 @@ describe("NewLabRequestPage", () => {
       data: { id: 56 },
     });
 
-    render(<NewLabRequestPage />);
+    render(<ToastProvider><NewLabRequestPage /></ToastProvider>);
 
     await waitFor(() => expect(screen.getAllByRole("combobox").length).toBe(2));
     const selects = screen.getAllByRole("combobox");
