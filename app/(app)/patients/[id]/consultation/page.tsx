@@ -1206,10 +1206,11 @@ export default function ClinicianSOAPConsultation() {
                       <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Add ICD-11 Code</h4>
 
                       <div className="relative">
-                        <label className="block text-xs font-semibold text-foreground uppercase tracking-wide mb-1.5">Search Diagnosis</label>
+                        <label htmlFor="field-search-diagnosis" className="block text-xs font-semibold text-foreground uppercase tracking-wide mb-1.5">Search Diagnosis</label>
                         <div className="relative">
                           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                           <input
+                            id="field-search-diagnosis"
                             type="text"
                             className="block w-full rounded-lg border border-input bg-background pl-10 pr-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                             placeholder="Search WHO ICD-11..."
@@ -1258,8 +1259,9 @@ export default function ClinicianSOAPConsultation() {
                       {selectedIcd && (
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                           <div>
-                            <label className="block text-xs font-semibold text-foreground uppercase tracking-wide mb-1.5">Type</label>
+                            <label htmlFor="field-diagnosis-type" className="block text-xs font-semibold text-foreground uppercase tracking-wide mb-1.5">Type</label>
                             <select
+                              id="field-diagnosis-type"
                               className="block w-full rounded-lg border border-input bg-background px-3 py-2 text-sm"
                               value={diagnosisType}
                               onChange={(e) => setDiagnosisType(e.target.value as typeof diagnosisType)}
@@ -1272,8 +1274,9 @@ export default function ClinicianSOAPConsultation() {
                             </select>
                           </div>
                           <div>
-                            <label className="block text-xs font-semibold text-foreground uppercase tracking-wide mb-1.5">Certainty</label>
+                            <label htmlFor="field-diagnosis-certainty" className="block text-xs font-semibold text-foreground uppercase tracking-wide mb-1.5">Certainty</label>
                             <select
+                              id="field-diagnosis-certainty"
                               className="block w-full rounded-lg border border-input bg-background px-3 py-2 text-sm"
                               value={certainty}
                               onChange={(e) => setCertainty(e.target.value)}
@@ -1438,10 +1441,11 @@ export default function ClinicianSOAPConsultation() {
                     <form onSubmit={handleCreateOrder} className="space-y-4">
                       <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Place New Order</h4>
                       <div>
-                        <label className="block text-xs font-semibold text-foreground uppercase tracking-wide mb-1.5">
+                        <label htmlFor="field-order-test-name" className="block text-xs font-semibold text-foreground uppercase tracking-wide mb-1.5">
                           Test Name <span className="text-destructive">*</span>
                         </label>
                         <input
+                          id="field-order-test-name"
                           type="text"
                           required
                           className="block w-full rounded-lg border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -1451,10 +1455,11 @@ export default function ClinicianSOAPConsultation() {
                         />
                       </div>
                       <div>
-                        <label className="block text-xs font-semibold text-foreground uppercase tracking-wide mb-1.5">
+                        <label htmlFor="field-order-indication" className="block text-xs font-semibold text-foreground uppercase tracking-wide mb-1.5">
                           Clinical Indication
                         </label>
                         <input
+                          id="field-order-indication"
                           type="text"
                           className="block w-full rounded-lg border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                           placeholder="Reason for test"
@@ -1463,8 +1468,9 @@ export default function ClinicianSOAPConsultation() {
                         />
                       </div>
                       <div>
-                        <label className="block text-xs font-semibold text-foreground uppercase tracking-wide mb-1.5">Priority</label>
+                        <label htmlFor="field-order-priority" className="block text-xs font-semibold text-foreground uppercase tracking-wide mb-1.5">Priority</label>
                         <select
+                          id="field-order-priority"
                           className="block w-full rounded-lg border border-input bg-background px-3 py-2 text-sm"
                           value={orderForm.priority}
                           onChange={(e) => setOrderForm({ ...orderForm, priority: e.target.value })}
@@ -1576,10 +1582,11 @@ export default function ClinicianSOAPConsultation() {
                       <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-widest">New Prescription</h4>
 
                       <div className="relative">
-                        <label className="block text-xs font-semibold text-foreground uppercase tracking-wide mb-1.5">
+                        <label htmlFor="field-rx-drug" className="block text-xs font-semibold text-foreground uppercase tracking-wide mb-1.5">
                           Drug <span className="text-destructive">*</span>
                         </label>
                         <input
+                          id="field-rx-drug"
                           type="text"
                           required
                           className="block w-full rounded-lg border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -1641,10 +1648,11 @@ export default function ClinicianSOAPConsultation() {
                               {w.reaction && <span className="ml-1">— Reaction: {w.reaction}</span>}
                             </div>
                           ))}
-                          <label className="block text-xs font-semibold text-red-800 uppercase tracking-wide">
+                          <label htmlFor="field-rx-override" className="block text-xs font-semibold text-red-800 uppercase tracking-wide">
                             Override Reason <span className="text-destructive">*</span>
                           </label>
                           <textarea
+                            id="field-rx-override"
                             rows={2}
                             className="block w-full rounded-lg border border-red-200 bg-background px-3 py-2 text-sm"
                             placeholder="Type the clinical reason to prescribe this medication despite the allergy — it will be recorded for audit."
@@ -1657,12 +1665,12 @@ export default function ClinicianSOAPConsultation() {
 
                       <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                         <div>
-                          <label className="block text-xs font-semibold text-foreground uppercase tracking-wide mb-1.5">Dosage <span className="text-destructive">*</span></label>
-                          <input type="text" required className="block w-full rounded-lg border border-input bg-background px-3 py-2 text-sm" placeholder="500mg" value={rxForm.dosage} onChange={(e) => setRxForm({ ...rxForm, dosage: e.target.value })} />
+                          <label htmlFor="field-rx-dosage" className="block text-xs font-semibold text-foreground uppercase tracking-wide mb-1.5">Dosage <span className="text-destructive">*</span></label>
+                          <input id="field-rx-dosage" type="text" required className="block w-full rounded-lg border border-input bg-background px-3 py-2 text-sm" placeholder="500mg" value={rxForm.dosage} onChange={(e) => setRxForm({ ...rxForm, dosage: e.target.value })} />
                         </div>
                         <div>
-                          <label className="block text-xs font-semibold text-foreground uppercase tracking-wide mb-1.5">Route</label>
-                          <select className="block w-full rounded-lg border border-input bg-background px-3 py-2 text-sm" value={rxForm.route} onChange={(e) => setRxForm({ ...rxForm, route: e.target.value })}>
+                          <label htmlFor="field-rx-route" className="block text-xs font-semibold text-foreground uppercase tracking-wide mb-1.5">Route</label>
+                          <select id="field-rx-route" className="block w-full rounded-lg border border-input bg-background px-3 py-2 text-sm" value={rxForm.route} onChange={(e) => setRxForm({ ...rxForm, route: e.target.value })}>
                             <option value="oral">Oral</option>
                             <option value="iv">IV</option>
                             <option value="im">IM</option>
@@ -1674,8 +1682,8 @@ export default function ClinicianSOAPConsultation() {
                           </select>
                         </div>
                         <div>
-                          <label className="block text-xs font-semibold text-foreground uppercase tracking-wide mb-1.5">Frequency</label>
-                          <select className="block w-full rounded-lg border border-input bg-background px-3 py-2 text-sm" value={rxForm.frequency} onChange={(e) => setRxForm({ ...rxForm, frequency: e.target.value })}>
+                          <label htmlFor="field-rx-frequency" className="block text-xs font-semibold text-foreground uppercase tracking-wide mb-1.5">Frequency</label>
+                          <select id="field-rx-frequency" className="block w-full rounded-lg border border-input bg-background px-3 py-2 text-sm" value={rxForm.frequency} onChange={(e) => setRxForm({ ...rxForm, frequency: e.target.value })}>
                             <option value="OD">Once daily</option>
                             <option value="BD">Twice daily</option>
                             <option value="TDS">Three times</option>
@@ -1687,12 +1695,12 @@ export default function ClinicianSOAPConsultation() {
                           </select>
                         </div>
                         <div>
-                          <label className="block text-xs font-semibold text-foreground uppercase tracking-wide mb-1.5">Duration</label>
-                          <input type="text" className="block w-full rounded-lg border border-input bg-background px-3 py-2 text-sm" placeholder="7 days" value={rxForm.duration} onChange={(e) => setRxForm({ ...rxForm, duration: e.target.value })} />
+                          <label htmlFor="field-rx-duration" className="block text-xs font-semibold text-foreground uppercase tracking-wide mb-1.5">Duration</label>
+                          <input id="field-rx-duration" type="text" className="block w-full rounded-lg border border-input bg-background px-3 py-2 text-sm" placeholder="7 days" value={rxForm.duration} onChange={(e) => setRxForm({ ...rxForm, duration: e.target.value })} />
                         </div>
                         <div>
-                          <label className="block text-xs font-semibold text-foreground uppercase tracking-wide mb-1.5">Quantity</label>
-                          <input type="number" min="1" className="block w-full rounded-lg border border-input bg-background px-3 py-2 text-sm font-mono" value={rxForm.quantity} onChange={(e) => setRxForm({ ...rxForm, quantity: e.target.value })} />
+                          <label htmlFor="field-rx-quantity" className="block text-xs font-semibold text-foreground uppercase tracking-wide mb-1.5">Quantity</label>
+                          <input id="field-rx-quantity" type="number" min="1" className="block w-full rounded-lg border border-input bg-background px-3 py-2 text-sm font-mono" value={rxForm.quantity} onChange={(e) => setRxForm({ ...rxForm, quantity: e.target.value })} />
                         </div>
                         <div className="flex items-end pb-1">
                           <label className="flex items-center gap-2 text-sm cursor-pointer">
@@ -1702,8 +1710,8 @@ export default function ClinicianSOAPConsultation() {
                         </div>
                       </div>
                       <div>
-                        <label className="block text-xs font-semibold text-foreground uppercase tracking-wide mb-1.5">Notes</label>
-                        <input type="text" className="block w-full rounded-lg border border-input bg-background px-3 py-2 text-sm" placeholder="Take after food" value={rxForm.notes} onChange={(e) => setRxForm({ ...rxForm, notes: e.target.value })} />
+                          <label htmlFor="field-rx-notes" className="block text-xs font-semibold text-foreground uppercase tracking-wide mb-1.5">Notes</label>
+                          <input id="field-rx-notes" type="text" className="block w-full rounded-lg border border-input bg-background px-3 py-2 text-sm" placeholder="Take after food" value={rxForm.notes} onChange={(e) => setRxForm({ ...rxForm, notes: e.target.value })} />
                       </div>
                       <div className="flex justify-end">
                         <Button

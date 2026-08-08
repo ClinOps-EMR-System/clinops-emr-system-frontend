@@ -586,7 +586,7 @@ export default function DischargePage({ params }: { params: Promise<{ id: string
                             <thead>
                               <tr>
                                 {DOC_TABLE_HEADERS.map((h) => (
-                                  <th key={h} className="text-left font-bold border border-slate-300 px-1.5 py-1">
+                                  <th key={h} scope="col" className="text-left font-bold border border-slate-300 px-1.5 py-1">
                                     {h}
                                   </th>
                                 ))}

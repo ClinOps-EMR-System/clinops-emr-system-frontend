@@ -364,7 +364,7 @@ export default function WardRoundPage() {
       <section className="bg-white rounded border border-[#becab7]/50 p-6 space-y-4">
         <div className="flex items-center gap-2">
           <span className="h-2 w-2 rounded-full bg-sky-500"></span>
-          <h3 className="text-lg font-bold text-gray-900">Nursing Shift Notes</h3>
+          <h2 className="text-lg font-bold text-gray-900">Nursing Shift Notes</h2>
         </div>
 
         {/* New shift note form */}
@@ -475,7 +475,7 @@ export default function WardRoundPage() {
         <section className="bg-white rounded border border-[#becab7]/50 p-6 space-y-4">
           <div className="flex items-center gap-2">
             <span className="h-2 w-2 rounded-full bg-amber-500"></span>
-            <h3 className="text-lg font-bold text-gray-900">Inpatient Decision</h3>
+            <h2 className="text-lg font-bold text-gray-900">Inpatient Decision</h2>
           </div>
           <p className="text-sm text-[#5f5e5e]">
             Based on today&apos;s ward round assessment, decide the next step for this patient.

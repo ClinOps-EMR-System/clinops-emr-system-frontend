@@ -218,13 +218,13 @@ export default function MedicationAdministrationPage({
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  <th className="px-4 py-2">Drug</th>
-                  <th className="px-4 py-2">Dose</th>
-                  <th className="px-4 py-2">Route</th>
-                  <th className="px-4 py-2">Frequency</th>
-                  <th className="px-4 py-2">Last Given</th>
-                  <th className="px-4 py-2">Status</th>
-                  <th className="px-4 py-2">Action</th>
+                  <th scope="col" className="px-4 py-2">Drug</th>
+                  <th scope="col" className="px-4 py-2">Dose</th>
+                  <th scope="col" className="px-4 py-2">Route</th>
+                  <th scope="col" className="px-4 py-2">Frequency</th>
+                  <th scope="col" className="px-4 py-2">Last Given</th>
+                  <th scope="col" className="px-4 py-2">Status</th>
+                  <th scope="col" className="px-4 py-2">Action</th>
                 </tr>
               </thead>
               <tbody>
@@ -311,13 +311,13 @@ export default function MedicationAdministrationPage({
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  <th className="px-4 py-2">Time</th>
-                  <th className="px-4 py-2">Drug</th>
-                  <th className="px-4 py-2">Dose</th>
-                  <th className="px-4 py-2">Status</th>
-                  <th className="px-4 py-2">Site</th>
-                  <th className="px-4 py-2">Notes</th>
-                  <th className="px-4 py-2">Recorded By</th>
+                  <th scope="col" className="px-4 py-2">Time</th>
+                  <th scope="col" className="px-4 py-2">Drug</th>
+                  <th scope="col" className="px-4 py-2">Dose</th>
+                  <th scope="col" className="px-4 py-2">Status</th>
+                  <th scope="col" className="px-4 py-2">Site</th>
+                  <th scope="col" className="px-4 py-2">Notes</th>
+                  <th scope="col" className="px-4 py-2">Recorded By</th>
                 </tr>
               </thead>
               <tbody>

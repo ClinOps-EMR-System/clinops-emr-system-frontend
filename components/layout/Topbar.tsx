@@ -492,7 +492,7 @@ export default function Topbar() {
           {/* Notifications Dropdown */}
           {notificationsOpen && (
             <>
-              <div className="fixed inset-0 z-10" onClick={() => setNotificationsOpen(false)} />
+              <div className="fixed inset-0 z-10" onClick={() => setNotificationsOpen(false)} aria-hidden="true" />
               <div className="absolute right-0 mt-2 w-80 bg-white rounded-md shadow-2xl border border-gray-200 z-20 overflow-hidden" role="menu" onKeyDown={(e) => handleMenuKeyDown(e, () => setNotificationsOpen(false))}>
                 <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
                   <h3 className="text-sm font-semibold text-gray-900">Notifications</h3>
@@ -524,6 +524,8 @@ export default function Topbar() {
                     notifications.map((notification) => (
                       <div
                         key={notification.id}
+                        role="button"
+                        tabIndex={0}
                         onClick={() => {
                           markAsRead(notification.id);
                           if (notification.patientId) {
@@ -531,6 +533,7 @@ export default function Topbar() {
                             router.push(`/patients/${notification.patientId}/consultation`);
                           }
                         }}
+                        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); markAsRead(notification.id); if (notification.patientId) { setNotificationsOpen(false); router.push(`/patients/${notification.patientId}/consultation`); } } }}
                         className={`px-4 py-3 border-b border-gray-100 cursor-pointer hover:bg-gray-50 transition-colors ${
                           !notification.read ? "bg-blue-50" : ""
                         }`}
@@ -614,7 +617,7 @@ export default function Topbar() {
 
           {dropdownOpen && (
             <>
-              <div className="fixed inset-0 z-10" onClick={() => setDropdownOpen(false)} />
+              <div className="fixed inset-0 z-10" onClick={() => setDropdownOpen(false)} aria-hidden="true" />
               <div className="absolute right-0 mt-2 w-52 rounded-md bg-white shadow-lg py-1 ring-1 ring-black ring-opacity-5 z-20" role="menu" onKeyDown={(e) => handleMenuKeyDown(e, () => setDropdownOpen(false))}>
                 <div className="px-4 py-2 border-b border-gray-100">
                   <p className="text-xs text-gray-500 uppercase font-bold tracking-wide">Staff Name</p>

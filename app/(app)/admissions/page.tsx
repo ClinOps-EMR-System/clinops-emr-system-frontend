@@ -284,7 +284,7 @@ export default function AdmissionsPage() {
         </>
       }>
         <form onSubmit={handleAdmit} className="space-y-4">
-          {formError && <div className="p-3 rounded bg-red-50 text-red-700 text-sm">{formError}</div>}
+          {formError && <div role="alert" className="p-3 rounded bg-red-50 text-red-700 text-sm">{formError}</div>}
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label htmlFor="field-admit-patient-id" className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">Patient ID *</label>

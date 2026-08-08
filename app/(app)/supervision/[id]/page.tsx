@@ -360,8 +360,10 @@ export default function ReviewDetailPage() {
             className="w-full max-w-md rounded-lg border bg-white p-5 space-y-4"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="text-lg font-bold">Send back for revision</h3>
+            <h2 className="text-lg font-bold">Send back for revision</h2>
+            <label htmlFor="revision-comment" className="sr-only">Revision reason</label>
             <textarea
+              id="revision-comment"
               rows={4}
               required
               className="block w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"

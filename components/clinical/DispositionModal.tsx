@@ -189,7 +189,7 @@ export default function DispositionModal({ open, onClose, encounterId, patientId
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center" role="dialog" aria-modal="true" aria-label="Patient Disposition">
-      <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" onClick={handleClose} />
+      <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" onClick={handleClose} aria-hidden="true" />
       <div className="relative bg-card rounded-xl shadow-2xl border w-full max-w-2xl max-h-[90vh] overflow-hidden mx-4">
         <div className="flex items-center justify-between px-6 py-4 border-b">
           <div>
@@ -221,7 +221,7 @@ export default function DispositionModal({ open, onClose, encounterId, patientId
 
         <div className="p-6 overflow-y-auto max-h-[50vh] space-y-4">
           {error && (
-            <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-800 font-semibold">
+            <div role="alert" className="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-800 font-semibold">
               {error}
             </div>
           )}

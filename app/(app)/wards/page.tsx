@@ -171,12 +171,12 @@ export default function WardsManagementPage() {
             <table className="w-full text-sm text-left">
               <thead className="bg-gray-50/50 text-[#5f5e5e] uppercase text-[11px] font-bold tracking-wider border-b border-gray-100">
                 <tr>
-                  <th className="px-6 py-4">Ward Name</th>
-                  <th className="px-6 py-4">Code</th>
-                  <th className="px-6 py-4">Type</th>
-                  <th className="px-6 py-4">Total Beds</th>
-                  <th className="px-6 py-4">Configured Beds</th>
-                  <th className="px-6 py-4 text-right">Actions</th>
+                  <th scope="col" className="px-6 py-4">Ward Name</th>
+                  <th scope="col" className="px-6 py-4">Code</th>
+                  <th scope="col" className="px-6 py-4">Type</th>
+                  <th scope="col" className="px-6 py-4">Total Beds</th>
+                  <th scope="col" className="px-6 py-4">Configured Beds</th>
+                  <th scope="col" className="px-6 py-4 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">

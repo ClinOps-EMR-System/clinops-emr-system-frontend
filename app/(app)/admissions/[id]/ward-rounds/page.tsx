@@ -357,7 +357,9 @@ export default function WardRoundsPage({ params }: { params: Promise<{ id: strin
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="p-3">
+                      <label htmlFor="soap-subjective" className="sr-only">Subjective</label>
                       <textarea
+                        id="soap-subjective"
                         placeholder="Patient comments, reported pain levels, sleep quality, subjective symptoms..."
                         value={soap.subjective}
                         onChange={(e) => setSoap({ ...soap, subjective: e.target.value })}
@@ -378,7 +380,9 @@ export default function WardRoundsPage({ params }: { params: Promise<{ id: strin
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="p-3">
+                      <label htmlFor="soap-objective" className="sr-only">Objective</label>
                       <textarea
+                        id="soap-objective"
                         placeholder="Physical examination findings, wound inspection, lab/imaging results..."
                         value={soap.objective}
                         onChange={(e) => setSoap({ ...soap, objective: e.target.value })}
@@ -399,7 +403,9 @@ export default function WardRoundsPage({ params }: { params: Promise<{ id: strin
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="p-3">
+                      <label htmlFor="soap-assessment" className="sr-only">Assessment</label>
                       <textarea
+                        id="soap-assessment"
                         placeholder="Clinical judgment, diagnosis progression, stability status..."
                         value={soap.assessment}
                         onChange={(e) => setSoap({ ...soap, assessment: e.target.value })}
@@ -420,7 +426,9 @@ export default function WardRoundsPage({ params }: { params: Promise<{ id: strin
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="p-3">
+                      <label htmlFor="soap-plan" className="sr-only">Plan</label>
                       <textarea
+                        id="soap-plan"
                         placeholder="Management plan, medication adjustments, consultations, discharge goals..."
                         value={soap.plan}
                         onChange={(e) => setSoap({ ...soap, plan: e.target.value })}
@@ -580,7 +588,7 @@ export default function WardRoundsPage({ params }: { params: Promise<{ id: strin
 
                         {/* Timeline Entry Card */}
                         <Card className="border-border/60 hover:border-primary/40 transition-colors shadow-xs">
-                          <CardHeader className="p-3.5 pb-2 cursor-pointer" onClick={() => setExpandedRoundId(isExpanded ? null : round.id)}>
+                          <CardHeader className="p-3.5 pb-2 cursor-pointer" onClick={() => setExpandedRoundId(isExpanded ? null : round.id)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setExpandedRoundId(isExpanded ? null : round.id); } }}>
                             <div className="flex items-start justify-between gap-2">
                               <div>
                                 <div className="flex items-center gap-2 flex-wrap">
