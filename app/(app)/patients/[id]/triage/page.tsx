@@ -18,6 +18,7 @@ import { Separator } from "@/components/ui/separator";
 import { SectionHeader } from "@/components/ui/PageLayout";
 import TriageSidebar from "@/components/triage/TriageSidebar";
 import TriageProgressCard from "@/components/triage/TriageProgressCard";
+import { useToast } from "@/components/ui/Toast";
 import { cn } from "@/lib/utils";
 import {
   ArrowLeft, Loader2, Check, TriangleAlert, Stethoscope,
@@ -110,6 +111,7 @@ export default function NurseTriageWorkbench() {
   const params = useParams();
   const router = useRouter();
   const { token } = useAuth();
+  const { success } = useToast();
   const patientId = params.id as string;
 
   const [activeTab, setActiveTab] = useState<"complaint" | "vitals" | "allergies" | "pregnancy" | "infection" | "trends">("complaint");
@@ -120,7 +122,6 @@ export default function NurseTriageWorkbench() {
   const [loading, setLoading] = useState(true);
   const [submitLoading, setSubmitLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [formErrors, setFormErrors] = useState<Record<string, string[]>>({});
 
   const [temperature, setTemperature] = useState("");
@@ -253,7 +254,6 @@ export default function NurseTriageWorkbench() {
         e.preventDefault();
         setActiveTab(tab);
         setError(null);
-        setSuccessMsg(null);
       }
     };
     window.addEventListener("keydown", handleKeyDown);
@@ -331,7 +331,6 @@ export default function NurseTriageWorkbench() {
     e.preventDefault();
     setSubmitLoading(true);
     setError(null);
-    setSuccessMsg(null);
     setFormErrors({});
     let dbConsciousness = "alert";
     if (consciousness === "C") dbConsciousness = "new_confusion";
@@ -358,7 +357,7 @@ export default function NurseTriageWorkbench() {
     };
     try {
       await api.post(`/patients/${patientId}/triage/vital-signs`, payload, token);
-      setSuccessMsg("Vital signs and clinical NEWS2 score logged successfully.");
+      success("Vital signs and clinical NEWS2 score logged successfully.");
       setTemperature("");
       setBloodPressure("");
       setPulseRate("");
@@ -388,10 +387,9 @@ export default function NurseTriageWorkbench() {
     if (!allergen.trim()) return;
     setSubmitLoading(true);
     setError(null);
-    setSuccessMsg(null);
     try {
       await api.post(`/patients/${patientId}/triage/allergies`, { allergen, allergy_type: allergyType, reaction: reaction || null, severity, atc_code: allergyAtcCode || null }, token);
-      setSuccessMsg("Allergy noted successfully.");
+      success("Allergy noted successfully.");
       setAllergen("");
       setReaction("");
       setAllergyDrugQuery("");
@@ -408,10 +406,9 @@ export default function NurseTriageWorkbench() {
   const handleConfirmNKA = async () => {
     setSubmitLoading(true);
     setError(null);
-    setSuccessMsg(null);
     try {
       await api.post(`/patients/${patientId}/triage/confirm-allergies`, {}, token);
-      setSuccessMsg("No Known Allergies (NKA) status confirmed.");
+      success("No Known Allergies (NKA) status confirmed.");
       fetchSummaryData();
     } catch (err: unknown) {
       setError(friendlyError(err, "confirm allergies"));
@@ -425,10 +422,9 @@ export default function NurseTriageWorkbench() {
     if (!chiefComplaint.trim()) { setError("Chief Complaint is mandatory."); return; }
     setSubmitLoading(true);
     setError(null);
-    setSuccessMsg(null);
     try {
       await api.post(`/patients/${patientId}/triage/presenting-complaint`, { chief_complaint: chiefComplaint, history_of_present_illness: hpi || null }, token);
-      setSuccessMsg("Presenting complaints recorded successfully.");
+      success("Presenting complaints recorded successfully.");
       fetchSummaryData();
     } catch (err: unknown) {
       setError(friendlyError(err, "save complaints"));
@@ -441,12 +437,11 @@ export default function NurseTriageWorkbench() {
     e.preventDefault();
     setSubmitLoading(true);
     setError(null);
-    setSuccessMsg(null);
     try {
       await api.post(`/patients/${patientId}/triage/pregnancy-status`, {
         is_pregnant: isPregnant, last_menstrual_period: lmp || null, gestational_age_weeks: gestationalWeeks ? parseInt(gestationalWeeks) : null,
       }, token);
-      setSuccessMsg("Pregnancy status successfully updated.");
+      success("Pregnancy status successfully updated.");
       fetchSummaryData();
     } catch (err: unknown) {
       setError(friendlyError(err, "update pregnancy status"));
@@ -459,13 +454,12 @@ export default function NurseTriageWorkbench() {
     e.preventDefault();
     setSubmitLoading(true);
     setError(null);
-    setSuccessMsg(null);
     try {
       await api.post(`/patients/${patientId}/triage/infection-screening`, {
         has_fever: hasFever, has_cough: hasCough, has_contact_history: hasContactHistory,
         has_travel_history: hasTravelHistory, suspected_infection_type: suspectedInfectionType || null,
       }, token);
-      setSuccessMsg("Infectious screening log saved. Precautions updated.");
+      success("Infectious screening log saved. Precautions updated.");
       fetchSummaryData();
     } catch (err: unknown) {
       setError(friendlyError(err, "save screening"));
@@ -490,7 +484,6 @@ export default function NurseTriageWorkbench() {
     if (!token || completing) return;
     setCompleting(true);
     setError(null);
-    setSuccessMsg(null);
     try {
       await api.post(`/patients/${patientId}/triage/complete`, {}, token);
       setShowCompletionSummary(true);
@@ -504,10 +497,9 @@ export default function NurseTriageWorkbench() {
     if (!token || undoingVitals) return;
     setUndoingVitals(true);
     setError(null);
-    setSuccessMsg(null);
     try {
       await api.delete(`/patients/${patientId}/triage/vital-signs/last`, token);
-      setSuccessMsg("Last vital signs entry removed. You can re-enter them.");
+      success("Last vital signs entry removed. You can re-enter them.");
       fetchSummaryData();
     } catch (err: unknown) {
       setError(friendlyError(err, "undo vitals"));
@@ -553,7 +545,6 @@ export default function NurseTriageWorkbench() {
   const handleTabChange = (key: string) => {
     setActiveTab(key as typeof activeTab);
     setError(null);
-    setSuccessMsg(null);
   };
 
   return (
@@ -605,11 +596,6 @@ export default function NurseTriageWorkbench() {
         <div className="lg:col-span-3">
           <Card>
             <CardContent className="p-6 space-y-6">
-          {successMsg && (
-            <div className="rounded-lg bg-emerald-50 border border-emerald-200 px-4 py-3 text-sm text-emerald-800 font-semibold flex items-center gap-2">
-              <Check className="h-4 w-4 text-emerald-600 shrink-0" /> {successMsg}
-            </div>
-          )}
 
           {error && (
             <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-800 font-semibold flex items-center gap-2">

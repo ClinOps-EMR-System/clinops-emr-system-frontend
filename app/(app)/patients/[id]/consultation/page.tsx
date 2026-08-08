@@ -22,6 +22,7 @@ import BillingConfirmation from "@/components/billing/BillingConfirmation";
 import LabResultsPanel from "@/components/consultation/LabResultsPanel";
 import ImagingPanel from "@/components/consultation/ImagingPanel";
 import type { BillingSummary } from "@/types/billing";
+import { friendlyError } from "@/lib/errors";
 import { cn } from "@/lib/utils";
 import { getTemplatesByCategory } from "@/lib/clinical-templates";
 import {
@@ -218,7 +219,7 @@ export default function ClinicianSOAPConsultation() {
   const { token, user } = useAuth();
   const { subscribe } = useRealtime();
   const { openResult } = useLabResultBus();
-  const { toast } = useToast();
+  const { toast, success } = useToast();
   const { can } = usePermissions();
   const isStudent = (user?.roles ?? []).some((r) => String(r).toLowerCase() === "medical student");
   const patientId = params.id as string;
@@ -231,7 +232,6 @@ export default function ClinicianSOAPConsultation() {
   const [loading, setLoading] = useState(true);
   const [submitLoading, setSubmitLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
   const [chiefComplaint, setChiefComplaint] = useState("");
   const [hpi, setHpi] = useState("");
@@ -374,8 +374,8 @@ export default function ClinicianSOAPConsultation() {
           }
         } catch { setPrescriptions([]); }
       }
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to load consultation data.");
+    } catch (err) {
+      setError(friendlyError(err, "load consultation data"));
     } finally {
       setLoading(false);
     }
@@ -481,8 +481,8 @@ export default function ClinicianSOAPConsultation() {
     try {
       await api.post(`/patients/${patientId}/check-in`, { encounter_type: "triage" }, token);
       fetchConsultationData();
-    } catch {
-      setError("Failed to start encounter.");
+    } catch (err) {
+      setError(friendlyError(err, "start encounter"));
     } finally {
       setSubmitLoading(false);
     }
@@ -493,15 +493,14 @@ export default function ClinicianSOAPConsultation() {
     if (!summary?.encounter?.id) return;
     setSubmitLoading(true);
     setError(null);
-    setSuccessMsg(null);
     try {
       await api.post(`/patients/${patientId}/triage/presenting-complaint`, {
         chief_complaint: chiefComplaint,
         history_of_present_illness: hpi || null,
       }, token);
-      setSuccessMsg("Subjective notes saved.");
+      success("Subjective notes saved.");
       fetchConsultationData();
-    } catch (err: unknown) {
+    } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save.");
     } finally {
       setSubmitLoading(false);
@@ -513,7 +512,6 @@ export default function ClinicianSOAPConsultation() {
     if (!selectedIcd || !summary?.encounter?.id) return;
     setSubmitLoading(true);
     setError(null);
-    setSuccessMsg(null);
     try {
       await api.post("/diagnoses", {
         patient_id: parseInt(patientId),
@@ -523,12 +521,12 @@ export default function ClinicianSOAPConsultation() {
         diagnosis_type: diagnosisType,
         certainty: certainty,
       }, token);
-      setSuccessMsg(`Diagnosis ${selectedIcd.code} logged.`);
+      success(`Diagnosis ${selectedIcd.code} logged.`);
       setSelectedIcd(null);
       setIcdQuery("");
       fetchConsultationData();
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to log diagnosis.");
+    } catch (err) {
+      setError(friendlyError(err, "log diagnosis"));
     } finally {
       setSubmitLoading(false);
     }
@@ -537,13 +535,12 @@ export default function ClinicianSOAPConsultation() {
   const handleDeleteDiagnosis = async (id: number) => {
     setSubmitLoading(true);
     setError(null);
-    setSuccessMsg(null);
     try {
       await api.delete(`/diagnoses/${id}`, token);
-      setSuccessMsg("Diagnosis removed.");
+      success("Diagnosis removed.");
       fetchConsultationData();
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to remove.");
+    } catch (err) {
+      setError(friendlyError(err, "remove diagnosis"));
     } finally {
       setSubmitLoading(false);
     }
@@ -554,16 +551,15 @@ export default function ClinicianSOAPConsultation() {
     if (!summary?.encounter?.id) return;
     setSubmitLoading(true);
     setError(null);
-    setSuccessMsg(null);
     try {
       await api.post(`/encounters/${summary.encounter.id}/clinical-notes`, {
         plan: planInstructions,
         note_type: "consultation_plan",
       }, token);
-      setSuccessMsg("Plan saved.");
+      success("Plan saved.");
       fetchConsultationData();
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to save plan.");
+    } catch (err) {
+      setError(friendlyError(err, "save plan"));
     } finally {
       setSubmitLoading(false);
     }
@@ -574,16 +570,15 @@ export default function ClinicianSOAPConsultation() {
     if (!summary?.encounter?.id || !physicalExam.trim()) return;
     setSubmitLoading(true);
     setError(null);
-    setSuccessMsg(null);
     try {
       await api.post(`/encounters/${summary.encounter.id}/clinical-notes`, {
         physical_examination: physicalExam,
         note_type: "physical_exam",
       }, token);
-      setSuccessMsg("Physical exam saved.");
+      success("Physical exam saved.");
       fetchConsultationData();
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to save.");
+    } catch (err) {
+      setError(friendlyError(err, "save physical exam"));
     } finally {
       setSubmitLoading(false);
     }
@@ -594,7 +589,6 @@ export default function ClinicianSOAPConsultation() {
     if (!summary?.encounter?.id) return;
     setSubmitLoading(true);
     setError(null);
-    setSuccessMsg(null);
     try {
       await api.post(`/encounters/${summary.encounter.id}/orders`, {
         patient_id: parseInt(patientId),
@@ -603,11 +597,11 @@ export default function ClinicianSOAPConsultation() {
         clinical_indication: orderForm.clinical_indication || null,
         priority: orderForm.priority,
       }, token);
-      setSuccessMsg("Order placed.");
+      success("Order placed.");
       setOrderForm({ test_name: "", clinical_indication: "", priority: "routine" });
       fetchConsultationData();
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to place order.");
+    } catch (err) {
+      setError(friendlyError(err, "place order"));
     } finally {
       setSubmitLoading(false);
     }
@@ -618,7 +612,6 @@ export default function ClinicianSOAPConsultation() {
     if (!summary?.encounter?.id || !selectedDrug) return;
     setSubmitLoading(true);
     setError(null);
-    setSuccessMsg(null);
     try {
       await api.post(`/encounters/${summary.encounter.id}/prescriptions`, {
         patient_id: parseInt(patientId),
@@ -634,22 +627,15 @@ export default function ClinicianSOAPConsultation() {
         allergy_override_reason: allergyWarnings.length > 0 ? overrideReason.trim() || null : null,
         is_controlled: rxForm.is_controlled,
       }, token);
-      setSuccessMsg(`Prescription for ${selectedDrug.name} created.`);
+      success(`Prescription for ${selectedDrug.name} created.`);
       setSelectedDrug(null);
       setDrugQuery("");
       setAllergyWarnings([]);
       setOverrideReason("");
       setRxForm({ dosage: "", route: "oral", frequency: "BD", duration: "7 days", quantity: "30", notes: "", is_controlled: false });
       fetchConsultationData();
-    } catch (err: unknown) {
-      const status = (err as { status?: number })?.status;
-      setError(
-        status === 422
-          ? "This medication matches a recorded allergy. Provide an override reason to prescribe it anyway."
-          : err instanceof Error
-            ? err.message
-            : "Failed to create prescription.",
-      );
+    } catch (err) {
+      setError(friendlyError(err, "create prescription"));
     } finally {
       setSubmitLoading(false);
     }
@@ -724,8 +710,8 @@ export default function ClinicianSOAPConsultation() {
         source_id: service.id,
       }, token);
       await loadBill();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to add service to bill");
+    } catch (err) {
+      setError(friendlyError(err, "add service to bill"));
     } finally {
       setAddingBillItem(false);
     }
@@ -812,10 +798,10 @@ export default function ClinicianSOAPConsultation() {
     setError(null);
     try {
       await api.post(`/encounters/${activeEncounterId}/transition`, { status: targetStatus }, token);
-      setSuccessMsg(`Status changed to ${statusLabel[targetStatus] ?? targetStatus}`);
+      success(`Status changed to ${statusLabel[targetStatus] ?? targetStatus}`);
       fetchConsultationData();
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to update status.");
+    } catch (err) {
+      setError(friendlyError(err, "update encounter status"));
     } finally {
       setSubmitLoading(false);
     }
@@ -827,10 +813,10 @@ export default function ClinicianSOAPConsultation() {
     setError(null);
     try {
       await api.post(`/encounters/${activeEncounterId}/sign-off`, {}, token);
-      setSuccessMsg("Clinical notes signed off successfully.");
+      success("Clinical notes signed off successfully.");
       fetchConsultationData();
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to sign off.");
+    } catch (err) {
+      setError(friendlyError(err, "sign off notes"));
     } finally {
       setSubmitLoading(false);
     }
@@ -842,10 +828,10 @@ export default function ClinicianSOAPConsultation() {
     setError(null);
     try {
       await api.post(`/encounters/${activeEncounterId}/submit-review`, {}, token);
-      setSuccessMsg("Consultation submitted for supervisor review.");
+      success("Consultation submitted for supervisor review.");
       void fetchConsultationData();
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to submit for review.");
+    } catch (err) {
+      setError(friendlyError(err, "submit for review"));
     } finally {
       setSubmitLoading(false);
     }
@@ -872,7 +858,7 @@ export default function ClinicianSOAPConsultation() {
         return (
           <button
             key={tab.key}
-            onClick={() => { setActiveSubTab(tab.key); setError(null); setSuccessMsg(null); }}
+            onClick={() => { setActiveSubTab(tab.key); setError(null); }}
             className={cn(
               "w-full flex items-center gap-2.5 px-4 py-2.5 text-sm rounded-lg font-bold transition-all text-left",
               isActive
@@ -1054,11 +1040,6 @@ export default function ClinicianSOAPConsultation() {
           <div className="lg:col-span-3">
             <Card>
               <CardContent className="p-6 space-y-6">
-                {successMsg && (
-                  <div className="rounded-lg bg-emerald-50 border border-emerald-200 px-4 py-3 text-sm text-emerald-800 font-semibold flex items-center gap-2">
-                    <Check className="h-4 w-4 text-emerald-600" /> {successMsg}
-                  </div>
-                )}
                 {error && (
                   <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-800 font-semibold flex items-center gap-2">
                     <TriangleAlert className="h-4 w-4 text-red-600" /> {error}

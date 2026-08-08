@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/store/RoleContext";
+import { useToast } from "@/components/ui/Toast";
 import { api } from "@/lib/api";
 import BillingConfirmation from "@/components/billing/BillingConfirmation";
 import { parseBilling, type BillingSummary } from "@/types/billing";
@@ -13,7 +14,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { FlaskConical, Search, ArrowLeft, Loader2, Check, CheckCircle } from "lucide-react";
+import { FlaskConical, Search, ArrowLeft, Loader2, Check } from "lucide-react";
 
 interface EncounterOption {
   id: number;
@@ -35,6 +36,7 @@ export default function NewLabRequestPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { token } = useAuth();
+  const { success } = useToast();
 
   const patientIdFromUrl = searchParams.get("patient_id");
   const encounterIdFromUrl = searchParams.get("encounter_id");
@@ -55,7 +57,6 @@ export default function NewLabRequestPage() {
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [billingSummary, setBillingSummary] = useState<BillingSummary | null>(null);
 
   const loadEncounters = useCallback(async (pid: string) => {
@@ -114,7 +115,6 @@ export default function NewLabRequestPage() {
     }
     setSubmitting(true);
     setError(null);
-    setSuccessMsg(null);
     try {
       const res = await api.post(
         "/lab-requests",
@@ -132,7 +132,7 @@ export default function NewLabRequestPage() {
         setBillingSummary(billing);
         return;
       }
-      setSuccessMsg("Lab request created successfully.");
+      success("Lab request created successfully.");
       setTimeout(() => router.push("/lab"), 1500);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to create lab request.");
@@ -156,11 +156,6 @@ export default function NewLabRequestPage() {
 
       {error && (
         <div className="p-3 rounded-lg bg-red-50 text-red-700 text-sm border border-red-200">{error}</div>
-      )}
-      {successMsg && (
-        <div className="p-3 rounded-lg bg-green-50 text-green-700 text-sm border border-green-200 flex items-center gap-2">
-          <CheckCircle className="h-4 w-4 shrink-0" /> {successMsg}
-        </div>
       )}
 
       <form onSubmit={handleSubmit} className="space-y-5">
