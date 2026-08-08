@@ -47,7 +47,6 @@ const ALL_NAV_ITEMS: NavItem[] = [
   { title: "Payments", icon: CreditCard, href: "/payments", permissions: ["billing.create", "billing.waiver"] },
 
   { label: "Other", isSection: true },
-  { title: "Queue", icon: ArrowRightLeft, href: "/queue", permissions: ["queue.view"] },
   { title: "Referrals", icon: ArrowRightLeft, href: "/referrals", permissions: ["consultation.edit", "note.edit", "lab.view_results", "imaging.order"] },
   {
     title: "Admissions",

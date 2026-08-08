@@ -251,12 +251,12 @@ export default function PharmacyOverviewPage() {
                   <TableRow key={rx.prescription_id}>
                     <TableCell className="font-medium">
                       <div className="text-sm font-semibold text-gray-900">{rx.patient?.full_name}</div>
-                      <div className="text-xs text-gray-400 font-mono">{rx.patient?.hospital_number}</div>
+                      <div className="text-xs text-gray-500 font-mono">{rx.patient?.hospital_number}</div>
                     </TableCell>
                     <TableCell className="text-sm font-semibold">{rx.drug_name}</TableCell>
                     <TableCell className="text-sm text-gray-600">
                       {rx.dosage} / {rx.route} / {rx.frequency}
-                      {rx.duration && <span className="text-xs text-gray-400 ml-1">({rx.duration})</span>}
+                      {rx.duration && <span className="text-xs text-gray-500 ml-1">({rx.duration})</span>}
                     </TableCell>
                     <TableCell className="text-sm text-gray-600">{rx.prescribed_by || "—"}</TableCell>
                     <TableCell>

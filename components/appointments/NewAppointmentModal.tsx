@@ -162,13 +162,13 @@ export function NewAppointmentModal({ open, onClose, onCreated }: NewAppointment
 
         {/* Patient Search */}
         <div>
-          <label className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">Patient *</label>
+          <label htmlFor="field-patient" className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">Patient *</label>
           {selectedPatient ? (
             <div className="mt-1 flex items-center gap-2 p-2 bg-[#fcf9f8] border border-brand-green/30 rounded">
               <span className="text-sm font-semibold text-gray-900">
                 {selectedPatient.first_name} {selectedPatient.last_name}
               </span>
-              <span className="text-xs text-gray-400 font-mono">{selectedPatient.hospital_number}</span>
+              <span className="text-xs text-gray-500 font-mono">{selectedPatient.hospital_number}</span>
               <button type="button" onClick={() => { setSelectedPatient(null); setPatientQuery(""); }} className="ml-auto text-xs text-red-600 hover:text-red-800">
                 Change
               </button>
@@ -176,6 +176,7 @@ export function NewAppointmentModal({ open, onClose, onCreated }: NewAppointment
           ) : (
             <>
               <input
+                id="field-patient"
                 type="text"
                 value={patientQuery}
                 onChange={(e) => searchPatients(e.target.value)}
@@ -192,7 +193,7 @@ export function NewAppointmentModal({ open, onClose, onCreated }: NewAppointment
                       className="w-full text-left px-3 py-2 text-sm hover:bg-[#fcf9f8] flex items-center justify-between"
                     >
                       <span className="font-semibold">{p.first_name} {p.last_name}</span>
-                      <span className="text-xs text-gray-400 font-mono">{p.hospital_number}</span>
+                      <span className="text-xs text-gray-500 font-mono">{p.hospital_number}</span>
                     </button>
                   ))}
                 </div>
@@ -203,8 +204,9 @@ export function NewAppointmentModal({ open, onClose, onCreated }: NewAppointment
 
         {/* Appointment Type */}
         <div>
-          <label className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">Type</label>
+          <label htmlFor="field-type" className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">Type</label>
           <select
+            id="field-type"
             value={formData.appointment_type}
             onChange={(e) => setFormData({ ...formData, appointment_type: e.target.value })}
             className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded text-sm bg-white focus:outline-none focus:border-clinical-primary"
@@ -218,12 +220,12 @@ export function NewAppointmentModal({ open, onClose, onCreated }: NewAppointment
 
         {/* Provider */}
         <div>
-          <label className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">Provider</label>
+          <label htmlFor="field-provider" className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">Provider</label>
           {selectedProvider ? (
             <div className="mt-1 flex items-center gap-2 p-2 bg-[#fcf9f8] border border-brand-green/30 rounded">
               <span className="text-sm font-semibold text-gray-900">{selectedProvider.name}</span>
               {selectedProvider.department && (
-                <span className="text-xs text-gray-400">{selectedProvider.department.name}</span>
+                <span className="text-xs text-gray-500">{selectedProvider.department.name}</span>
               )}
               <button type="button" onClick={() => { setSelectedProvider(null); setProviderQuery(""); }} className="ml-auto text-xs text-red-600 hover:text-red-800">
                 Clear
@@ -232,6 +234,7 @@ export function NewAppointmentModal({ open, onClose, onCreated }: NewAppointment
           ) : (
             <>
               <input
+                id="field-provider"
                 type="text"
                 value={providerQuery}
                 onChange={(e) => searchProviders(e.target.value)}
@@ -248,7 +251,7 @@ export function NewAppointmentModal({ open, onClose, onCreated }: NewAppointment
                       className="w-full text-left px-3 py-2 text-sm hover:bg-[#fcf9f8] flex items-center justify-between"
                     >
                       <span className="font-semibold">{p.name}</span>
-                      <span className="text-xs text-gray-400">{p.department?.name ?? ""}</span>
+                      <span className="text-xs text-gray-500">{p.department?.name ?? ""}</span>
                     </button>
                   ))}
                 </div>
@@ -259,8 +262,9 @@ export function NewAppointmentModal({ open, onClose, onCreated }: NewAppointment
 
         {/* Department */}
         <div>
-          <label className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">Department</label>
+          <label htmlFor="field-department" className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">Department</label>
           <select
+            id="field-department"
             value={formData.department_id}
             onChange={(e) => setFormData({ ...formData, department_id: e.target.value })}
             className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded text-sm bg-white focus:outline-none focus:border-clinical-primary"
@@ -277,8 +281,9 @@ export function NewAppointmentModal({ open, onClose, onCreated }: NewAppointment
         {/* Date & Time */}
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">Date *</label>
+            <label htmlFor="field-date" className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">Date *</label>
             <input
+              id="field-date"
               type="date"
               required
               value={formData.scheduled_date}
@@ -287,8 +292,9 @@ export function NewAppointmentModal({ open, onClose, onCreated }: NewAppointment
             />
           </div>
           <div>
-            <label className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">Time *</label>
+            <label htmlFor="field-time" className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">Time *</label>
             <input
+              id="field-time"
               type="time"
               required
               value={formData.scheduled_time}
@@ -300,8 +306,9 @@ export function NewAppointmentModal({ open, onClose, onCreated }: NewAppointment
 
         {/* Reason */}
         <div>
-          <label className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">Reason *</label>
+          <label htmlFor="field-reason" className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">Reason *</label>
           <input
+            id="field-reason"
             type="text"
             required
             value={formData.reason}
@@ -313,8 +320,9 @@ export function NewAppointmentModal({ open, onClose, onCreated }: NewAppointment
 
         {/* Notes */}
         <div>
-          <label className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">Notes</label>
+          <label htmlFor="field-notes" className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">Notes</label>
           <textarea
+            id="field-notes"
             value={formData.notes}
             onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
             placeholder="Additional notes (optional)"

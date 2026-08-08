@@ -183,7 +183,7 @@ export default function EmergencyTriagePage() {
               />
               <div>
                 <span className="text-sm font-bold text-gray-900">Airway Patent</span>
-                <p className="text-xs text-gray-400">Clear airway</p>
+                <p className="text-xs text-gray-500">Clear airway</p>
               </div>
             </label>
             <label className="flex items-center gap-3 p-4 rounded border border-gray-200 hover:border-red-300 cursor-pointer transition-colors">
@@ -195,7 +195,7 @@ export default function EmergencyTriagePage() {
               />
               <div>
                 <span className="text-sm font-bold text-gray-900">Breathing Adequate</span>
-                <p className="text-xs text-gray-400">Respiratory effort</p>
+                <p className="text-xs text-gray-500">Respiratory effort</p>
               </div>
             </label>
             <label className="flex items-center gap-3 p-4 rounded border border-gray-200 hover:border-red-300 cursor-pointer transition-colors">
@@ -207,7 +207,7 @@ export default function EmergencyTriagePage() {
               />
               <div>
                 <span className="text-sm font-bold text-gray-900">Circulation Stable</span>
-                <p className="text-xs text-gray-400">Perfusion status</p>
+                <p className="text-xs text-gray-500">Perfusion status</p>
               </div>
             </label>
           </div>
@@ -306,7 +306,7 @@ export default function EmergencyTriagePage() {
           <div className="p-6 space-y-4">
             <div>
               <label className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">Severity Level (1-5)</label>
-              <p className="text-xs text-gray-400 mb-1">Leave blank to auto-calculate from EWS score</p>
+              <p className="text-xs text-gray-500 mb-1">Leave blank to auto-calculate from EWS score</p>
               <div className="grid grid-cols-5 gap-2">
                 {[
                   { value: "1", label: "L1", desc: "Red (Immediate)", color: "border-red-600 bg-red-600 text-white font-bold" },

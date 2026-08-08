@@ -211,15 +211,16 @@ export default function StaffDetailPage() {
       <div className="space-y-3 rounded-lg border border-[var(--outline)] bg-white p-4">
         {(
           [
-            ["name", "Full name"],
-            ["username", "Username"],
-            ["email", "Email"],
-            ["password", "New password (optional)"],
+            ["name", "Full name", "field-staff-name"],
+            ["username", "Username", "field-staff-username"],
+            ["email", "Email", "field-staff-email"],
+            ["password", "New password (optional)", "field-staff-password"],
           ] as const
-        ).map(([key, label]) => (
-          <label key={key} className="block space-y-1 text-sm">
+        ).map(([key, label, fieldId]) => (
+          <label key={key} htmlFor={fieldId} className="block space-y-1 text-sm">
             <span className="font-medium">{label}</span>
             <Input
+              id={fieldId}
               type={key === "password" ? "password" : "text"}
               disabled={isAdminUser}
               value={form[key]}
@@ -229,9 +230,10 @@ export default function StaffDetailPage() {
             />
           </label>
         ))}
-        <label className="block space-y-1 text-sm">
+        <label htmlFor="field-staff-department" className="block space-y-1 text-sm">
           <span className="font-medium">Department</span>
           <select
+            id="field-staff-department"
             disabled={isAdminUser}
             className="h-10 w-full rounded-md border border-input bg-white px-3 text-sm disabled:opacity-60"
             value={form.department_id}
@@ -247,9 +249,10 @@ export default function StaffDetailPage() {
             ))}
           </select>
         </label>
-        <label className="block space-y-1 text-sm">
+        <label htmlFor="field-staff-cadre" className="block space-y-1 text-sm">
           <span className="font-medium">Cadre</span>
           <select
+            id="field-staff-cadre"
             disabled={isAdminUser}
             className="h-10 w-full rounded-md border border-input bg-white px-3 text-sm disabled:opacity-60"
             value={form.cadre_id}
@@ -270,9 +273,10 @@ export default function StaffDetailPage() {
             ))}
           </select>
         </label>
-        <label className="block space-y-1 text-sm">
+        <label htmlFor="field-staff-rank" className="block space-y-1 text-sm">
           <span className="font-medium">Rank</span>
           <select
+            id="field-staff-rank"
             disabled={isAdminUser || !form.cadre_id}
             className="h-10 w-full rounded-md border border-input bg-white px-3 text-sm disabled:opacity-60"
             value={form.rank_id}
@@ -292,9 +296,10 @@ export default function StaffDetailPage() {
             ))}
           </select>
         </label>
-        <label className="block space-y-1 text-sm">
+        <label htmlFor="field-staff-supervisor" className="block space-y-1 text-sm">
           <span className="font-medium">Supervisor</span>
           <select
+            id="field-staff-supervisor"
             disabled={isAdminUser || !form.cadre_id || !form.rank_id}
             className="h-10 w-full rounded-md border border-input bg-white px-3 text-sm disabled:opacity-60"
             value={form.supervisor_id}
@@ -315,9 +320,10 @@ export default function StaffDetailPage() {
             </p>
           )}
         </label>
-        <label className="block space-y-1 text-sm">
+        <label htmlFor="field-staff-role" className="block space-y-1 text-sm">
           <span className="font-medium">Role (derived from cadre)</span>
           <input
+            id="field-staff-role"
             type="text"
             readOnly
             className="h-10 w-full rounded-md border border-input bg-gray-50 px-3 text-sm text-muted-foreground"
@@ -329,8 +335,9 @@ export default function StaffDetailPage() {
             }
           />
         </label>
-        <label className="flex items-center gap-2 text-sm">
+        <label htmlFor="field-staff-is-active" className="flex items-center gap-2 text-sm">
           <input
+            id="field-staff-is-active"
             type="checkbox"
             disabled={isAdminUser}
             checked={form.is_active}

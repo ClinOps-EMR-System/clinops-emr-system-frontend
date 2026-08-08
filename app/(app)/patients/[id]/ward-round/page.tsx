@@ -455,14 +455,14 @@ export default function WardRoundPage() {
                       </span>
                     )}
                   </div>
-                  <span className="text-xs text-gray-400 font-mono flex items-center gap-1">
+                  <span className="text-xs text-gray-500 font-mono flex items-center gap-1">
                     <Clock className="h-3 w-3" />
                     {new Date(note.created_at).toLocaleString()}
                   </span>
                 </div>
                 <p className="text-sm text-gray-700 whitespace-pre-wrap">{note.note_content}</p>
                 {note.nurse && (
-                  <p className="text-xs text-gray-400">By {note.nurse.name}</p>
+                  <p className="text-xs text-gray-500">By {note.nurse.name}</p>
                 )}
               </div>
             ))}
@@ -485,7 +485,7 @@ export default function WardRoundPage() {
             <div className="flex flex-wrap gap-3 pt-2">
               <button
                 disabled
-                className="px-5 py-2.5 bg-gray-100 text-gray-400 text-sm font-bold rounded cursor-not-allowed"
+                className="px-5 py-2.5 bg-gray-100 text-gray-500 text-sm font-bold rounded cursor-not-allowed"
               >
                 Continue Inpatient Care
               </button>

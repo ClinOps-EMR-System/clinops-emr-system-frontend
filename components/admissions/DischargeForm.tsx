@@ -43,8 +43,9 @@ export function DischargeForm({ admissionId, onSubmit, onClose, submitting }: Di
     >
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">Discharge Date</label>
+          <label htmlFor="field-discharge-date" className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">Discharge Date</label>
           <input
+            id="field-discharge-date"
             type="date"
             required
             className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-clinical-primary"
@@ -53,8 +54,9 @@ export function DischargeForm({ admissionId, onSubmit, onClose, submitting }: Di
           />
         </div>
         <div>
-          <label className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">Discharge Diagnosis</label>
+          <label htmlFor="field-discharge-diagnosis" className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">Discharge Diagnosis</label>
           <input
+            id="field-discharge-diagnosis"
             type="text"
             className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-clinical-primary"
             value={dischargeDiagnosis}
@@ -63,8 +65,9 @@ export function DischargeForm({ admissionId, onSubmit, onClose, submitting }: Di
           />
         </div>
         <div>
-          <label className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">Discharge Summary</label>
+          <label htmlFor="field-discharge-summary" className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">Discharge Summary</label>
           <textarea
+            id="field-discharge-summary"
             rows={4}
             required
             className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-clinical-primary"

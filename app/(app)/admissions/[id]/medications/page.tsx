@@ -201,7 +201,7 @@ export default function MedicationAdministrationPage({
         <Card>
           <CardContent className="py-12">
             <EmptyState
-              icon={<Pill className="h-6 w-6 text-gray-400" />}
+              icon={<Pill className="h-6 w-6 text-gray-500" />}
               title="No active prescriptions"
               description="No dispensed medications found for this admission."
             />

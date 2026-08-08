@@ -187,7 +187,7 @@ export default function DispositionModal({ open, onClose, encounterId, patientId
             <h2 className="text-lg font-bold">Patient Disposition</h2>
             <p className="text-sm text-muted-foreground">{patientName}</p>
           </div>
-          <button onClick={handleClose} className="p-1 rounded-md hover:bg-muted transition-colors">
+          <button onClick={handleClose} className="p-1 rounded-md hover:bg-muted transition-colors" aria-label="Close">
             <X className="h-5 w-5" />
           </button>
         </div>
@@ -221,10 +221,11 @@ export default function DispositionModal({ open, onClose, encounterId, patientId
             <div className="space-y-4">
               <p className="text-sm text-muted-foreground">Patient will be discharged home with instructions.</p>
               <div>
-                <label className="block text-xs font-semibold uppercase tracking-wide mb-1.5">
+                <label htmlFor="field-discharge-diagnosis" className="block text-xs font-semibold uppercase tracking-wide mb-1.5">
                   Discharge Diagnosis <span className="text-destructive">*</span>
                 </label>
                 <input
+                  id="field-discharge-diagnosis"
                   type="text"
                   value={dischargeDiagnosis}
                   onChange={(e) => setDischargeDiagnosis(e.target.value)}
@@ -233,10 +234,11 @@ export default function DispositionModal({ open, onClose, encounterId, patientId
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold uppercase tracking-wide mb-1.5">
+                <label htmlFor="field-discharge-summary" className="block text-xs font-semibold uppercase tracking-wide mb-1.5">
                   Discharge Summary <span className="text-destructive">*</span>
                 </label>
                 <textarea
+                  id="field-discharge-summary"
                   rows={4}
                   value={dischargeSummary}
                   onChange={(e) => setDischargeSummary(e.target.value)}
@@ -252,10 +254,11 @@ export default function DispositionModal({ open, onClose, encounterId, patientId
               <p className="text-sm text-muted-foreground">Transfer patient to an inpatient ward bed.</p>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wide mb-1.5">
+                  <label htmlFor="field-disposition-ward" className="block text-xs font-semibold uppercase tracking-wide mb-1.5">
                     Ward <span className="text-destructive">*</span>
                   </label>
                   <select
+                    id="field-disposition-ward"
                     value={selectedWardId}
                     onChange={(e) => { setSelectedWardId(Number(e.target.value)); setSelectedBedId(""); }}
                     className="block w-full rounded-lg border border-input bg-background px-3 py-2 text-sm"
@@ -267,10 +270,11 @@ export default function DispositionModal({ open, onClose, encounterId, patientId
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wide mb-1.5">
+                  <label htmlFor="field-disposition-bed" className="block text-xs font-semibold uppercase tracking-wide mb-1.5">
                     Bed <span className="text-destructive">*</span>
                   </label>
                   <select
+                    id="field-disposition-bed"
                     value={selectedBedId}
                     onChange={(e) => setSelectedBedId(Number(e.target.value))}
                     disabled={!selectedWardId}
@@ -284,10 +288,11 @@ export default function DispositionModal({ open, onClose, encounterId, patientId
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-semibold uppercase tracking-wide mb-1.5">
+                <label htmlFor="field-disposition-admission-diagnosis" className="block text-xs font-semibold uppercase tracking-wide mb-1.5">
                   Admission Diagnosis <span className="text-destructive">*</span>
                 </label>
                 <input
+                  id="field-disposition-admission-diagnosis"
                   type="text"
                   value={admissionDiagnosis}
                   onChange={(e) => setAdmissionDiagnosis(e.target.value)}
@@ -296,8 +301,9 @@ export default function DispositionModal({ open, onClose, encounterId, patientId
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold uppercase tracking-wide mb-1.5">Acuity Level</label>
+                <label htmlFor="field-disposition-acuity" className="block text-xs font-semibold uppercase tracking-wide mb-1.5">Acuity Level</label>
                 <select
+                  id="field-disposition-acuity"
                   value={acuityLevel}
                   onChange={(e) => setAcuityLevel(e.target.value)}
                   className="block w-full rounded-lg border border-input bg-background px-3 py-2 text-sm"
@@ -316,8 +322,9 @@ export default function DispositionModal({ open, onClose, encounterId, patientId
               <p className="text-sm text-muted-foreground">Refer patient to another facility or specialist department.</p>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wide mb-1.5">Destination Facility</label>
+                  <label htmlFor="field-disposition-dest-facility" className="block text-xs font-semibold uppercase tracking-wide mb-1.5">Destination Facility</label>
                   <input
+                    id="field-disposition-dest-facility"
                     type="text"
                     value={destinationFacility}
                     onChange={(e) => setDestinationFacility(e.target.value)}
@@ -326,8 +333,9 @@ export default function DispositionModal({ open, onClose, encounterId, patientId
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wide mb-1.5">Destination Department</label>
+                  <label htmlFor="field-disposition-dest-dept" className="block text-xs font-semibold uppercase tracking-wide mb-1.5">Destination Department</label>
                   <input
+                    id="field-disposition-dest-dept"
                     type="text"
                     value={destinationDepartment}
                     onChange={(e) => setDestinationDepartment(e.target.value)}
@@ -338,8 +346,9 @@ export default function DispositionModal({ open, onClose, encounterId, patientId
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wide mb-1.5">Referral Type</label>
+                  <label htmlFor="field-disposition-referral-type" className="block text-xs font-semibold uppercase tracking-wide mb-1.5">Referral Type</label>
                   <select
+                    id="field-disposition-referral-type"
                     value={referralType}
                     onChange={(e) => setReferralType(e.target.value)}
                     className="block w-full rounded-lg border border-input bg-background px-3 py-2 text-sm"
@@ -350,8 +359,9 @@ export default function DispositionModal({ open, onClose, encounterId, patientId
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wide mb-1.5">Urgency</label>
+                  <label htmlFor="field-disposition-urgency" className="block text-xs font-semibold uppercase tracking-wide mb-1.5">Urgency</label>
                   <select
+                    id="field-disposition-urgency"
                     value={urgency}
                     onChange={(e) => setUrgency(e.target.value)}
                     className="block w-full rounded-lg border border-input bg-background px-3 py-2 text-sm"
@@ -363,10 +373,11 @@ export default function DispositionModal({ open, onClose, encounterId, patientId
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-semibold uppercase tracking-wide mb-1.5">
+                <label htmlFor="field-disposition-clinical-summary" className="block text-xs font-semibold uppercase tracking-wide mb-1.5">
                   Clinical Summary <span className="text-destructive">*</span>
                 </label>
                 <textarea
+                  id="field-disposition-clinical-summary"
                   rows={4}
                   value={clinicalSummary}
                   onChange={(e) => setClinicalSummary(e.target.value)}
@@ -381,8 +392,9 @@ export default function DispositionModal({ open, onClose, encounterId, patientId
             <div className="space-y-4">
               <p className="text-sm text-muted-foreground">Keep patient for short-stay observation with serial vitals monitoring.</p>
               <div>
-                <label className="block text-xs font-semibold uppercase tracking-wide mb-1.5">Observation Notes</label>
+                <label htmlFor="field-disposition-observe-notes" className="block text-xs font-semibold uppercase tracking-wide mb-1.5">Observation Notes</label>
                 <textarea
+                  id="field-disposition-observe-notes"
                   rows={4}
                   value={observeNotes}
                   onChange={(e) => setObserveNotes(e.target.value)}

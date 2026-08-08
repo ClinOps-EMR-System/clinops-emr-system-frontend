@@ -126,7 +126,7 @@ export default function DataTable<T>({
                   <div className="flex items-center gap-1.5">
                     {col.header}
                     {col.sortable && (
-                      <span className="text-gray-400">
+                      <span className="text-gray-500">
                         {sortKey === col.key ? (
                           sortDir === "asc" ? (
                             <ChevronUp className="h-3.5 w-3.5" />

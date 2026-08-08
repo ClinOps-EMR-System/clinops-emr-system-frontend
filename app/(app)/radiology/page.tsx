@@ -541,10 +541,11 @@ export default function RadiologyPage() {
           )}
 
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1">
+            <label htmlFor="field-radiology-technique" className="block text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1">
               Technique <span className="text-muted-foreground font-normal normal-case">(optional)</span>
             </label>
             <input
+              id="field-radiology-technique"
               type="text"
               className="block w-full px-3 py-2 border border-input rounded-lg text-sm focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary"
               value={reportForm.technique}
@@ -554,10 +555,11 @@ export default function RadiologyPage() {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1">
+            <label htmlFor="field-radiology-findings" className="block text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1">
               Findings <span className="text-red-500">*</span>
             </label>
             <textarea
+              id="field-radiology-findings"
               rows={4}
               className="block w-full px-3 py-2 border border-input rounded-lg text-sm focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary resize-y"
               value={reportForm.findings}
@@ -567,10 +569,11 @@ export default function RadiologyPage() {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1">
+            <label htmlFor="field-radiology-impression" className="block text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1">
               Impression <span className="text-red-500">*</span>
             </label>
             <textarea
+              id="field-radiology-impression"
               rows={3}
               className="block w-full px-3 py-2 border border-input rounded-lg text-sm focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary resize-y"
               value={reportForm.impression}
@@ -580,10 +583,11 @@ export default function RadiologyPage() {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1">
+            <label htmlFor="field-radiology-conclusion" className="block text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1">
               Conclusion / Recommendation <span className="text-muted-foreground font-normal normal-case">(optional)</span>
             </label>
             <textarea
+              id="field-radiology-conclusion"
               rows={2}
               className="block w-full px-3 py-2 border border-input rounded-lg text-sm focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary resize-y"
               value={reportForm.conclusion}

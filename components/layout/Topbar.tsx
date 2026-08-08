@@ -261,7 +261,7 @@ export default function Topbar() {
               <div className="relative flex-1">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   {searchLoading ? (
-                    <svg className="h-4 w-4 text-sidebar-primary animate-spin" fill="none" viewBox="0 0 24 24">
+                    <svg aria-hidden="true" className="h-4 w-4 text-sidebar-primary animate-spin" fill="none" viewBox="0 0 24 24">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                     </svg>
@@ -286,7 +286,7 @@ export default function Topbar() {
                     className="absolute inset-y-0 right-3 flex items-center text-sidebar-foreground/60 hover:text-sidebar-foreground transition-colors"
                     aria-label="Clear search"
                   >
-                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg aria-hidden="true" className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
                     </svg>
                   </button>
@@ -314,7 +314,7 @@ export default function Topbar() {
           {searchOpen && mobileSearchOpen && (
             <div className="absolute top-full left-0 right-0 mt-1.5 bg-white rounded-md shadow-2xl border border-gray-200 z-50 overflow-hidden mx-4">
               {results.length === 0 && !searchLoading ? (
-                <div className="px-4 py-6 text-center text-sm text-gray-400 font-mono">
+                <div className="px-4 py-6 text-center text-sm text-gray-500 font-mono">
                   No patients found for &ldquo;{debouncedQuery}&rdquo;
                 </div>
               ) : (
@@ -334,7 +334,7 @@ export default function Topbar() {
                             <p className="text-sm font-semibold text-gray-900 truncate">
                               {p.first_name} {p.last_name}
                             </p>
-                            <p className="text-xs text-gray-400 font-mono">
+                            <p className="text-xs text-gray-500 font-mono">
                               {p.hospital_number} · {p.gender}
                             </p>
                           </div>
@@ -364,7 +364,7 @@ export default function Topbar() {
           <div className="relative">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               {searchLoading ? (
-                <svg className="h-4 w-4 text-sidebar-primary animate-spin" fill="none" viewBox="0 0 24 24">
+                <svg aria-hidden="true" className="h-4 w-4 text-sidebar-primary animate-spin" fill="none" viewBox="0 0 24 24">
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                 </svg>
@@ -394,7 +394,7 @@ export default function Topbar() {
                 className="absolute inset-y-0 right-3 flex items-center text-sidebar-foreground/60 hover:text-sidebar-foreground transition-colors"
                 aria-label="Clear search"
               >
-                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg aria-hidden="true" className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
@@ -404,7 +404,7 @@ export default function Topbar() {
           {searchOpen && (
             <div className="absolute top-full left-0 right-0 mt-1.5 bg-white rounded-md shadow-2xl border border-gray-200 z-50 overflow-hidden">
               {results.length === 0 && !searchLoading ? (
-                <div className="px-4 py-6 text-center text-sm text-gray-400 font-mono">
+                <div className="px-4 py-6 text-center text-sm text-gray-500 font-mono">
                   No patients found for &ldquo;{debouncedQuery}&rdquo;
                 </div>
               ) : (
@@ -424,7 +424,7 @@ export default function Topbar() {
                             <p className="text-sm font-semibold text-gray-900 truncate">
                               {p.first_name} {p.last_name}
                             </p>
-                            <p className="text-xs text-gray-400 font-mono">
+                            <p className="text-xs text-gray-500 font-mono">
                               {p.hospital_number} · {p.gender} · {p.patient_category}
                             </p>
                           </div>
@@ -494,7 +494,7 @@ export default function Topbar() {
                 </div>
                 <div className="overflow-y-auto max-h-80">
                   {notifications.length === 0 ? (
-                    <div className="px-4 py-8 text-center text-sm text-gray-400">
+                    <div className="px-4 py-8 text-center text-sm text-gray-500">
                       No notifications yet
                     </div>
                   ) : (
@@ -523,17 +523,17 @@ export default function Topbar() {
                             }`}
                           >
                             {notification.type === "order" && (
-                              <svg className="h-3.5 w-3.5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <svg aria-hidden="true" className="h-3.5 w-3.5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                               </svg>
                             )}
                             {notification.type === "result" && (
-                              <svg className="h-3.5 w-3.5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <svg aria-hidden="true" className="h-3.5 w-3.5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                               </svg>
                             )}
                             {notification.type === "status" && (
-                              <svg className="h-3.5 w-3.5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <svg aria-hidden="true" className="h-3.5 w-3.5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                               </svg>
                             )}
@@ -557,7 +557,7 @@ export default function Topbar() {
                                 {notification.priority}
                               </span>
                             )}
-                            <p className="text-xs text-gray-400 mt-1">
+                            <p className="text-xs text-gray-500 mt-1">
                               {formatDistanceToNow(notification.timestamp, { addSuffix: true })}
                             </p>
                           </div>
@@ -594,11 +594,11 @@ export default function Topbar() {
               <div className="fixed inset-0 z-10" onClick={() => setDropdownOpen(false)} />
               <div className="absolute right-0 mt-2 w-52 rounded-md bg-white shadow-lg py-1 ring-1 ring-black ring-opacity-5 z-20" role="menu">
                 <div className="px-4 py-2 border-b border-gray-100">
-                  <p className="text-xs text-gray-400 uppercase font-bold tracking-wide">Staff Name</p>
+                  <p className="text-xs text-gray-500 uppercase font-bold tracking-wide">Staff Name</p>
                   <p className="text-xs text-gray-900 font-bold truncate">{name}</p>
                 </div>
                 <div className="px-4 py-2 border-b border-gray-100">
-                  <p className="text-xs text-gray-400 uppercase font-bold tracking-wide">Email</p>
+                  <p className="text-xs text-gray-500 uppercase font-bold tracking-wide">Email</p>
                   <p className="text-xs text-gray-900 font-medium truncate">{email}</p>
                 </div>
                 <button

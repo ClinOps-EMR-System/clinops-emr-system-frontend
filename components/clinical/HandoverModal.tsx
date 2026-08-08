@@ -98,7 +98,7 @@ export default function HandoverModal({ open, onClose, patientId, encounterId, p
               <p className="text-sm text-muted-foreground">{patientName}</p>
             </div>
           </div>
-          <button onClick={handleClose} className="p-1 rounded-md hover:bg-muted transition-colors">
+          <button onClick={handleClose} className="p-1 rounded-md hover:bg-muted transition-colors" aria-label="Close">
             <X className="h-5 w-5" />
           </button>
         </div>
@@ -112,10 +112,11 @@ export default function HandoverModal({ open, onClose, patientId, encounterId, p
           )}
 
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wide mb-1.5">
+            <label htmlFor="field-handover-to" className="block text-xs font-semibold uppercase tracking-wide mb-1.5">
               Hand Over To <span className="text-destructive">*</span>
             </label>
             <select
+              id="field-handover-to"
               value={toUserId}
               onChange={(e) => setToUserId(Number(e.target.value))}
               className="block w-full rounded-lg border border-input bg-background px-3 py-2 text-sm"

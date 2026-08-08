@@ -57,7 +57,7 @@ export default function Tabs({ tabs, activeKey: controlledActiveKey, onChange, c
               size === "sm" ? "px-3 py-2 text-[11px]" : "px-4 py-3 text-xs",
               isActive
                 ? "border-clinical-primary text-clinical-primary"
-                : "border-transparent text-gray-400 hover:text-gray-600 hover:border-gray-300"
+                : "border-transparent text-gray-500 hover:text-gray-600 hover:border-gray-300"
             )}
           >
             {tab.icon}

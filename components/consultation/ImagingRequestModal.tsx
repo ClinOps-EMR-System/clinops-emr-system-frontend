@@ -149,10 +149,11 @@ export default function ImagingRequestModal({ open, onClose, encounterId, token,
         {custom && (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1">
+              <label htmlFor="field-imaging-type" className="block text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1">
                 Imaging Type <span className="text-red-500">*</span>
               </label>
               <input
+                id="field-imaging-type"
                 type="text"
                 required
                 className="block w-full px-3 py-2 border border-input rounded-lg text-sm focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary"
@@ -162,10 +163,11 @@ export default function ImagingRequestModal({ open, onClose, encounterId, token,
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1">
+              <label htmlFor="field-body-site" className="block text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1">
                 Body Site
               </label>
               <input
+                id="field-body-site"
                 type="text"
                 className="block w-full px-3 py-2 border border-input rounded-lg text-sm focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary"
                 placeholder="e.g. Chest, Abdomen, Head"
@@ -177,10 +179,11 @@ export default function ImagingRequestModal({ open, onClose, encounterId, token,
         )}
 
         <div>
-          <label className="block text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1">
+          <label htmlFor="field-clinical-indication" className="block text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1">
             Clinical Indication <span className="text-muted-foreground font-normal normal-case">(optional)</span>
           </label>
           <textarea
+            id="field-clinical-indication"
             rows={2}
             className="block w-full px-3 py-2 border border-input rounded-lg text-sm focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary resize-y"
             placeholder="Reason for the scan, e.g. suspected pneumonia"

@@ -282,42 +282,42 @@ export default function AdmissionsPage() {
           {formError && <div className="p-3 rounded bg-red-50 text-red-700 text-sm">{formError}</div>}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">Patient ID *</label>
-              <input type="number" required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary" value={form.patient_id} onChange={(e) => setForm({ ...form, patient_id: e.target.value })} />
+              <label htmlFor="field-admit-patient-id" className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">Patient ID *</label>
+              <input id="field-admit-patient-id" type="number" required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary" value={form.patient_id} onChange={(e) => setForm({ ...form, patient_id: e.target.value })} />
             </div>
             <div>
-              <label className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">Encounter ID *</label>
-              <input type="number" required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary" value={form.encounter_id} onChange={(e) => setForm({ ...form, encounter_id: e.target.value })} />
+              <label htmlFor="field-admit-encounter-id" className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">Encounter ID *</label>
+              <input id="field-admit-encounter-id" type="number" required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary" value={form.encounter_id} onChange={(e) => setForm({ ...form, encounter_id: e.target.value })} />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">Ward *</label>
-              <select required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded bg-white text-sm focus:outline-none focus:border-clinical-primary" value={form.ward_id} onChange={(e) => setForm({ ...form, ward_id: e.target.value })}>
+              <label htmlFor="field-admit-ward" className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">Ward *</label>
+              <select id="field-admit-ward" required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded bg-white text-sm focus:outline-none focus:border-clinical-primary" value={form.ward_id} onChange={(e) => setForm({ ...form, ward_id: e.target.value })}>
                 <option value="">Select ward</option>
                 {wards.map((w) => <option key={w.id} value={w.id}>{w.name} ({w.code})</option>)}
               </select>
             </div>
             <div>
-              <label className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">Bed ID *</label>
-              <input type="number" required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary" value={form.bed_id} onChange={(e) => setForm({ ...form, bed_id: e.target.value })} />
+              <label htmlFor="field-admit-bed-id" className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">Bed ID *</label>
+              <input id="field-admit-bed-id" type="number" required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary" value={form.bed_id} onChange={(e) => setForm({ ...form, bed_id: e.target.value })} />
             </div>
           </div>
           <div>
-            <label className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">Admission Type</label>
-            <select className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded bg-white text-sm focus:outline-none focus:border-clinical-primary" value={form.admission_type} onChange={(e) => setForm({ ...form, admission_type: e.target.value as "Emergency" | "Elective" })}>
+            <label htmlFor="field-admit-type" className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">Admission Type</label>
+            <select id="field-admit-type" className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded bg-white text-sm focus:outline-none focus:border-clinical-primary" value={form.admission_type} onChange={(e) => setForm({ ...form, admission_type: e.target.value as "Emergency" | "Elective" })}>
               <option value="Emergency">Emergency</option>
               <option value="Elective">Elective</option>
             </select>
           </div>
           <div>
-            <label className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">Admission Diagnosis</label>
-            <textarea rows={2} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary" value={form.admission_diagnosis} onChange={(e) => setForm({ ...form, admission_diagnosis: e.target.value })} />
+            <label htmlFor="field-admit-diagnosis" className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">Admission Diagnosis</label>
+            <textarea id="field-admit-diagnosis" rows={2} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary" value={form.admission_diagnosis} onChange={(e) => setForm({ ...form, admission_diagnosis: e.target.value })} />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">Acuity Level</label>
-              <select className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded bg-white text-sm focus:outline-none focus:border-clinical-primary" value={form.acuity_level} onChange={(e) => setForm({ ...form, acuity_level: e.target.value as "Critical" | "High" | "Medium" | "Low" })}>
+              <label htmlFor="field-admit-acuity" className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">Acuity Level</label>
+              <select id="field-admit-acuity" className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded bg-white text-sm focus:outline-none focus:border-clinical-primary" value={form.acuity_level} onChange={(e) => setForm({ ...form, acuity_level: e.target.value as "Critical" | "High" | "Medium" | "Low" })}>
                 <option value="Low">Low</option>
                 <option value="Medium">Medium</option>
                 <option value="High">High</option>

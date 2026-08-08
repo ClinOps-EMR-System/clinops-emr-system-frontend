@@ -180,31 +180,35 @@ export default function DepartmentsPage() {
         title={editing ? "Edit department" : "New department"}
       >
         <div className="space-y-3">
-          <label className="block space-y-1 text-sm">
+          <label htmlFor="field-dept-name" className="block space-y-1 text-sm">
             <span className="font-medium">Name</span>
             <Input
+              id="field-dept-name"
               value={form.name}
               onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
             />
           </label>
-          <label className="block space-y-1 text-sm">
+          <label htmlFor="field-dept-code" className="block space-y-1 text-sm">
             <span className="font-medium">Code</span>
             <Input
+              id="field-dept-code"
               value={form.code}
               onChange={(e) => setForm((f) => ({ ...f, code: e.target.value }))}
             />
           </label>
-          <label className="block space-y-1 text-sm">
+          <label htmlFor="field-dept-description" className="block space-y-1 text-sm">
             <span className="font-medium">Description</span>
             <Input
+              id="field-dept-description"
               value={form.description}
               onChange={(e) =>
                 setForm((f) => ({ ...f, description: e.target.value }))
               }
             />
           </label>
-          <label className="flex items-center gap-2 text-sm">
+          <label htmlFor="field-dept-is-active" className="flex items-center gap-2 text-sm">
             <input
+              id="field-dept-is-active"
               type="checkbox"
               checked={form.is_active}
               onChange={(e) =>

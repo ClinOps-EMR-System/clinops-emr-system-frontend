@@ -718,8 +718,9 @@ export default function BillingPage() {
               </div>
             )}
             <div>
-              <label className="block text-xs font-semibold text-foreground uppercase tracking-wide mb-1.5">Amount (MK) *</label>
+              <label htmlFor="field-billing-amount" className="block text-xs font-semibold text-foreground uppercase tracking-wide mb-1.5">Amount (MK) *</label>
               <input
+                id="field-billing-amount"
                 type="number"
                 step="0.01"
                 min="0.01"
@@ -731,8 +732,9 @@ export default function BillingPage() {
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-foreground uppercase tracking-wide mb-1.5">Payment Method *</label>
+              <label htmlFor="field-billing-method" className="block text-xs font-semibold text-foreground uppercase tracking-wide mb-1.5">Payment Method *</label>
               <select
+                id="field-billing-method"
                 className="block w-full px-3 py-2 border border-input rounded-lg bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                 value={paymentForm.payment_method}
                 onChange={(e) => handlePaymentMethodChange(e.target.value)}
@@ -748,7 +750,7 @@ export default function BillingPage() {
             {paymentForm.payment_method === "paychangu" ? (
               <>
                 <div>
-                  <label className="block text-xs font-semibold text-foreground uppercase tracking-wide mb-1.5">Operator *</label>
+                  <label htmlFor="field-billing-operator" className="block text-xs font-semibold text-foreground uppercase tracking-wide mb-1.5">Operator *</label>
                   {paychanguOperatorsLoading ? (
                     <div className="text-sm text-muted-foreground">Loading operators...</div>
                   ) : paychanguOperatorError ? (
@@ -757,6 +759,7 @@ export default function BillingPage() {
                     <div className="text-sm text-muted-foreground">No mobile money operators are available.</div>
                   ) : (
                     <select
+                      id="field-billing-operator"
                       className="block w-full px-3 py-2 border border-input rounded-lg bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                       value={paychanguOperatorRef}
                       onChange={(e) => setPaychanguOperatorRef(e.target.value)}
@@ -770,8 +773,9 @@ export default function BillingPage() {
                   )}
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-foreground uppercase tracking-wide mb-1.5">Mobile Number *</label>
+                  <label htmlFor="field-billing-mobile" className="block text-xs font-semibold text-foreground uppercase tracking-wide mb-1.5">Mobile Number *</label>
                   <input
+                    id="field-billing-mobile"
                     type="tel"
                     className="block w-full px-3 py-2 border border-input rounded-lg text-sm bg-background focus:outline-none focus:ring-2 focus:ring-ring font-mono"
                     value={paychanguMobile}
@@ -783,8 +787,9 @@ export default function BillingPage() {
               </>
             ) : (
               <div>
-                <label className="block text-xs font-semibold text-foreground uppercase tracking-wide mb-1.5">Reference Number</label>
+                <label htmlFor="field-billing-reference" className="block text-xs font-semibold text-foreground uppercase tracking-wide mb-1.5">Reference Number</label>
                 <input
+                  id="field-billing-reference"
                   type="text"
                   className="block w-full px-3 py-2 border border-input rounded-lg text-sm bg-background focus:outline-none focus:ring-2 focus:ring-ring"
                   value={paymentForm.reference}
@@ -936,8 +941,9 @@ export default function BillingPage() {
               </div>
             )}
             <div>
-              <label className="block text-xs font-semibold text-foreground uppercase tracking-wide mb-1.5">Amount (MK)</label>
+              <label htmlFor="field-waive-amount" className="block text-xs font-semibold text-foreground uppercase tracking-wide mb-1.5">Amount (MK)</label>
               <input
+                id="field-waive-amount"
                 type="number"
                 step="0.01"
                 min="0.01"
@@ -952,8 +958,9 @@ export default function BillingPage() {
               </p>
             </div>
             <div>
-              <label className="block text-xs font-semibold text-foreground uppercase tracking-wide mb-1.5">Reason *</label>
+              <label htmlFor="field-waive-reason" className="block text-xs font-semibold text-foreground uppercase tracking-wide mb-1.5">Reason *</label>
               <textarea
+                id="field-waive-reason"
                 required
                 maxLength={500}
                 rows={3}

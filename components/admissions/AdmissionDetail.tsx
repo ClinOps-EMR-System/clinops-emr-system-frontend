@@ -15,7 +15,7 @@ export function AdmissionDetail({ admission, onClose }: AdmissionDetailProps) {
         <h2 className="text-lg font-bold text-gray-900">Admission Details</h2>
         <button
           onClick={onClose}
-          className="text-gray-400 hover:text-gray-600 text-xl leading-none"
+          className="text-gray-500 hover:text-gray-600 text-xl leading-none"
           aria-label="Close"
         >
           &times;
@@ -24,7 +24,7 @@ export function AdmissionDetail({ admission, onClose }: AdmissionDetailProps) {
       <div className="p-6 space-y-6">
         <div className="flex items-center justify-between">
           <StatusBadge label={admission.status} variant="info" />
-          <div className="text-xs text-gray-400 font-mono">
+          <div className="text-xs text-gray-500 font-mono">
             Admitted: {new Date(admission.admission_date).toLocaleString()}
           </div>
         </div>
@@ -35,7 +35,7 @@ export function AdmissionDetail({ admission, onClose }: AdmissionDetailProps) {
             <p className="text-sm font-semibold text-gray-900">
               {admission.patient?.first_name} {admission.patient?.last_name}
             </p>
-            <p className="text-xs text-gray-400 font-mono">
+            <p className="text-xs text-gray-500 font-mono">
               #{admission.patient?.hospital_number}
             </p>
           </div>
@@ -46,7 +46,7 @@ export function AdmissionDetail({ admission, onClose }: AdmissionDetailProps) {
           <div>
             <h4 className="text-xs font-bold text-[#5f5e5e] uppercase tracking-wider mb-1">Ward</h4>
             <p className="text-sm font-semibold text-gray-900">{admission.ward?.name}</p>
-            <p className="text-xs text-gray-400 font-mono">{admission.ward?.code}</p>
+            <p className="text-xs text-gray-500 font-mono">{admission.ward?.code}</p>
           </div>
           <div>
             <h4 className="text-xs font-bold text-[#5f5e5e] uppercase tracking-wider mb-1">Bed</h4>

@@ -213,23 +213,26 @@ export default function WardsPage() {
         title={editing ? "Edit ward" : "New ward"}
       >
         <div className="space-y-3">
-          <label className="block space-y-1 text-sm">
+          <label htmlFor="field-ward-name" className="block space-y-1 text-sm">
             <span className="font-medium">Name</span>
             <Input
+              id="field-ward-name"
               value={form.name}
               onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
             />
           </label>
-          <label className="block space-y-1 text-sm">
+          <label htmlFor="field-ward-code" className="block space-y-1 text-sm">
             <span className="font-medium">Code</span>
             <Input
+              id="field-ward-code"
               value={form.code}
               onChange={(e) => setForm((f) => ({ ...f, code: e.target.value }))}
             />
           </label>
-          <label className="block space-y-1 text-sm">
+          <label htmlFor="field-ward-type" className="block space-y-1 text-sm">
             <span className="font-medium">Type</span>
             <select
+              id="field-ward-type"
               className="h-10 w-full rounded-md border border-input bg-white px-3 text-sm"
               value={form.ward_type}
               onChange={(e) =>
@@ -243,9 +246,10 @@ export default function WardsPage() {
               ))}
             </select>
           </label>
-          <label className="block space-y-1 text-sm">
+          <label htmlFor="field-ward-total-beds" className="block space-y-1 text-sm">
             <span className="font-medium">Total beds</span>
             <Input
+              id="field-ward-total-beds"
               type="number"
               min={0}
               value={form.total_beds}
@@ -254,9 +258,10 @@ export default function WardsPage() {
               }
             />
           </label>
-          <label className="block space-y-1 text-sm">
+          <label htmlFor="field-ward-daily-charge" className="block space-y-1 text-sm">
             <span className="font-medium">Daily charge (MK)</span>
             <Input
+              id="field-ward-daily-charge"
               type="number"
               min={0}
               step="0.01"

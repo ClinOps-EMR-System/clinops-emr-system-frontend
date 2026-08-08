@@ -920,7 +920,7 @@ export default function ClinicianSOAPConsultation() {
                 </Button>
               </>
             ) : null}
-            <Button variant="ghost" onClick={() => router.back()}>
+            <Button variant="ghost" onClick={() => router.back()} aria-label="Go back">
               <ArrowLeft className="h-4 w-4" />
             </Button>
           </div>
@@ -1208,7 +1208,7 @@ export default function ClinicianSOAPConsultation() {
                                   <span className="text-xs text-muted-foreground">{d.diagnosis_type}{d.certainty ? ` · ${d.certainty}` : ""}</span>
                                 </div>
                               </div>
-                              <button onClick={() => handleDeleteDiagnosis(d.id)} className="text-xs text-destructive hover:text-destructive/80 font-bold uppercase shrink-0 ml-2">
+                              <button onClick={() => handleDeleteDiagnosis(d.id)} className="text-xs text-destructive hover:text-destructive/80 font-bold uppercase shrink-0 ml-2" aria-label="Remove diagnosis">
                                 <X className="h-3.5 w-3.5" />
                               </button>
                             </div>

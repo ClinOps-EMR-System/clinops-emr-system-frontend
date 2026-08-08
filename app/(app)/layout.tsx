@@ -35,6 +35,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <RealtimeProvider>
         <LabResultBusProvider>
           <SidebarProvider>
+            <a
+              href="#main-content"
+              className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[200] focus:rounded-md focus:bg-clinical-primary focus:px-4 focus:py-2 focus:text-white focus:shadow-lg"
+            >
+              Skip to main content
+            </a>
             <AppSidebar />
             <div className="flex flex-1 flex-col min-w-0">
               <Topbar />
