@@ -14,6 +14,7 @@ export const EMR_CHANNELS = [
   "clinops_billing_invoices",
   "clinops_radiology_requests",
   "clinops_radiology_results",
+  "clinops_notifications",
 ] as const;
 
 const handlers = new Map<string, Set<(data: unknown) => void>>();
