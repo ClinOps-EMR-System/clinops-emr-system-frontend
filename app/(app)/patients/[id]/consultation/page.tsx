@@ -258,6 +258,7 @@ export default function ClinicianSOAPConsultation() {
     matched_class?: string | null;
     match_type?: "name" | "class";
   }[]>([]);
+  const [overrideReason, setOverrideReason] = useState("");
 
   type TrendPoint = { recorded_at: string; value: number };
   const [vitalTrends, setVitalTrends] = useState<Record<string, TrendPoint[]>>({});
@@ -608,16 +609,25 @@ export default function ClinicianSOAPConsultation() {
         duration: rxForm.duration || null,
         quantity: parseInt(rxForm.quantity) || 30,
         notes: rxForm.notes || null,
+        allergy_override_reason: allergyWarnings.length > 0 ? overrideReason.trim() || null : null,
         is_controlled: rxForm.is_controlled,
       }, token);
       setSuccessMsg(`Prescription for ${selectedDrug.name} created.`);
       setSelectedDrug(null);
       setDrugQuery("");
       setAllergyWarnings([]);
+      setOverrideReason("");
       setRxForm({ dosage: "", route: "oral", frequency: "BD", duration: "7 days", quantity: "30", notes: "", is_controlled: false });
       fetchConsultationData();
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to create prescription.");
+      const status = (err as { status?: number })?.status;
+      setError(
+        status === 422
+          ? "This medication matches a recorded allergy. Provide an override reason to prescribe it anyway."
+          : err instanceof Error
+            ? err.message
+            : "Failed to create prescription.",
+      );
     } finally {
       setSubmitLoading(false);
     }
@@ -1531,6 +1541,14 @@ export default function ClinicianSOAPConsultation() {
                                 {rx.allergy_check && (
                                   <Badge variant="destructive" className="ml-2 text-[10px]">Allergy Alert</Badge>
                                 )}
+                                {rx.allergy_override_reason && (
+                                  <span
+                                    title={`Override reason: ${rx.allergy_override_reason}`}
+                                    className="ml-2 text-[10px] font-semibold text-amber-600"
+                                  >
+                                    Overridden
+                                  </span>
+                                )}
                               </div>
                               <StatusBadge label={rx.status} variant={rx.status?.toLowerCase() === "dispensed" ? "success" : "warning"} size="sm" />
                             </div>
@@ -1556,7 +1574,7 @@ export default function ClinicianSOAPConsultation() {
                           className="block w-full rounded-lg border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                           placeholder="Search drug..."
                           value={drugQuery}
-                          onChange={(e) => { setDrugQuery(e.target.value); setSelectedDrug(null); setAllergyWarnings([]); }}
+                          onChange={(e) => { setDrugQuery(e.target.value); setSelectedDrug(null); setAllergyWarnings([]); setOverrideReason(""); }}
                         />
                         {drugResults.length > 0 && !selectedDrug && (
                           <ul className="absolute left-0 right-0 mt-1 bg-card border rounded-lg shadow-lg max-h-48 overflow-y-auto z-30 divide-y text-sm">
@@ -1595,15 +1613,15 @@ export default function ClinicianSOAPConsultation() {
                               </span>
                             )}
                           </div>
-                          <button type="button" onClick={() => { setSelectedDrug(null); setDrugQuery(""); setAllergyWarnings([]); }} className="text-xs text-muted-foreground hover:text-foreground font-bold uppercase">Clear</button>
+                          <button type="button" onClick={() => { setSelectedDrug(null); setDrugQuery(""); setAllergyWarnings([]); setOverrideReason(""); }} className="text-xs text-muted-foreground hover:text-foreground font-bold uppercase">Clear</button>
                         </div>
                       )}
 
                       {allergyWarnings.length > 0 && (
-                        <div className="rounded-lg bg-red-50 border border-red-200 p-3 space-y-1.5">
+                        <div className="rounded-lg bg-red-50 border border-red-200 p-3 space-y-2">
                           <div className="flex items-center gap-1.5 text-xs font-bold text-red-800 uppercase tracking-wider">
                             <TriangleAlert className="h-3.5 w-3.5" />
-                            Allergy Warning
+                            Allergy Warning — Prescription Blocked
                           </div>
                           {allergyWarnings.map((w, i) => (
                             <div key={i} className="text-xs text-red-700">
@@ -1612,7 +1630,17 @@ export default function ClinicianSOAPConsultation() {
                               {w.reaction && <span className="ml-1">— Reaction: {w.reaction}</span>}
                             </div>
                           ))}
-                          <div className="text-[10px] text-red-600 italic">Prescription will be flagged. Proceed only if clinically appropriate.</div>
+                          <label className="block text-xs font-semibold text-red-800 uppercase tracking-wide">
+                            Override Reason <span className="text-destructive">*</span>
+                          </label>
+                          <textarea
+                            rows={2}
+                            className="block w-full rounded-lg border border-red-200 bg-background px-3 py-2 text-sm"
+                            placeholder="Type the clinical reason to prescribe this medication despite the allergy — it will be recorded for audit."
+                            value={overrideReason}
+                            onChange={(e) => setOverrideReason(e.target.value)}
+                          />
+                          <div className="text-[10px] text-red-600 italic">Prescription stays blocked until a reason is provided.</div>
                         </div>
                       )}
 
@@ -1667,7 +1695,10 @@ export default function ClinicianSOAPConsultation() {
                         <input type="text" className="block w-full rounded-lg border border-input bg-background px-3 py-2 text-sm" placeholder="Take after food" value={rxForm.notes} onChange={(e) => setRxForm({ ...rxForm, notes: e.target.value })} />
                       </div>
                       <div className="flex justify-end">
-                        <Button type="submit" disabled={submitLoading || !selectedDrug}>
+                        <Button
+                          type="submit"
+                          disabled={submitLoading || !selectedDrug || (allergyWarnings.length > 0 && !overrideReason.trim())}
+                        >
                           {submitLoading && <Loader2 className="h-4 w-4 animate-spin" />}
                           Create Prescription
                         </Button>
