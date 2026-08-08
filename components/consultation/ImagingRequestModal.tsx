@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { ScanLine, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Modal from "@/components/ui/Modal";
@@ -35,7 +35,9 @@ export default function ImagingRequestModal({ open, onClose, encounterId, token,
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
+  const [prevOpen, setPrevOpen] = useState(open);
+  if (open !== prevOpen) {
+    setPrevOpen(open);
     if (open) {
       setImagingType("");
       setBodySite("");
@@ -44,7 +46,7 @@ export default function ImagingRequestModal({ open, onClose, encounterId, token,
       setCustom(false);
       setError(null);
     }
-  }, [open]);
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
