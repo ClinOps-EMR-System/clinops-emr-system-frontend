@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { useAuth } from "../../../store/RoleContext";
 import { api } from "../../../lib/api";
+import { subscribe } from "../../../lib/realtime";
 import {
   Card,
   CardContent,
@@ -97,7 +98,18 @@ export default function RadiologyPage() {
 
   /* eslint-disable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
   useEffect(() => {
-    if (token) fetchData();
+    if (!token) return;
+    fetchData();
+    const offRequests = subscribe("clinops_radiology_requests", () => {
+      fetchData();
+    });
+    const offResults = subscribe("clinops_radiology_results", () => {
+      fetchData();
+    });
+    return () => {
+      offRequests();
+      offResults();
+    };
   }, [token]);
 
   // ── Derived lists ────────────────────────────────────────────────────────────
