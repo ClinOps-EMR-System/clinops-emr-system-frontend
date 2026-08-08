@@ -35,6 +35,16 @@ export function getWsUrl() {
   return "ws://localhost:6001";
 }
 
+export function getPublicAssetUrl(path: string | null | undefined): string | null {
+  if (!path) return null;
+  if (/^https?:\/\//.test(path)) return path;
+  if (path.startsWith("/")) {
+    const origin = getApiBaseUrl().replace(/\/api\/?$/, "");
+    return `${origin}${path}`;
+  }
+  return path;
+}
+
 export function getAppEnv() {
   const configuredAppEnv = process.env.NEXT_PUBLIC_APP_ENV?.trim().toLowerCase();
 

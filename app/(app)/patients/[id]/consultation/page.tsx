@@ -6,6 +6,7 @@ import { useAuth } from "@/store/RoleContext";
 import { useRealtime } from "@/store/RealtimeContext";
 import { useLabResultBus } from "@/store/LabResultBus";
 import { usePermissions } from "@/lib/hooks/usePermissions";
+import { useToast } from "@/components/ui/Toast";
 import { api } from "@/lib/api";
 import type { Patient, Allergy } from "@/types/patient";
 import type { LabResult } from "@/types/lab";
@@ -19,13 +20,14 @@ import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
 import BillingConfirmation from "@/components/billing/BillingConfirmation";
 import LabResultsPanel from "@/components/consultation/LabResultsPanel";
+import ImagingPanel from "@/components/consultation/ImagingPanel";
 import type { BillingSummary } from "@/types/billing";
 import { cn } from "@/lib/utils";
 import { getTemplatesByCategory } from "@/lib/clinical-templates";
 import {
   ArrowLeft, Loader2, Check, TriangleAlert, HeartPulse, Stethoscope,
   ClipboardList, ClipboardPen, FlaskConical, Pill, LogOut, DoorOpen,
-  Search, Plus, X, History, Clock, ArrowRightLeft, Receipt,
+  Search, Plus, X, History, Clock, ArrowRightLeft, Receipt, ScanLine,
 } from "lucide-react";
 import DispositionModal from "@/components/clinical/DispositionModal";
 import HandoverModal from "@/components/clinical/HandoverModal";
@@ -146,7 +148,7 @@ interface BillLine {
   total: number;
 }
 
-type SubTab = "subjective" | "objective" | "assessment" | "plan" | "orders" | "results" | "prescriptions" | "timeline" | "billing";
+type SubTab = "subjective" | "objective" | "assessment" | "plan" | "orders" | "results" | "radiology" | "prescriptions" | "timeline" | "billing";
 
 const subTabs: { key: SubTab; label: string; icon: React.ReactNode }[] = [
   { key: "subjective", label: "Subjective (S)", icon: <ClipboardPen className="h-4 w-4" /> },
@@ -155,6 +157,7 @@ const subTabs: { key: SubTab; label: string; icon: React.ReactNode }[] = [
   { key: "plan", label: "Plan (P)", icon: <ClipboardPen className="h-4 w-4" /> },
   { key: "orders", label: "Orders", icon: <FlaskConical className="h-4 w-4" /> },
   { key: "results", label: "Results", icon: <FlaskConical className="h-4 w-4" /> },
+  { key: "radiology", label: "Radiology", icon: <ScanLine className="h-4 w-4" /> },
   { key: "prescriptions", label: "Rx", icon: <Pill className="h-4 w-4" /> },
   { key: "timeline", label: "Case Timeline", icon: <History className="h-4 w-4" /> },
   { key: "billing", label: "Billing", icon: <Receipt className="h-4 w-4" /> },
@@ -215,6 +218,7 @@ export default function ClinicianSOAPConsultation() {
   const { token, user } = useAuth();
   const { subscribe } = useRealtime();
   const { openResult } = useLabResultBus();
+  const { toast } = useToast();
   const { can } = usePermissions();
   const isStudent = (user?.roles ?? []).some((r) => String(r).toLowerCase() === "medical student");
   const patientId = params.id as string;
@@ -243,6 +247,7 @@ export default function ClinicianSOAPConsultation() {
 
   const [orders, setOrders] = useState<Order[]>([]);
   const [resultsRefreshKey, setResultsRefreshKey] = useState(0);
+  const [imagingRefreshKey, setImagingRefreshKey] = useState(0);
   const [orderForm, setOrderForm] = useState({ test_name: "", clinical_indication: "", priority: "routine" });
 
   const [prescriptions, setPrescriptions] = useState<Prescription[]>([]);
@@ -389,6 +394,23 @@ export default function ClinicianSOAPConsultation() {
       if (ev.encounter_id === undefined && ev.patient_id !== undefined && ev.patient_id !== Number(patientId)) return;
       setResultsRefreshKey((k) => k + 1);
       void fetchConsultationData();
+    });
+    return off;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [subscribe, token, summary?.encounter?.id]);
+
+  useEffect(() => {
+    if (!token) return;
+    const off = subscribe("clinops_radiology_results", (raw: unknown) => {
+      const ev = raw as { encounter_id?: number; patient_id?: number; imaging_result_id?: number };
+      if (typeof ev?.imaging_result_id !== "number") return;
+      if (ev.encounter_id !== undefined && ev.encounter_id !== summary?.encounter?.id) return;
+      if (ev.encounter_id === undefined && ev.patient_id !== undefined && ev.patient_id !== Number(patientId)) return;
+      setImagingRefreshKey((k) => k + 1);
+      const encounter = summary?.encounter;
+      if (encounter) {
+        toast("success", "New radiology result — A radiology report for this encounter has been released and is ready to review in the Radiology tab.");
+      }
     });
     return off;
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1487,6 +1509,14 @@ export default function ClinicianSOAPConsultation() {
                     token={token}
                     pendingCount={pendingLabCount}
                     refreshSignal={resultsRefreshKey}
+                  />
+                )}
+
+                {activeSubTab === "radiology" && (
+                  <ImagingPanel
+                    encounterId={activeEncounterId ?? null}
+                    token={token}
+                    refreshSignal={imagingRefreshKey}
                   />
                 )}
 
