@@ -9,6 +9,7 @@ import { RealtimeProvider } from "../../store/RealtimeContext";
 import { LabResultBusProvider } from "../../store/LabResultBus";
 import { SidebarProvider } from "../../components/ui/sidebar";
 import { AppSidebar } from "../../components/shadcn-space/blocks/sidebar-01/app-sidebar";
+import ErrorBoundary from "../../components/ui/ErrorBoundary";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
@@ -49,7 +50,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 tabIndex={-1}
                 className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 bg-white text-clinical-text focus:outline-none"
               >
-                {children}
+                <ErrorBoundary>
+                  {children}
+                </ErrorBoundary>
               </main>
             </div>
           </SidebarProvider>

@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import StatusBadge from "@/components/ui/StatusBadge";
 import EmptyState from "@/components/ui/EmptyState";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import Modal from "@/components/ui/Modal";
 import {
   Table,
@@ -27,6 +28,8 @@ export default function DepartmentsPage() {
   const [error, setError] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Department | null>(null);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState<Department | null>(null);
   const [form, setForm] = useState({
     name: "",
     code: "",
@@ -82,9 +85,14 @@ export default function DepartmentsPage() {
   };
 
   const remove = async (d: Department) => {
-    if (!confirm(`Delete department ${d.name}?`)) return;
+    setPendingDelete(d);
+    setDeleteOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!pendingDelete) return;
     try {
-      await adminApi.deleteDepartment(token, d.id);
+      await adminApi.deleteDepartment(token, pendingDelete.id);
       await load();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Delete failed");
@@ -225,6 +233,16 @@ export default function DepartmentsPage() {
           </div>
         </div>
       </Modal>
+
+      <ConfirmDialog
+        open={deleteOpen}
+        onClose={() => { setDeleteOpen(false); setPendingDelete(null); }}
+        onConfirm={() => void confirmDelete()}
+        title="Delete department?"
+        message={`This will permanently delete ${pendingDelete?.name ?? "this department"}. This action cannot be undone.`}
+        variant="danger"
+        confirmLabel="Delete department"
+      />
     </div>
   );
 }

@@ -3,6 +3,7 @@
 import { AdminGuard } from "@/components/admin/AdminGuard";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { AdminTopbar } from "@/components/admin/AdminTopbar";
+import ErrorBoundary from "@/components/ui/ErrorBoundary";
 
 export default function AdminLayout({
   children,
@@ -21,7 +22,7 @@ export default function AdminLayout({
         <AdminSidebar />
         <div className="flex min-w-0 flex-1 flex-col">
           <AdminTopbar />
-          <main id="admin-main-content" tabIndex={-1} className="flex-1 overflow-y-auto p-6 focus:outline-none">{children}</main>
+          <main id="admin-main-content" tabIndex={-1} className="flex-1 overflow-y-auto p-6 focus:outline-none"><ErrorBoundary>{children}</ErrorBoundary></main>
         </div>
       </div>
     </AdminGuard>

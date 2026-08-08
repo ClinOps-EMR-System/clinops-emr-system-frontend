@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import StatusBadge from "@/components/ui/StatusBadge";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
 
 export default function StaffDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -26,6 +27,7 @@ export default function StaffDetailPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const [form, setForm] = useState({
     name: "",
     username: "",
@@ -139,7 +141,11 @@ export default function StaffDetailPage() {
 
   const remove = async () => {
     if (!user || isAdminUser) return;
-    if (!confirm(`Delete ${user.name}? This cannot be undone.`)) return;
+    setDeleteOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!user || isAdminUser) return;
     try {
       await adminApi.deleteUser(token, user.id);
       router.push("/system/staff");
@@ -394,6 +400,16 @@ export default function StaffDetailPage() {
           </Button>
         </div>
       )}
+
+      <ConfirmDialog
+        open={deleteOpen}
+        onClose={() => setDeleteOpen(false)}
+        onConfirm={() => void confirmDelete()}
+        title="Delete user?"
+        message={`This will permanently delete ${user?.name ?? "this user"}. This action cannot be undone.`}
+        variant="danger"
+        confirmLabel="Delete user"
+      />
     </div>
   );
 }

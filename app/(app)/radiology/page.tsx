@@ -25,6 +25,7 @@ import EmptyState from "../../../components/ui/EmptyState";
 import Modal from "../../../components/ui/Modal";
 import { cn } from "../../../lib/utils";
 import { ScanLine, Search, Clock, AlertTriangle, RefreshCw, FileText } from "lucide-react";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -74,6 +75,8 @@ export default function RadiologyPage() {
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitSuccess, setSubmitSuccess] = useState<string | null>(null);
+  const [releaseConfirmOpen, setReleaseConfirmOpen] = useState(false);
+  const [pendingRelease, setPendingRelease] = useState<ImagingRequest | null>(null);
 
   // ── Data fetching ────────────────────────────────────────────────────────────
 
@@ -172,12 +175,20 @@ export default function RadiologyPage() {
   };
 
   const handleRelease = async (req: ImagingRequest) => {
-    if (!confirm("Release this report? It will be visible to the clinical team.")) return;
+    setPendingRelease(req);
+    setReleaseConfirmOpen(true);
+  };
+
+  const confirmRelease = async () => {
+    if (!pendingRelease) return;
+    setReleaseConfirmOpen(false);
     try {
-      await api.post(`/imaging-requests/${req.imaging_request_id}/release`, {}, token);
+      await api.post(`/imaging-requests/${pendingRelease.imaging_request_id}/release`, {}, token);
       fetchData();
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to release report");
+    } finally {
+      setPendingRelease(null);
     }
   };
 
@@ -613,6 +624,16 @@ export default function RadiologyPage() {
           )}
         </form>
       </Modal>
+
+      <ConfirmDialog
+        open={releaseConfirmOpen}
+        onClose={() => { setReleaseConfirmOpen(false); setPendingRelease(null); }}
+        onConfirm={confirmRelease}
+        title="Release Report"
+        message="Release this report? It will be visible to the clinical team."
+        confirmLabel="Release report"
+        variant="info"
+      />
     </div>
   );
 }

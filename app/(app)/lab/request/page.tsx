@@ -13,7 +13,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { FlaskConical, Search, ArrowLeft, Loader2, Check } from "lucide-react";
+import { FlaskConical, Search, ArrowLeft, Loader2, Check, CheckCircle } from "lucide-react";
 
 interface EncounterOption {
   id: number;
@@ -159,7 +159,7 @@ export default function NewLabRequestPage() {
       )}
       {successMsg && (
         <div className="p-3 rounded-lg bg-green-50 text-green-700 text-sm border border-green-200 flex items-center gap-2">
-          <Loader2 className="h-4 w-4 animate-spin" /> {successMsg}
+          <CheckCircle className="h-4 w-4 shrink-0" /> {successMsg}
         </div>
       )}
 

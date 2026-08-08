@@ -5,6 +5,7 @@ import { api } from "@/lib/api";
 import { useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { CheckCircle, XCircle } from "lucide-react";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
 
 interface Appointment {
   id: number;
@@ -21,6 +22,7 @@ export function AppointmentActions({ appointment, onAction }: AppointmentActions
   const { token } = useAuth();
   const [loading, setLoading] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   const status = appointment.status?.toLowerCase();
   const canCheckIn = ["confirmed", "pending", "scheduled"].includes(status);
@@ -41,9 +43,13 @@ export function AppointmentActions({ appointment, onAction }: AppointmentActions
   }, [appointment.id, token, onAction]);
 
   const handleCancel = useCallback(async () => {
-    if (!confirm("Cancel this appointment?")) return;
+    setConfirmOpen(true);
+  }, []);
+
+  const confirmCancel = useCallback(async () => {
     setLoading(true);
     setActionError(null);
+    setConfirmOpen(false);
     try {
       await api.post(`/appointments/${appointment.id}/cancel`, {}, token);
       onAction();
@@ -72,6 +78,15 @@ export function AppointmentActions({ appointment, onAction }: AppointmentActions
       {actionError && (
         <span className="text-xs text-destructive">{actionError}</span>
       )}
+      <ConfirmDialog
+        open={confirmOpen}
+        onClose={() => setConfirmOpen(false)}
+        onConfirm={confirmCancel}
+        title="Cancel Appointment"
+        message="Cancel this appointment?"
+        confirmLabel="Cancel appointment"
+        variant="warning"
+      />
     </div>
   );
 }

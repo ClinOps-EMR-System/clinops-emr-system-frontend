@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import BillingConfirmation from "@/components/billing/BillingConfirmation";
 import { parseBilling, type BillingSummary } from "@/types/billing";
-import { Loader2, ArrowLeft, Building2 } from "lucide-react";
+import { Loader2, ArrowLeft, Building2, CheckCircle } from "lucide-react";
 import type { WardSummary, BedSummary } from "@/types/admission";
 
 export default function NewAdmissionPage() {
@@ -187,7 +187,7 @@ export default function NewAdmissionPage() {
             )}
             {successMsg && (
               <div className="p-3 rounded bg-green-50 text-green-700 text-sm border border-green-200 flex items-center gap-2">
-                <Loader2 className="h-4 w-4 animate-spin" />
+                <CheckCircle className="h-4 w-4 shrink-0" />
                 {successMsg}
               </div>
             )}

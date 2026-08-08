@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import EmptyState from "@/components/ui/EmptyState";
 import Modal from "@/components/ui/Modal";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import {
   Table,
   TableBody,
@@ -71,6 +72,8 @@ export default function ServicesCatalogPage() {
   const [loincLoading, setLoincLoading] = useState(false);
   const [loincSearched, setLoincSearched] = useState(false);
   const loincRequestId = useRef(0);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [pendingService, setPendingService] = useState<BillableService | null>(null);
 
   const load = useCallback(
     async (opts?: { search?: string; category?: string }) => {
@@ -169,12 +172,20 @@ export default function ServicesCatalogPage() {
   };
 
   const remove = async (s: BillableService) => {
-    if (!confirm(`Delete service ${s.name}?`)) return;
+    setPendingService(s);
+    setDeleteConfirmOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!pendingService) return;
+    setDeleteConfirmOpen(false);
     try {
-      await adminApi.deleteService(token, s.id);
+      await adminApi.deleteService(token, pendingService.id);
       await Promise.all([load(), loadAuto()]);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Delete failed");
+    } finally {
+      setPendingService(null);
     }
   };
 
@@ -539,6 +550,16 @@ export default function ServicesCatalogPage() {
           </div>
         </div>
       </Modal>
+
+      <ConfirmDialog
+        open={deleteConfirmOpen}
+        onClose={() => { setDeleteConfirmOpen(false); setPendingService(null); }}
+        onConfirm={confirmDelete}
+        title="Delete Service"
+        message={pendingService ? `Delete service ${pendingService.name}?` : ""}
+        confirmLabel="Delete service"
+        variant="danger"
+      />
     </div>
   );
 }

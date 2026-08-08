@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import EmptyState from "@/components/ui/EmptyState";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import Modal from "@/components/ui/Modal";
 import {
   Table,
@@ -42,6 +43,8 @@ export default function WardsPage() {
   const [error, setError] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Ward | null>(null);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState<Ward | null>(null);
   const [form, setForm] = useState({
     name: "",
     code: "",
@@ -109,9 +112,14 @@ export default function WardsPage() {
   };
 
   const remove = async (w: Ward) => {
-    if (!confirm(`Delete ward ${w.name}?`)) return;
+    setPendingDelete(w);
+    setDeleteOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!pendingDelete) return;
     try {
-      await adminApi.deleteWard(token, w.id);
+      await adminApi.deleteWard(token, pendingDelete.id);
       await load();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Delete failed");
@@ -279,6 +287,16 @@ export default function WardsPage() {
           </div>
         </div>
       </Modal>
+
+      <ConfirmDialog
+        open={deleteOpen}
+        onClose={() => { setDeleteOpen(false); setPendingDelete(null); }}
+        onConfirm={() => void confirmDelete()}
+        title="Delete ward?"
+        message={`This will permanently delete ${pendingDelete?.name ?? "this ward"}. This action cannot be undone.`}
+        variant="danger"
+        confirmLabel="Delete ward"
+      />
     </div>
   );
 }
