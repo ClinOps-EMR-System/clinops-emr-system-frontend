@@ -1488,6 +1488,32 @@ export default function ClinicianSOAPConsultation() {
                     </div>
 
                     <div className="bg-muted/30 rounded-lg p-4">
+                      <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-3">Patient Allergies</h4>
+                      {summary?.allergies && summary.allergies.length > 0 ? (
+                        <div className="flex flex-wrap gap-1.5">
+                          {summary.allergies.map((a) => (
+                            <span
+                              key={a.id}
+                              title={a.reaction ? `Reaction: ${a.reaction}` : "No reaction recorded"}
+                              className="inline-flex items-center gap-1 rounded-full bg-red-100 px-2.5 py-1 text-xs font-medium text-red-800"
+                            >
+                              <TriangleAlert className="h-3 w-3" />
+                              {a.allergen} ({a.severity})
+                            </span>
+                          ))}
+                        </div>
+                      ) : summary?.allergies_confirmed ? (
+                        <div className="flex items-center gap-1.5 text-sm font-semibold text-emerald-600">
+                          <Check className="h-3.5 w-3.5" /> No Known Allergies (NKA)
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1.5 text-sm font-semibold text-amber-600">
+                          <TriangleAlert className="h-3.5 w-3.5" /> Allergies Unconfirmed
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="bg-muted/30 rounded-lg p-4">
                       <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-3">Active Prescriptions</h4>
                       {prescriptions.length > 0 ? (
                         <div className="divide-y divide-border rounded-lg border bg-card overflow-hidden">
