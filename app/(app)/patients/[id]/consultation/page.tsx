@@ -114,6 +114,9 @@ interface Prescription {
   is_controlled: boolean;
   allergy_check: boolean;
   interaction_check: boolean;
+  allergy_override_reason: string | null;
+  allergy_override_by: number | null;
+  allergy_override_at: string | null;
   created_at: string;
 }
 
@@ -125,6 +128,7 @@ interface Drug {
   strength: string | null;
   current_stock: number | null;
   reorder_level: number | null;
+  atc_code: string | null;
 }
 
 interface BillingServiceItem {
@@ -246,7 +250,14 @@ export default function ClinicianSOAPConsultation() {
   const [drugResults, setDrugResults] = useState<Drug[]>([]);
   const [selectedDrug, setSelectedDrug] = useState<Drug | null>(null);
   const [rxForm, setRxForm] = useState({ dosage: "", route: "oral", frequency: "BD", duration: "7 days", quantity: "30", notes: "", is_controlled: false });
-  const [allergyWarnings, setAllergyWarnings] = useState<{ allergen: string; severity: string; reaction: string | null }[]>([]);
+  const [allergyWarnings, setAllergyWarnings] = useState<{
+    allergen: string;
+    severity: string;
+    reaction: string | null;
+    matched_term?: string | null;
+    matched_class?: string | null;
+    match_type?: "name" | "class";
+  }[]>([]);
 
   type TrendPoint = { recorded_at: string; value: number };
   const [vitalTrends, setVitalTrends] = useState<Record<string, TrendPoint[]>>({});

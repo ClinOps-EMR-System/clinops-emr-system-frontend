@@ -47,6 +47,8 @@ export interface Allergy {
   allergen: string;
   severity: string;
   reaction?: string;
+  allergy_type?: string | null;
+  atc_code?: string | null;
 }
 
 export interface DuplicatePatient {
