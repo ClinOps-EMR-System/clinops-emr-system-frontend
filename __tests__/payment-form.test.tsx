@@ -89,4 +89,24 @@ describe("PaymentForm", () => {
       amount: 6000,
     });
   });
+
+  it("shows the API message when a payment is rejected with 422", async () => {
+    const err = new Error("The patient must be discharged before this bill can be paid.") as Error & {
+      status?: number;
+      errors?: Record<string, string[]>;
+    };
+    err.status = 422;
+    err.errors = {};
+    mockedApi.post.mockRejectedValueOnce(err);
+
+    render(<PaymentForm {...baseProps} />);
+
+    fireEvent.change(screen.getByLabelText(/amount/i), { target: { value: "6000" } });
+    fireEvent.change(screen.getByLabelText(/method/i), { target: { value: "Cash" } });
+    fireEvent.click(screen.getByRole("button", { name: /record payment/i }));
+
+    expect(
+      await screen.findByText("The patient must be discharged before this bill can be paid.")
+    ).toBeInTheDocument();
+  });
 });

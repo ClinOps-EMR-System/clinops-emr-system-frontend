@@ -107,7 +107,7 @@ export function PaymentForm({
       const apiError = err as { status?: number; message?: string; errors?: Record<string, string[]> };
        if (apiError.status === 422) {
          const first = apiError.errors ? Object.values(apiError.errors)[0]?.[0] : undefined;
-         const msg = first || "Invalid payment details.";
+         const msg = first || apiError.message || "Invalid payment details.";
          setFormError(msg);
        } else if (apiError.status === 502) {
          const msg = isPayChangu ? "Unable to initialize payment with PayChangu." : "A gateway error occurred. Please try again.";

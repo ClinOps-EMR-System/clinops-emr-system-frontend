@@ -24,54 +24,42 @@ import SelectField from "@/components/ui/SelectField";
 import StatusBadge from "@/components/ui/StatusBadge";
 import EmptyState from "@/components/ui/EmptyState";
 
-interface EmergencyPatient {
-  patient_id: number;
-  hospital_number: string;
-  full_name: string;
-  chief_complaint: string;
-  arrived_at: string;
-  wait_minutes: number;
-  severity_level: number;
-}
-
-interface CheckedInAppointment {
-  id: number;
-  patient_id: number;
+interface TriageWorklistEntry {
+  encounter_id: number;
+  encounter_type: string;
+  source: "emergency" | "appointment" | "walk-in";
   patient: {
     id: number;
-    first_name: string;
-    last_name: string;
     hospital_number: string;
+    full_name: string;
   };
-  encounter_id?: number;
-  encounter?: {
-    id: number;
-    status: string;
-  };
-  scheduled_for: string;
-  reason: string | null;
-  appointment_type: string;
+  status: string;
+  chief_complaint: string | null;
+  triage_priority: number | null;
+  arrived_at: string;
+  wait_time_minutes: number;
 }
 
 interface TriageEntry {
   id: string;
   patient_id: number;
-  encounter_id: number | null;
+  encounter_id: number;
   hospital_number: string;
   full_name: string;
   chief_complaint: string;
   wait_minutes: number;
   priority: number;
-  source: "emergency" | "appointment";
+  source: "emergency" | "appointment" | "walk-in";
 }
 
-type SourceFilter = "all" | "emergency" | "appointment";
+type SourceFilter = "all" | "emergency" | "appointment" | "walk-in";
 type PriorityFilter = "all" | "critical" | "high" | "medium" | "low";
 
 const sourceOptions = [
   { value: "all", label: "All Sources" },
   { value: "emergency", label: "Emergency" },
   { value: "appointment", label: "Appointment" },
+  { value: "walk-in", label: "Walk-in" },
 ];
 
 const priorityOptions = [
@@ -89,12 +77,13 @@ function getWaitColor(minutes: number): string {
 }
 
 function formatWaitTime(minutes: number): string {
-  if (minutes >= 60) {
-    const h = Math.floor(minutes / 60);
-    const m = minutes % 60;
+  const whole = Math.floor(minutes);
+  if (whole >= 60) {
+    const h = Math.floor(whole / 60);
+    const m = whole % 60;
     return m > 0 ? `${h}h ${m}m` : `${h}h`;
   }
-  return `${minutes}m`;
+  return `${whole}m`;
 }
 
 function getPriorityBadge(priority: number) {
@@ -105,9 +94,10 @@ function getPriorityBadge(priority: number) {
   return { label: "L5 Non-Urgent", variant: "info" as const };
 }
 
-function getSourceBadge(source: "emergency" | "appointment") {
+function getSourceBadge(source: TriageEntry["source"]) {
   if (source === "emergency") return { label: "ER", variant: "error" as const, pulse: true };
-  return { label: "Appt", variant: "info" as const };
+  if (source === "appointment") return { label: "Appt", variant: "info" as const };
+  return { label: "Walk-in", variant: "warning" as const };
 }
 
 function matchesPriorityFilter(priority: number, filter: PriorityFilter): boolean {
@@ -125,60 +115,24 @@ export default function TriageQueuePage() {
   const [search, setSearch] = useState("");
   const [sourceFilter, setSourceFilter] = useState<SourceFilter>("all");
   const [priorityFilter, setPriorityFilter] = useState<PriorityFilter>("all");
-  const [now] = useState(() => Date.now());
 
-  const today = useMemo(() => new Date().toLocaleDateString("en-CA"), []);
-
-  const { data: emergencyRaw, loading: emergLoading } = useFetch<EmergencyPatient[]>(
-    "/emergency/waiting", { interval: 20000 }
+  const { data: worklistRaw, loading } = useFetch<TriageWorklistEntry[]>(
+    "/worklist/triage", { interval: 20000 }
   );
-  const { data: appointmentsRaw, loading: apptLoading } = useFetch<CheckedInAppointment[]>(
-    `/appointments?date=${today}&status=Checked-in`, { interval: 20000 }
-  );
-
-  const loading = emergLoading || apptLoading;
 
   const entries: TriageEntry[] = useMemo(() => {
-    const result: TriageEntry[] = [];
-
-    const emergencyPatients = unwrap(emergencyRaw);
-    for (const ep of emergencyPatients) {
-      const waitMinutes = ep.wait_minutes ?? Math.round((now - new Date(ep.arrived_at).getTime()) / 60000);
-      result.push({
-        id: `emergency-${ep.patient_id}`,
-        patient_id: ep.patient_id,
-        encounter_id: null,
-        hospital_number: ep.hospital_number,
-        full_name: ep.full_name,
-        chief_complaint: ep.chief_complaint || "",
-        wait_minutes: waitMinutes,
-        priority: ep.severity_level || 2,
-        source: "emergency",
-      });
-    }
-
-    if (appointmentsRaw) {
-      for (const ap of appointmentsRaw) {
-        if (ap.encounter && !["awaiting_triage", "being_triaged"].includes(ap.encounter.status)) {
-          continue;
-        }
-        const waitMinutes = Math.round((now - new Date(ap.scheduled_for).getTime()) / 60000);
-        result.push({
-          id: `appt-${ap.id}`,
-          patient_id: ap.patient.id,
-          encounter_id: ap.encounter_id ?? null,
-          hospital_number: ap.patient.hospital_number,
-          full_name: `${ap.patient.first_name} ${ap.patient.last_name}`,
-          chief_complaint: ap.reason || "",
-          wait_minutes: Math.max(0, waitMinutes),
-          priority: 4,
-          source: "appointment",
-        });
-      }
-    }
-
-    return result;
-  }, [emergencyRaw, appointmentsRaw, now]);
+    return unwrap(worklistRaw).map((entry) => ({
+      id: `encounter-${entry.encounter_id}`,
+      patient_id: entry.patient.id,
+      encounter_id: entry.encounter_id,
+      hospital_number: entry.patient.hospital_number,
+      full_name: entry.patient.full_name,
+      chief_complaint: entry.chief_complaint || "",
+      wait_minutes: entry.wait_time_minutes,
+      priority: entry.triage_priority ?? (entry.source === "emergency" ? 2 : 4),
+      source: entry.source,
+    }));
+  }, [worklistRaw]);
 
   const hasFilters = search !== "" || sourceFilter !== "all" || priorityFilter !== "all";
 

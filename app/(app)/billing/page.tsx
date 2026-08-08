@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useAuth } from "@/store/RoleContext";
+import { useRealtime } from "@/store/RealtimeContext";
 import { api } from "@/lib/api";
 import { adminApi } from "@/lib/services/admin";
 import type { PayChanguChargeResult, PayChanguOperator } from "@/lib/services/admin";
@@ -45,6 +46,28 @@ interface Bill {
   encounter?: {
     encounter_type: string;
   } | null;
+  items: BillItem[];
+  payments: Payment[];
+}
+
+interface BillItem {
+  id: number;
+  item_name: string;
+  quantity: number;
+  unit_price: number;
+  total: number;
+  source_type?: string | null;
+}
+
+interface Payment {
+  id: number;
+  payment_number: string;
+  amount_paid: number;
+  payment_method: string;
+  payment_reference: string | null;
+  created_at: string;
+  status?: string;
+  received_by?: { id: number; name: string } | null;
 }
 
 interface Service {
@@ -78,6 +101,7 @@ const PAYCHANGU_POLL_LIMIT_MS = 2 * 60 * 1000;
 
 export default function BillingPage() {
   const { token } = useAuth();
+  const { subscribe } = useRealtime();
   const [bills, setBills] = useState<Bill[]>([]);
   const [, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
@@ -86,6 +110,8 @@ export default function BillingPage() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [selectedBill, setSelectedBill] = useState<Bill | null>(null);
+  const [detailsModalOpen, setDetailsModalOpen] = useState(false);
+  const [detailsBill, setDetailsBill] = useState<Bill | null>(null);
   const [paymentForm, setPaymentForm] = useState({ amount: "", payment_method: "cash", reference: "" });
   const [processing, setProcessing] = useState(false);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
@@ -99,9 +125,9 @@ export default function BillingPage() {
   const [paychanguError, setPaychanguError] = useState<string | null>(null);
   const paychanguBillIdRef = useRef<number | null>(null);
 
-  async function fetchData() {
+  async function fetchData(silent = false) {
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       setError(null);
       const [billsRes, servicesRes] = await Promise.allSettled([
         api.get("/bills", token),
@@ -125,6 +151,15 @@ export default function BillingPage() {
     if (token) fetchData();
   }, [token]);
   /* eslint-enable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
+
+  useEffect(() => {
+    if (!token) return;
+    const off = subscribe("clinops_billing_invoices", () => {
+      void fetchData(true);
+    });
+    return off;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [subscribe, token]);
 
   const resetPaymentForm = () => {
     setPaymentForm({ amount: "", payment_method: "cash", reference: "" });
@@ -183,6 +218,16 @@ export default function BillingPage() {
     resetPayChanguState();
     setPaymentModalOpen(false);
     setSelectedBill(null);
+  };
+
+  const handleOpenDetailsModal = (bill: Bill) => {
+    setDetailsBill(bill);
+    setDetailsModalOpen(true);
+  };
+
+  const handleCloseDetailsModal = () => {
+    setDetailsModalOpen(false);
+    setDetailsBill(null);
   };
 
   const handlePayChanguRetry = () => {
@@ -503,12 +548,14 @@ export default function BillingPage() {
                             Pay
                           </Button>
                         )}
-                        <Link
-                          href={`/patients/${bill.patient_id}`}
-                          className="text-xs font-semibold text-muted-foreground hover:text-foreground"
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 text-xs"
+                          onClick={() => handleOpenDetailsModal(bill)}
                         >
-                          View
-                        </Link>
+                          View Details
+                        </Button>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -666,6 +713,93 @@ export default function BillingPage() {
               </div>
             )}
           </form>
+        )}
+      </Modal>
+
+      {/* Bill Details Modal */}
+      <Modal
+        open={detailsModalOpen}
+        onClose={handleCloseDetailsModal}
+        title="Bill Details"
+        subtitle={
+          detailsBill
+            ? `${detailsBill.bill_number} — ${detailsBill.patient ? `${detailsBill.patient.first_name} ${detailsBill.patient.last_name}` : `Patient #${detailsBill.patient_id}`}`
+            : ""
+        }
+        size="lg"
+        footer={
+          <button
+            onClick={handleCloseDetailsModal}
+            className="px-4 py-2 text-sm font-semibold text-muted-foreground bg-background border border-border rounded-lg hover:bg-muted"
+          >
+            Close
+          </button>
+        }
+      >
+        {detailsBill && (
+          <div className="space-y-5">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="space-y-1">
+                <div className="text-sm font-semibold text-foreground">
+                  {detailsBill.patient
+                    ? `${detailsBill.patient.first_name} ${detailsBill.patient.last_name}`
+                    : `Patient #${detailsBill.patient_id}`}
+                </div>
+                <div className="font-mono text-xs text-muted-foreground">
+                  {detailsBill.patient?.hospital_number}
+                </div>
+              </div>
+              <Link
+                href={`/patients/${detailsBill.patient_id}`}
+                className="text-xs font-semibold text-primary hover:underline"
+              >
+                Open patient record
+              </Link>
+            </div>
+
+            <div className="flex flex-wrap gap-x-6 gap-y-1 text-xs text-muted-foreground">
+              <span>Type: {detailsBill.encounter?.encounter_type || "—"}</span>
+              <span>Created: {detailsBill.created_at ? new Date(detailsBill.created_at).toLocaleDateString() : "—"}</span>
+            </div>
+
+            <div className="overflow-hidden rounded-lg border border-border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Item</TableHead>
+                    <TableHead className="text-right">Qty</TableHead>
+                    <TableHead className="text-right">Unit Price</TableHead>
+                    <TableHead className="text-right">Total</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {detailsBill.items.map((item) => (
+                    <TableRow key={item.id}>
+                      <TableCell className="font-medium text-foreground">{item.item_name}</TableCell>
+                      <TableCell className="text-right">{item.quantity}</TableCell>
+                      <TableCell className="text-right font-mono text-xs">MK {Number(item.unit_price).toLocaleString()}</TableCell>
+                      <TableCell className="text-right font-mono text-xs">MK {Number(item.total).toLocaleString()}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+
+            <div className="space-y-2 rounded-lg border border-border p-4 text-sm">
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Total</span>
+                <span className="font-medium font-mono">MK {Number(detailsBill.total_amount).toLocaleString()}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Paid</span>
+                <span className="font-medium font-mono text-emerald-600">MK {Number(detailsBill.paid_amount).toLocaleString()}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Balance</span>
+                <span className="font-medium font-mono text-red-600">MK {Number(detailsBill.balance).toLocaleString()}</span>
+              </div>
+            </div>
+          </div>
         )}
       </Modal>
     </div>
