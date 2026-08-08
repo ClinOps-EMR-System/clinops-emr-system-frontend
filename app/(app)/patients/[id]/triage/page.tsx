@@ -144,6 +144,16 @@ export default function NurseTriageWorkbench() {
   const [allergyType, setAllergyType] = useState("Drug");
   const [reaction, setReaction] = useState("");
   const [severity, setSeverity] = useState<"mild" | "moderate" | "severe">("mild");
+  const [allergyDrugQuery, setAllergyDrugQuery] = useState("");
+  const [allergyDrugResults, setAllergyDrugResults] = useState<{
+    id: number;
+    name: string;
+    generic_name: string | null;
+    atc_code: string | null;
+    formulation: string | null;
+    strength: string | null;
+  }[]>([]);
+  const [allergyAtcCode, setAllergyAtcCode] = useState("");
 
   const [chiefComplaint, setChiefComplaint] = useState("");
   const [hpi, setHpi] = useState("");
@@ -285,6 +295,22 @@ export default function NurseTriageWorkbench() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, patientId]);
 
+  useEffect(() => {
+    if (allergyType !== "Drug" || allergyDrugQuery.trim().length < 2) {
+      setAllergyDrugResults([]);
+      return;
+    }
+    const delayDebounceFn = setTimeout(async () => {
+      try {
+        const res = await api.get(`/drugs/search?q=${encodeURIComponent(allergyDrugQuery)}`, token);
+        setAllergyDrugResults(Array.isArray(res) ? res : []);
+      } catch {
+        setAllergyDrugResults([]);
+      }
+    }, 400);
+    return () => clearTimeout(delayDebounceFn);
+  }, [allergyDrugQuery, allergyType, token]);
+
   const currentVitalsPayload = {
     respirationRate: respiratoryRate ? parseInt(respiratoryRate) : undefined,
     spo2: oxygenSaturation ? parseInt(oxygenSaturation) : undefined,
@@ -364,10 +390,13 @@ export default function NurseTriageWorkbench() {
     setError(null);
     setSuccessMsg(null);
     try {
-      await api.post(`/patients/${patientId}/triage/allergies`, { allergen, allergy_type: allergyType, reaction: reaction || null, severity }, token);
+      await api.post(`/patients/${patientId}/triage/allergies`, { allergen, allergy_type: allergyType, reaction: reaction || null, severity, atc_code: allergyAtcCode || null }, token);
       setSuccessMsg("Allergy noted successfully.");
       setAllergen("");
       setReaction("");
+      setAllergyDrugQuery("");
+      setAllergyAtcCode("");
+      setAllergyDrugResults([]);
       fetchSummaryData();
     } catch (err: unknown) {
       setError(friendlyError(err, "record allergy"));
@@ -899,7 +928,7 @@ export default function NurseTriageWorkbench() {
                         <label className="text-xs font-semibold text-foreground uppercase tracking-wide">Allergen</label>
                         <Input
                           required placeholder="e.g. Penicillin, Peanuts"
-                          value={allergen} onChange={(e) => setAllergen(e.target.value)}
+                          value={allergen} onChange={(e) => { setAllergen(e.target.value); setAllergyAtcCode(""); }}
                         />
                       </div>
                       <div className="space-y-1.5">
@@ -914,6 +943,49 @@ export default function NurseTriageWorkbench() {
                           <option value="Other">Other</option>
                         </select>
                       </div>
+                      {allergyType === "Drug" && (
+                        <div className="relative space-y-1.5 md:col-span-2">
+                          <label className="text-xs font-semibold text-foreground uppercase tracking-wide">
+                            Drug Class (ATC) — optional catalog search
+                          </label>
+                          <Input
+                            placeholder="Search the drug catalog to auto-capture the drug class (e.g. Amoxicillin)..."
+                            value={allergyDrugQuery}
+                            onChange={(e) => {
+                              setAllergyDrugQuery(e.target.value);
+                              setAllergyAtcCode("");
+                            }}
+                          />
+                          {allergyDrugResults.length > 0 && (
+                            <ul className="absolute left-0 right-0 mt-1 bg-card border rounded-lg shadow-lg max-h-48 overflow-y-auto z-30 divide-y text-sm">
+                              {allergyDrugResults.map((d) => (
+                                <li key={d.id}>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setAllergen(d.name);
+                                      setAllergyDrugQuery(d.name);
+                                      setAllergyAtcCode(d.atc_code ?? "");
+                                      setAllergyDrugResults([]);
+                                    }}
+                                    className="w-full text-left px-4 py-2.5 hover:bg-muted/50 flex items-baseline justify-between transition-colors"
+                                  >
+                                    <span className="font-medium text-foreground">{d.name}</span>
+                                    <span className="text-xs text-muted-foreground">
+                                      {d.formulation} {d.strength}{d.atc_code ? ` — ATC ${d.atc_code}` : ""}
+                                    </span>
+                                  </button>
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                          {allergyAtcCode && (
+                            <p className="text-xs text-muted-foreground">
+                              Captured ATC class: <span className="font-mono font-semibold text-foreground">{allergyAtcCode}</span> — prescribing will block same-class drugs.
+                            </p>
+                          )}
+                        </div>
+                      )}
                       <div className="space-y-1.5">
                         <label className="text-xs font-semibold text-foreground uppercase tracking-wide">Reaction Details (Optional)</label>
                         <Input
