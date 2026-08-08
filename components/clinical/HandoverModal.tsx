@@ -58,6 +58,15 @@ export default function HandoverModal({ open, onClose, patientId, encounterId, p
     onClose();
   };
 
+  useEffect(() => {
+    if (!open) return;
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === "Escape") handleClose();
+    };
+    document.addEventListener("keydown", handleEscape);
+    return () => document.removeEventListener("keydown", handleEscape);
+  }, [open, handleClose]);
+
   const handleSubmit = async () => {
     if (!toUserId || !situation.trim() || !background.trim() || !assessment.trim() || !recommendation.trim()) {
       setError("All SBAR fields and recipient are required.");
@@ -87,7 +96,7 @@ export default function HandoverModal({ open, onClose, patientId, encounterId, p
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <div className="fixed inset-0 z-50 flex items-center justify-center" role="dialog" aria-modal="true" aria-label="Clinical Handover">
       <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" onClick={handleClose} />
       <div className="relative bg-card rounded-xl shadow-2xl border w-full max-w-2xl max-h-[90vh] overflow-hidden mx-4">
         <div className="flex items-center justify-between px-6 py-4 border-b">

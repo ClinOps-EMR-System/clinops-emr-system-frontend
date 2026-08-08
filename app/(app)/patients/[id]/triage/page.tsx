@@ -477,6 +477,15 @@ export default function NurseTriageWorkbench() {
   const [completing, setCompleting] = useState(false);
   const [showCompletionSummary, setShowCompletionSummary] = useState(false);
 
+  useEffect(() => {
+    if (!showCompletionSummary) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setShowCompletionSummary(false);
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [showCompletionSummary]);
+
   const handleCompleteTriage = async () => {
     if (!token || completing) return;
     setCompleting(true);
@@ -1289,8 +1298,8 @@ export default function NurseTriageWorkbench() {
 
       {/* Completion Modal */}
       {showCompletionSummary && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" role="dialog" aria-modal="true">
-          <Card className="max-w-md w-full mx-4 shadow-xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" role="dialog" aria-modal="true" onClick={() => setShowCompletionSummary(false)}>
+          <Card className="max-w-md w-full mx-4 shadow-xl" onClick={(e) => e.stopPropagation()}>
             <CardContent className="text-center space-y-4 pt-6">
               <div className="h-16 w-16 rounded-full bg-emerald-100 flex items-center justify-center mx-auto">
                 <Check className="h-8 w-8 text-emerald-600" />

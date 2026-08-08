@@ -74,6 +74,15 @@ export default function ReviewDetailPage() {
   useEffect(() => {
     if (token && id) void fetchDetail();
   }, [token, id]);
+
+  useEffect(() => {
+    if (!modalOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setModalOpen(false);
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [modalOpen]);
   /* eslint-enable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
 
   async function runAction(action: "approve" | "reject") {
@@ -346,7 +355,7 @@ export default function ReviewDetailPage() {
       )}
 
       {modalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setModalOpen(false)}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" role="dialog" aria-modal="true" aria-label="Send back for revision" onClick={() => setModalOpen(false)}>
           <div
             className="w-full max-w-md rounded-lg border bg-white p-5 space-y-4"
             onClick={(e) => e.stopPropagation()}

@@ -66,6 +66,15 @@ export default function OccupancyMap() {
   useEffect(() => {
     if (token) fetchWards();
   }, [token]);
+
+  useEffect(() => {
+    if (!selectedBed) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setSelectedBed(null);
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [selectedBed]);
   /* eslint-enable react-hooks/exhaustive-deps, react-hooks/set-state-in-effect */
 
   const getAcuityColor = (acuity: string) => {
@@ -221,7 +230,7 @@ export default function OccupancyMap() {
 
       {/* Slide-over Drawer */}
       {selectedBed && (
-        <div className="fixed inset-0 z-50 flex justify-end">
+        <div className="fixed inset-0 z-50 flex justify-end" role="dialog" aria-modal="true" aria-label="Bed details">
           <div 
             className="absolute inset-0 bg-gray-900/20 backdrop-blur-sm transition-opacity" 
             onClick={() => setSelectedBed(null)} 

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useCallback, useId } from "react";
+import React, { useState, useCallback, useRef, useId } from "react";
 import clsx from "clsx";
 
 export interface Tab {
@@ -22,6 +22,7 @@ export default function Tabs({ tabs, activeKey: controlledActiveKey, onChange, c
   const [internalActive, setInternalActive] = useState(tabs[0]?.key || "");
   const activeKey = controlledActiveKey ?? internalActive;
   const tablistId = useId();
+  const tablistRef = useRef<HTMLDivElement>(null);
 
   const handleChange = useCallback(
     (key: string) => {
@@ -31,11 +32,51 @@ export default function Tabs({ tabs, activeKey: controlledActiveKey, onChange, c
     [onChange]
   );
 
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      const currentIndex = tabs.findIndex((t) => t.key === activeKey);
+      if (currentIndex === -1) return;
+
+      let nextIndex = currentIndex;
+
+      switch (e.key) {
+        case "ArrowRight":
+          e.preventDefault();
+          nextIndex = (currentIndex + 1) % tabs.length;
+          break;
+        case "ArrowLeft":
+          e.preventDefault();
+          nextIndex = (currentIndex - 1 + tabs.length) % tabs.length;
+          break;
+        case "Home":
+          e.preventDefault();
+          nextIndex = 0;
+          break;
+        case "End":
+          e.preventDefault();
+          nextIndex = tabs.length - 1;
+          break;
+        default:
+          return;
+      }
+
+      const nextKey = tabs[nextIndex].key;
+      handleChange(nextKey);
+      const nextTab = tablistRef.current?.querySelector<HTMLElement>(
+        `[role="tab"]:nth-child(${nextIndex + 1})`
+      );
+      nextTab?.focus();
+    },
+    [tabs, activeKey, handleChange]
+  );
+
   return (
     <div
+      ref={tablistRef}
       role="tablist"
       aria-orientation="horizontal"
       id={tablistId}
+      onKeyDown={handleKeyDown}
       className={clsx(
         "flex gap-0 border-b border-gray-200",
         className

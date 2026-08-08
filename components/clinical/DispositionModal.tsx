@@ -111,6 +111,15 @@ export default function DispositionModal({ open, onClose, encounterId, patientId
     onClose();
   };
 
+  useEffect(() => {
+    if (!open) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") handleClose();
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [open, handleClose]);
+
   const handleDispose = async () => {
     setLoading(true);
     setError(null);
@@ -179,7 +188,7 @@ export default function DispositionModal({ open, onClose, encounterId, patientId
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <div className="fixed inset-0 z-50 flex items-center justify-center" role="dialog" aria-modal="true" aria-label="Patient Disposition">
       <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" onClick={handleClose} />
       <div className="relative bg-card rounded-xl shadow-2xl border w-full max-w-2xl max-h-[90vh] overflow-hidden mx-4">
         <div className="flex items-center justify-between px-6 py-4 border-b">
