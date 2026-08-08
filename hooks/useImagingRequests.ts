@@ -2,7 +2,13 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/api";
+import { subscribe } from "@/lib/realtime";
 import type { ImagingRequest } from "@/types/imaging";
+
+const RADIOLOGY_CHANNELS = [
+  "clinops_radiology_requests",
+  "clinops_radiology_results",
+] as const;
 
 export function useImagingRequests(
   encounterId: number | null,
@@ -31,6 +37,25 @@ export function useImagingRequests(
   useEffect(() => {
     if (enabled) void fetchData(); // eslint-disable-line react-hooks/set-state-in-effect
   }, [enabled, fetchData]);
+
+  useEffect(() => {
+    if (!enabled || !encounterId) return;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const scheduleRefetch = () => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => {
+        timer = null;
+        void fetchData();
+      }, 300);
+    };
+    const offs = RADIOLOGY_CHANNELS.map((channel) =>
+      subscribe(channel, scheduleRefetch)
+    );
+    return () => {
+      offs.forEach((off) => off());
+      if (timer) clearTimeout(timer);
+    };
+  }, [enabled, encounterId, fetchData]);
 
   return { requests, loading, error, refetch: fetchData };
 }
