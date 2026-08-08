@@ -46,7 +46,12 @@ function ResultImage({ url, alt }: { url: string | null; alt: string }) {
 }
 
 export default function ImagingViewerModal({ result, imagingType, bodySite, onClose }: ImagingViewerModalProps) {
-  const imageUrl = getPublicAssetUrl(result?.image_url ?? null);
+  const galleryImages =
+    result?.images && result.images.length > 0
+      ? result.images
+      : result?.image_url
+        ? [{ id: -1, image_url: result.image_url, sort_order: 0 }]
+        : [];
 
   return (
     <Modal
@@ -76,9 +81,17 @@ export default function ImagingViewerModal({ result, imagingType, bodySite, onCl
 
           <div>
             <label className="block text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">
-              Scan Image
+              Scan Image{result && galleryImages.length > 1 ? `s (${galleryImages.length})` : ""}
             </label>
-            <ResultImage key={result.id} url={imageUrl} alt={`${imagingType ?? "Imaging"} scan`} />
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              {galleryImages.map((img) => (
+                <ResultImage
+                  key={img.id}
+                  url={getPublicAssetUrl(img.image_url)}
+                  alt={`${imagingType ?? "Imaging"} scan${galleryImages.length > 1 ? ` — view ${img.sort_order + 1}` : ""}`}
+                />
+              ))}
+            </div>
           </div>
 
           {result.technique && (

@@ -1,3 +1,9 @@
+export interface ImagingResultImage {
+  id: number;
+  image_url: string;
+  sort_order: number;
+}
+
 export interface ImagingResult {
   id: number;
   imaging_request_id: number;
@@ -8,6 +14,7 @@ export interface ImagingResult {
   is_critical: boolean;
   status: "Drafted" | "Released";
   image_url: string | null;
+  images: ImagingResultImage[] | null;
   reported_by: { id: number; name: string } | null;
   reported_at: string | null;
   released_by: { id: number; name: string } | null;
