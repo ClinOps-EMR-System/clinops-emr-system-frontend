@@ -15,6 +15,7 @@ import { SectionHeader } from "@/components/ui/PageLayout";
 import EmptyState from "@/components/ui/EmptyState";
 import Modal from "@/components/ui/Modal";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { BedDouble, Plus } from "lucide-react";
 import type { Admission, AdmissionFormData, AdmissionStats as AdmissionStatsType, WardSummary as Ward } from "@/types/admission";
 
@@ -232,7 +233,11 @@ export default function AdmissionsPage() {
             </h2>
           </div>
           {loading ? (
-            <div className="py-12 text-center text-sm text-muted-foreground">Loading wards...</div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {[1, 2, 3, 4, 5, 6].map((i) => (
+                <Skeleton key={i} className="h-40 rounded-xl" />
+              ))}
+            </div>
           ) : wards.length === 0 ? (
             <EmptyState title="No wards configured" description="Ward and bed data needs to be set up" />
           ) : (

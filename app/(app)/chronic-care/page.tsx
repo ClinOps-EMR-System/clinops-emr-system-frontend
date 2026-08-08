@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useAuth } from "../../../store/RoleContext";
 import { api } from "../../../lib/api";
 import EmptyState from "../../../components/ui/EmptyState";
-import LoadingState from "../../../components/ui/LoadingState";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Activity } from "lucide-react";
 
 interface Patient {
@@ -135,7 +135,7 @@ export default function ChronicCarePage() {
           <span className="text-xs font-bold text-brand-green tracking-widest uppercase">Clinical</span>
           <h1 className="text-3xl font-bold text-[#1b1c1c] mt-1">Chronic Care Register</h1>
           <p className="text-sm text-[#5f5e5e] mt-1 font-mono">
-            {loading ? "Loading..." : `${chronicPatients.length} patients with chronic conditions`}
+            {loading ? <Skeleton className="h-4 w-24" /> : `${chronicPatients.length} patients with chronic conditions`}
           </p>
         </div>
       </section>
@@ -206,7 +206,18 @@ export default function ChronicCarePage() {
         </div>
 
         {loading ? (
-          <LoadingState message="Loading chronic care register..." />
+          <div className="space-y-3 p-4">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <div key={i} className="flex items-center gap-4">
+                <Skeleton className="h-5 w-32" />
+                <Skeleton className="h-5 w-20" />
+                <Skeleton className="h-5 w-28" />
+                <Skeleton className="h-5 w-16" />
+                <Skeleton className="h-5 w-12 rounded-full" />
+                <Skeleton className="h-5 w-24" />
+              </div>
+            ))}
+          </div>
         ) : error ? (
           <div className="p-8 text-center text-sm text-red-600">{error}</div>
         ) : filteredPatients.length === 0 ? (

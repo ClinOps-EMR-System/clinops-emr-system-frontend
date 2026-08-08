@@ -8,7 +8,7 @@ import { StatsRow } from "@/components/receptionist/StatsRow";
 import { QueuePreview } from "@/components/receptionist/QueuePreview";
 import { QuickActions } from "@/components/receptionist/QuickActions";
 import { RoleGuard } from "@/components/auth/RoleGuard";
-import LoadingState from "@/components/ui/LoadingState";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Card,
   CardAction,
@@ -240,7 +240,23 @@ export default function ReceptionistDashboard() {
   if (loading) {
     return (
       <RoleGuard allowedRoles={["receptionist", "admin"]}>
-        <LoadingState message="Loading front desk workspace..." />
+        <div className="flex flex-col gap-6">
+          <div className="flex flex-col gap-1">
+            <Skeleton className="h-3 w-24" />
+            <Skeleton className="h-8 w-64" />
+            <Skeleton className="h-4 w-48" />
+          </div>
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-6">
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <Skeleton key={i} className="h-24 rounded-xl" />
+            ))}
+          </div>
+          <Skeleton className="h-9 w-full max-w-md" />
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+            <Skeleton className="h-72 rounded-xl" />
+            <Skeleton className="h-72 rounded-xl" />
+          </div>
+        </div>
       </RoleGuard>
     );
   }

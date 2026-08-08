@@ -10,6 +10,7 @@ import Modal from '@/components/ui/Modal';
 import FormField from '@/components/ui/FormField';
 import SelectField from '@/components/ui/SelectField';
 import { useToast } from '@/components/ui/Toast';
+import { Skeleton } from '@/components/ui/skeleton';
 
 type Ward = {
   id: number;
@@ -153,8 +154,17 @@ export default function WardsManagementPage() {
 
       <div className="bg-white rounded border border-[#becab7]/50 shadow-sm overflow-hidden">
         {loading ? (
-          <div className="flex justify-center items-center h-48">
-             <div className="w-8 h-8 border-4 border-gray-200 border-t-clinical-primary rounded-full animate-spin"></div>
+          <div className="p-6 space-y-4">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <div key={i} className="flex items-center gap-6">
+                <Skeleton className="h-5 w-36" />
+                <Skeleton className="h-5 w-16" />
+                <Skeleton className="h-5 w-24" />
+                <Skeleton className="h-5 w-12" />
+                <Skeleton className="h-5 w-12" />
+                <Skeleton className="h-8 w-16 ml-auto" />
+              </div>
+            ))}
           </div>
         ) : wards.length > 0 ? (
           <div className="overflow-x-auto">

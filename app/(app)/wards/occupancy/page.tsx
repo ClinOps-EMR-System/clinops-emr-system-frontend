@@ -1,12 +1,14 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Bed, Clock, LogIn, RefreshCw, X } from 'lucide-react';
+import { Bed, Building2, Clock, LogIn, RefreshCw, X } from 'lucide-react';
 import { differenceInDays } from 'date-fns';
 import { SectionHeader } from '@/components/ui/PageLayout';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/store/RoleContext';
 import { api } from '@/lib/api';
+import { Skeleton } from '@/components/ui/skeleton';
+import EmptyState from '@/components/ui/EmptyState';
 
 type Patient = {
   id: number;
@@ -143,8 +145,28 @@ export default function OccupancyMap() {
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center h-64 bg-white rounded border border-[#becab7]/50 shadow-sm">
-           <div className="w-8 h-8 border-4 border-gray-200 border-t-clinical-primary rounded-full animate-spin"></div>
+        <div className="space-y-6">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="bg-white rounded border border-[#becab7]/50 p-6 shadow-sm">
+              <div className="flex items-center gap-3 mb-6 pb-6 border-b border-gray-100">
+                <Skeleton className="h-6 w-40" />
+                <Skeleton className="h-5 w-16" />
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-4">
+                {[1, 2, 3, 4, 5, 6].map((j) => (
+                  <Skeleton key={j} className="h-[120px] rounded" />
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : wards.length === 0 ? (
+        <div className="bg-white rounded border border-[#becab7]/50 shadow-sm">
+          <EmptyState
+            icon={<Building2 className="h-12 w-12" />}
+            title="No wards configured"
+            description="Contact your administrator to set up hospital wards."
+          />
         </div>
       ) : (
         <div className="space-y-6">
