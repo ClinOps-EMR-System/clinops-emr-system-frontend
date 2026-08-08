@@ -964,7 +964,6 @@ export default function NurseTriageWorkbench() {
                                     type="button"
                                     onClick={() => {
                                       setAllergen(d.name);
-                                      setAllergyDrugQuery(d.name);
                                       setAllergyAtcCode(d.atc_code ?? "");
                                       setAllergyDrugResults([]);
                                     }}
