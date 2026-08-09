@@ -26,7 +26,7 @@ import EmptyState from "../../../components/ui/EmptyState";
 import Modal from "../../../components/ui/Modal";
 import ImagingUploadModal, { type ImagingUploadTarget } from "@/components/radiology/ImagingUploadModal";
 import { cn } from "../../../lib/utils";
-import { ScanLine, Search, Clock, AlertTriangle, RefreshCw, FileText } from "lucide-react";
+import { ScanLine, Search, Clock, AlertTriangle, RefreshCw, FileText, ImagePlus } from "lucide-react";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 
 // ── Types ────────────────────────────────────────────────────────────────────

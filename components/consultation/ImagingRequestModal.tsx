@@ -19,13 +19,14 @@ const MODALITY_PRESETS: { label: string; imaging_type: string; body_site: string
 const PRIORITY_OPTIONS = ["Routine", "Urgent", "Stat"] as const;
 
 interface ImagingRequestFormProps {
+  open: boolean;
   encounterId: number | null;
   token: string | null;
   onCreated?: () => void;
   onClose: () => void;
 }
 
-function ImagingRequestForm({ encounterId, token, onCreated, onClose }: ImagingRequestFormProps) {
+function ImagingRequestForm({ open, encounterId, token, onCreated, onClose }: ImagingRequestFormProps) {
   const [imagingType, setImagingType] = useState("");
   const [bodySite, setBodySite] = useState("");
   const [clinicalIndication, setClinicalIndication] = useState("");
@@ -233,6 +234,7 @@ export default function ImagingRequestModal({ open, onClose, encounterId, token,
       size="lg"
     >
       <ImagingRequestForm
+        open={open}
         encounterId={encounterId}
         token={token}
         onCreated={onCreated}
