@@ -15,7 +15,14 @@ import {
   Stethoscope,
 } from "lucide-react";
 import { usePermissions } from "@/lib/hooks/usePermissions";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { useAdminSidebar } from "./AdminSidebarContext";
 import { cn } from "@/lib/utils";
+import {
+  Sheet,
+  SheetContent,
+  SheetTitle,
+} from "@/components/ui/sheet";
 
 type NavLink = {
   title: string;
@@ -98,12 +105,13 @@ function allowed(
   return can(permission);
 }
 
-export function AdminSidebar() {
+function SidebarNav() {
   const pathname = usePathname();
   const { can } = usePermissions();
+  const { setOpenMobile } = useAdminSidebar();
 
   return (
-    <aside className="flex h-full w-60 shrink-0 flex-col border-r border-[var(--outline)] bg-[var(--sidebar)]">
+    <>
       <div className="flex h-14 items-center gap-2 border-b border-[var(--outline)] px-4">
         <Shield className="h-5 w-5 text-[var(--clinical-primary)]" />
         <div className="min-w-0">
@@ -139,6 +147,7 @@ export function AdminSidebar() {
                     <li key={item.href}>
                       <Link
                         href={item.href}
+                        onClick={() => setOpenMobile(false)}
                         className={cn(
                           "flex items-center gap-2 rounded-md px-2 py-2 text-sm transition-colors duration-150",
                           active
@@ -161,12 +170,39 @@ export function AdminSidebar() {
       <div className="border-t border-[var(--outline)] p-3">
         <Link
           href="/dashboard"
+          onClick={() => setOpenMobile(false)}
           className="flex items-center gap-2 rounded-md px-2 py-2 text-sm text-[var(--clinical-muted)] transition-colors hover:bg-black/5 hover:text-[var(--clinical-text)]"
         >
           <Stethoscope className="h-4 w-4" />
           Clinical EMR
         </Link>
       </div>
+    </>
+  );
+}
+
+export function AdminSidebar() {
+  const isMobile = useIsMobile();
+  const { openMobile, setOpenMobile } = useAdminSidebar();
+
+  // Mobile: Sheet/drawer
+  if (isMobile) {
+    return (
+      <Sheet open={openMobile} onOpenChange={setOpenMobile}>
+        <SheetContent side="left" showCloseButton={false} className="w-60 p-0">
+          <SheetTitle className="sr-only">Admin Navigation</SheetTitle>
+          <div className="flex h-full flex-col bg-[var(--sidebar)]">
+            <SidebarNav />
+          </div>
+        </SheetContent>
+      </Sheet>
+    );
+  }
+
+  // Desktop: fixed sidebar
+  return (
+    <aside className="flex h-full w-60 shrink-0 flex-col border-r border-[var(--outline)] bg-[var(--sidebar)]">
+      <SidebarNav />
     </aside>
   );
 }
