@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { AuthProvider } from "../store/RoleContext";
 import OfflineIndicator from "../components/ui/OfflineIndicator";
@@ -11,9 +11,22 @@ const inter = Inter({subsets:['latin'],variable:'--font-sans'});
 
 const fontClassName = "font-sans";
 
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  viewportFit: "cover",
+  themeColor: "#0d7c3f",
+};
+
 export const metadata: Metadata = {
   title: "ClinOps EMR",
   description: "Clinical Operations Electronic Medical Record System",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "ClinOps",
+  },
 };
 
 export default function RootLayout({

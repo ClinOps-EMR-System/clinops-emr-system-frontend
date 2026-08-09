@@ -78,7 +78,7 @@ export default function Tabs({ tabs, activeKey: controlledActiveKey, onChange, c
       id={tablistId}
       onKeyDown={handleKeyDown}
       className={clsx(
-        "flex gap-0 border-b border-gray-200",
+        "flex gap-0 border-b border-gray-200 overflow-x-auto scrollbar-hide flex-nowrap",
         className
       )}
     >
@@ -92,7 +92,12 @@ export default function Tabs({ tabs, activeKey: controlledActiveKey, onChange, c
             aria-controls={`${tablistId}-panel-${tab.key}`}
             aria-selected={isActive}
             tabIndex={isActive ? 0 : -1}
-            onClick={() => handleChange(tab.key)}
+            onClick={() => {
+              handleChange(tab.key);
+              // Scroll active tab into view in horizontal scroll container
+              const el = tablistRef.current?.querySelector(`[role="tab"][aria-selected="true"]`);
+              el?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+            }}
             className={clsx(
               "flex items-center gap-2 font-bold uppercase tracking-wider transition-all duration-150 border-b-2 whitespace-nowrap",
               size === "sm" ? "px-3 py-2 text-[11px]" : "px-4 py-3 text-xs",
