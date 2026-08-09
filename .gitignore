@@ -35,3 +35,6 @@ Thumbs.db
 .vscode/
 .vercel
 .env*
+
+# Git worktrees
+/.worktrees/
