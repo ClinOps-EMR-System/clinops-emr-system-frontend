@@ -2,6 +2,7 @@
 
 import React from "react";
 import Topbar from "../../components/layout/Topbar";
+import BottomNav from "../../components/layout/BottomNav";
 import Breadcrumbs from "../../components/ui/Breadcrumbs";
 import { useAuth } from "../../store/RoleContext";
 import { ToastProvider } from "../../components/ui/Toast";
@@ -48,13 +49,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               <main
                 id="main-content"
                 tabIndex={-1}
-                className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 bg-white text-clinical-text focus:outline-none"
+                className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 pb-20 lg:pb-8 bg-white text-clinical-text focus:outline-none"
               >
                 <ErrorBoundary>
                   {children}
                 </ErrorBoundary>
               </main>
             </div>
+            <BottomNav />
           </SidebarProvider>
         </LabResultBusProvider>
       </RealtimeProvider>

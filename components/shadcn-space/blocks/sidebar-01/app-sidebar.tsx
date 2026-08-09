@@ -1,6 +1,7 @@
 "use client";
 
-import { Sidebar, SidebarContent, SidebarHeader, SidebarFooter, SidebarMenu, SidebarMenuItem } from "@/components/ui/sidebar";
+import React from "react";
+import { Sidebar, SidebarContent, SidebarHeader, SidebarFooter, SidebarMenu, SidebarMenuItem, useSidebar } from "@/components/ui/sidebar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import Logo from "@/assets/logo/logo";
 import { NavItem, NavMain } from "@/components/shadcn-space/blocks/sidebar-01/nav-main";
@@ -47,6 +48,7 @@ const ALL_NAV_ITEMS: NavItem[] = [
   { title: "Payments", icon: CreditCard, href: "/payments", permissions: ["billing.create", "billing.waiver"] },
 
   { label: "Other", isSection: true },
+  { title: "Queue", icon: ArrowRightLeft, href: "/queue", permissions: ["queue.view"] },
   { title: "Referrals", icon: ArrowRightLeft, href: "/referrals", permissions: ["consultation.edit", "note.edit", "lab.view_results", "imaging.order"] },
   {
     title: "Admissions",
@@ -69,10 +71,18 @@ const ALL_NAV_ITEMS: NavItem[] = [
 export function AppSidebar() {
   const { user } = useAuth();
   const { canAccessAdmin, can } = usePermissions();
+  const { setOpenMobile } = useSidebar();
 
   const departmentName = user?.department?.name || "Clinical Operations";
 
   const filteredItems = filterNavItems(ALL_NAV_ITEMS, can, canAccessAdmin);
+
+  // Listen for "open-sidebar" event from BottomNav "More" button
+  React.useEffect(() => {
+    const handler = () => setOpenMobile(true);
+    window.addEventListener("open-sidebar", handler);
+    return () => window.removeEventListener("open-sidebar", handler);
+  }, [setOpenMobile]);
 
   return (
     <Sidebar className="px-0 h-full **:data-[slot=sidebar-inner]:h-full">
