@@ -30,6 +30,8 @@ export type NavItem = {
   children?: NavItem[];
   /** Any-of permissions required to see this item. Admin and `/system` bypass via canAccessAdmin. */
   permissions?: string[];
+  /** If set, user must have at least one of these roles AND a matching permission. */
+  roles?: string[];
 };
 
 function routeMatches(pathname: string, href?: string, exact = false, allItems: NavItem[] = []): boolean {

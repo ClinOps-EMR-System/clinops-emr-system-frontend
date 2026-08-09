@@ -52,7 +52,7 @@ export function QueuePatientCard({ entry }: { entry: QueueEntry }) {
           <Link href={`/patients/${entry.patient.id}`} className="text-sm font-semibold text-gray-900 hover:text-clinical-primary hover:underline">
             {entry.patient.first_name} {entry.patient.last_name}
           </Link>
-          <p className="text-xs text-gray-400 font-mono">{entry.patient.hospital_number}</p>
+          <p className="text-xs text-gray-500 font-mono">{entry.patient.hospital_number}</p>
         </div>
       </div>
       <div className="flex items-center gap-3">

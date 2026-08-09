@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import EmptyState from "@/components/ui/EmptyState";
 import Modal from "@/components/ui/Modal";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import {
   Table,
   TableBody,
@@ -29,6 +30,8 @@ export default function RolesPage() {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [pendingRole, setPendingRole] = useState<AdminRole | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -63,12 +66,20 @@ export default function RolesPage() {
 
   const remove = async (role: AdminRole) => {
     if (role.name === "Admin") return;
-    if (!confirm(`Delete role ${role.name}?`)) return;
+    setPendingRole(role);
+    setDeleteConfirmOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!pendingRole) return;
+    setDeleteConfirmOpen(false);
     try {
-      await adminApi.deleteRole(token, role.id);
+      await adminApi.deleteRole(token, pendingRole.id);
       await load();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Delete failed");
+    } finally {
+      setPendingRole(null);
     }
   };
 
@@ -185,6 +196,16 @@ export default function RolesPage() {
           </div>
         </div>
       </Modal>
+
+      <ConfirmDialog
+        open={deleteConfirmOpen}
+        onClose={() => { setDeleteConfirmOpen(false); setPendingRole(null); }}
+        onConfirm={confirmDelete}
+        title="Delete Role"
+        message={pendingRole ? `Delete role ${pendingRole.name}?` : ""}
+        confirmLabel="Delete role"
+        variant="danger"
+      />
     </div>
   );
 }

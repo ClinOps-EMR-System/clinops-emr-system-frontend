@@ -26,7 +26,8 @@ import EmptyState from "../../../components/ui/EmptyState";
 import Modal from "../../../components/ui/Modal";
 import ImagingUploadModal, { type ImagingUploadTarget } from "@/components/radiology/ImagingUploadModal";
 import { cn } from "../../../lib/utils";
-import { ScanLine, Search, Clock, AlertTriangle, RefreshCw, FileText, ImagePlus } from "lucide-react";
+import { ScanLine, Search, Clock, AlertTriangle, RefreshCw, FileText } from "lucide-react";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -78,6 +79,8 @@ export default function RadiologyPage() {
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitSuccess, setSubmitSuccess] = useState<string | null>(null);
+  const [releaseConfirmOpen, setReleaseConfirmOpen] = useState(false);
+  const [pendingRelease, setPendingRelease] = useState<ImagingRequest | null>(null);
 
   // ── Data fetching ────────────────────────────────────────────────────────────
 
@@ -197,12 +200,20 @@ export default function RadiologyPage() {
   };
 
   const handleRelease = async (req: ImagingRequest) => {
-    if (!confirm("Release this report? It will be visible to the clinical team.")) return;
+    setPendingRelease(req);
+    setReleaseConfirmOpen(true);
+  };
+
+  const confirmRelease = async () => {
+    if (!pendingRelease) return;
+    setReleaseConfirmOpen(false);
     try {
-      await api.post(`/imaging-requests/${req.imaging_request_id}/release`, {}, token);
+      await api.post(`/imaging-requests/${pendingRelease.imaging_request_id}/release`, {}, token);
       fetchData();
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to release report");
+    } finally {
+      setPendingRelease(null);
     }
   };
 
@@ -575,10 +586,11 @@ export default function RadiologyPage() {
           )}
 
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1">
+            <label htmlFor="field-radiology-technique" className="block text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1">
               Technique <span className="text-muted-foreground font-normal normal-case">(optional)</span>
             </label>
             <input
+              id="field-radiology-technique"
               type="text"
               className="block w-full px-3 py-2 border border-input rounded-lg text-sm focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary"
               value={reportForm.technique}
@@ -588,10 +600,11 @@ export default function RadiologyPage() {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1">
+            <label htmlFor="field-radiology-findings" className="block text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1">
               Findings <span className="text-red-500">*</span>
             </label>
             <textarea
+              id="field-radiology-findings"
               rows={4}
               className="block w-full px-3 py-2 border border-input rounded-lg text-sm focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary resize-y"
               value={reportForm.findings}
@@ -601,10 +614,11 @@ export default function RadiologyPage() {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1">
+            <label htmlFor="field-radiology-impression" className="block text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1">
               Impression <span className="text-red-500">*</span>
             </label>
             <textarea
+              id="field-radiology-impression"
               rows={3}
               className="block w-full px-3 py-2 border border-input rounded-lg text-sm focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary resize-y"
               value={reportForm.impression}
@@ -614,10 +628,11 @@ export default function RadiologyPage() {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1">
+            <label htmlFor="field-radiology-conclusion" className="block text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1">
               Conclusion / Recommendation <span className="text-muted-foreground font-normal normal-case">(optional)</span>
             </label>
             <textarea
+              id="field-radiology-conclusion"
               rows={2}
               className="block w-full px-3 py-2 border border-input rounded-lg text-sm focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary resize-y"
               value={reportForm.conclusion}

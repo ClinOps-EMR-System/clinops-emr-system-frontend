@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useAuth } from "../../../store/RoleContext";
 import { api } from "../../../lib/api";
 import EmptyState from "../../../components/ui/EmptyState";
-import LoadingState from "../../../components/ui/LoadingState";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Activity } from "lucide-react";
 
 interface Patient {
@@ -135,7 +135,7 @@ export default function ChronicCarePage() {
           <span className="text-xs font-bold text-brand-green tracking-widest uppercase">Clinical</span>
           <h1 className="text-3xl font-bold text-[#1b1c1c] mt-1">Chronic Care Register</h1>
           <p className="text-sm text-[#5f5e5e] mt-1 font-mono">
-            {loading ? "Loading..." : `${chronicPatients.length} patients with chronic conditions`}
+            {loading ? <Skeleton className="h-4 w-24" /> : `${chronicPatients.length} patients with chronic conditions`}
           </p>
         </div>
       </section>
@@ -185,7 +185,7 @@ export default function ChronicCarePage() {
       {/* Search */}
       <section className="bg-white rounded border border-[#becab7]/50 p-4">
         <div className="relative">
-          <svg className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg aria-hidden="true" className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
           </svg>
           <input
@@ -206,12 +206,23 @@ export default function ChronicCarePage() {
         </div>
 
         {loading ? (
-          <LoadingState message="Loading chronic care register..." />
+          <div className="space-y-3 p-4">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <div key={i} className="flex items-center gap-4">
+                <Skeleton className="h-5 w-32" />
+                <Skeleton className="h-5 w-20" />
+                <Skeleton className="h-5 w-28" />
+                <Skeleton className="h-5 w-16" />
+                <Skeleton className="h-5 w-12 rounded-full" />
+                <Skeleton className="h-5 w-24" />
+              </div>
+            ))}
+          </div>
         ) : error ? (
           <div className="p-8 text-center text-sm text-red-600">{error}</div>
         ) : filteredPatients.length === 0 ? (
           <EmptyState
-            icon={<Activity className="h-6 w-6 text-gray-400" />}
+            icon={<Activity className="h-6 w-6 text-gray-500" />}
             title="No chronic care patients found"
             description={searchQuery ? "Try adjusting your search" : "No patients with chronic conditions in the register"}
           />
@@ -220,12 +231,12 @@ export default function ChronicCarePage() {
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-[#fcf9f8] sticky top-0 z-10">
                 <tr className="divide-x divide-gray-200/50">
-                  <th className="px-6 py-3 text-left text-xs font-bold text-[#5f5e5e] uppercase tracking-wider">Patient Name</th>
-                  <th className="px-6 py-3 text-left text-xs font-bold text-[#5f5e5e] uppercase tracking-wider">Hospital #</th>
-                  <th className="px-6 py-3 text-left text-xs font-bold text-[#5f5e5e] uppercase tracking-wider">Primary Diagnosis</th>
-                  <th className="px-6 py-3 text-left text-xs font-bold text-[#5f5e5e] uppercase tracking-wider">Last Visit</th>
-                  <th className="px-6 py-3 text-left text-xs font-bold text-[#5f5e5e] uppercase tracking-wider">Current EWS</th>
-                  <th className="px-6 py-3 text-left text-xs font-bold text-[#5f5e5e] uppercase tracking-wider">Action</th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-[#5f5e5e] uppercase tracking-wider">Patient Name</th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-[#5f5e5e] uppercase tracking-wider">Hospital #</th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-[#5f5e5e] uppercase tracking-wider">Primary Diagnosis</th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-[#5f5e5e] uppercase tracking-wider">Last Visit</th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-[#5f5e5e] uppercase tracking-wider">Current EWS</th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-[#5f5e5e] uppercase tracking-wider">Action</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-100">
@@ -243,7 +254,7 @@ export default function ChronicCarePage() {
                         >
                           {patient.first_name} {patient.last_name}
                         </Link>
-                        <div className="text-xs text-gray-400">{patient.gender}</div>
+                        <div className="text-xs text-gray-500">{patient.gender}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-xs font-mono text-gray-500">
                         {patient.hospital_number}
@@ -264,7 +275,7 @@ export default function ChronicCarePage() {
                             {ews}
                           </span>
                         ) : (
-                          <span className="text-xs text-gray-400">—</span>
+                          <span className="text-xs text-gray-500">—</span>
                         )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">

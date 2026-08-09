@@ -12,6 +12,7 @@ const ADMIN_ACCESS_PERMS: AdminPermissionName[] = [
   "settings.manage",
   "catalog.manage",
   "ward.view",
+  "ward.edit",
   "report.view",
 ];
 

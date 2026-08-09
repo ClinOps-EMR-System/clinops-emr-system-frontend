@@ -11,10 +11,13 @@ import { BedMap } from "@/components/admissions/BedMap";
 import { AdmissionStats } from "@/components/admissions/AdmissionStats";
 import AdmissionsToolbar from "@/components/admissions/AdmissionsToolbar";
 import AdmissionsTable from "@/components/admissions/AdmissionsTable";
+import { usePermissions } from "@/lib/hooks/usePermissions";
+import { RoleGuard } from "@/components/auth/RoleGuard";
 import { SectionHeader } from "@/components/ui/PageLayout";
 import EmptyState from "@/components/ui/EmptyState";
 import Modal from "@/components/ui/Modal";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { BedDouble, Plus } from "lucide-react";
 import type { Admission, AdmissionFormData, AdmissionStats as AdmissionStatsType, WardSummary as Ward } from "@/types/admission";
 
@@ -27,6 +30,7 @@ const TABS = [
 export default function AdmissionsPage() {
   const router = useRouter();
   const { token } = useAuth();
+  const { can } = usePermissions();
   const [tab, setTab] = useState<"active" | "discharged" | "wards">("active");
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
@@ -164,15 +168,18 @@ export default function AdmissionsPage() {
   const displayedAdmissions = tab === "active" ? activeAdmissions : dischargedAdmissions;
 
   return (
+    <RoleGuard allowedRoles={["nurse", "doctor", "clinical officer", "clinical admin", "admin"]}>
     <div className="flex flex-col gap-6">
       <SectionHeader
         title="Admissions & Wards"
         description="Manage patient admissions, bed assignments, and discharges"
         action={
-          <Button onClick={() => router.push("/admissions/new")}>
-            <Plus data-icon="inline-start" />
-            Admit Patient
-          </Button>
+          can("admission.create") && (
+            <Button onClick={() => router.push("/admissions/new")}>
+              <Plus data-icon="inline-start" />
+              Admit Patient
+            </Button>
+          )
         }
       />
 
@@ -219,8 +226,8 @@ export default function AdmissionsPage() {
             totalPages={1}
             onPageChange={setCurrentPage}
             onView={openDetail}
-            onTransfer={(adm) => { setTransferAdmission(adm); setTransferOpen(true); }}
-            onDischarge={(adm) => router.push(`/admissions/${adm.id}/discharge`)}
+            onTransfer={can("admission.edit") ? (adm) => { setTransferAdmission(adm); setTransferOpen(true); } : undefined}
+            onDischarge={can("admission.edit") ? (adm) => router.push(`/admissions/${adm.id}/discharge`) : undefined}
           />
         </>
       ) : (
@@ -232,7 +239,11 @@ export default function AdmissionsPage() {
             </h2>
           </div>
           {loading ? (
-            <div className="py-12 text-center text-sm text-muted-foreground">Loading wards...</div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {[1, 2, 3, 4, 5, 6].map((i) => (
+                <Skeleton key={i} className="h-40 rounded-xl" />
+              ))}
+            </div>
           ) : wards.length === 0 ? (
             <EmptyState title="No wards configured" description="Ward and bed data needs to be set up" />
           ) : (
@@ -279,45 +290,45 @@ export default function AdmissionsPage() {
         </>
       }>
         <form onSubmit={handleAdmit} className="space-y-4">
-          {formError && <div className="p-3 rounded bg-red-50 text-red-700 text-sm">{formError}</div>}
+          {formError && <div role="alert" className="p-3 rounded bg-red-50 text-red-700 text-sm">{formError}</div>}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">Patient ID *</label>
-              <input type="number" required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary" value={form.patient_id} onChange={(e) => setForm({ ...form, patient_id: e.target.value })} />
+              <label htmlFor="field-admit-patient-id" className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">Patient ID *</label>
+              <input id="field-admit-patient-id" type="number" required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary" value={form.patient_id} onChange={(e) => setForm({ ...form, patient_id: e.target.value })} />
             </div>
             <div>
-              <label className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">Encounter ID *</label>
-              <input type="number" required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary" value={form.encounter_id} onChange={(e) => setForm({ ...form, encounter_id: e.target.value })} />
+              <label htmlFor="field-admit-encounter-id" className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">Encounter ID *</label>
+              <input id="field-admit-encounter-id" type="number" required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary" value={form.encounter_id} onChange={(e) => setForm({ ...form, encounter_id: e.target.value })} />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">Ward *</label>
-              <select required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded bg-white text-sm focus:outline-none focus:border-clinical-primary" value={form.ward_id} onChange={(e) => setForm({ ...form, ward_id: e.target.value })}>
+              <label htmlFor="field-admit-ward" className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">Ward *</label>
+              <select id="field-admit-ward" required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded bg-white text-sm focus:outline-none focus:border-clinical-primary" value={form.ward_id} onChange={(e) => setForm({ ...form, ward_id: e.target.value })}>
                 <option value="">Select ward</option>
                 {wards.map((w) => <option key={w.id} value={w.id}>{w.name} ({w.code})</option>)}
               </select>
             </div>
             <div>
-              <label className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">Bed ID *</label>
-              <input type="number" required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary" value={form.bed_id} onChange={(e) => setForm({ ...form, bed_id: e.target.value })} />
+              <label htmlFor="field-admit-bed-id" className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">Bed ID *</label>
+              <input id="field-admit-bed-id" type="number" required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary" value={form.bed_id} onChange={(e) => setForm({ ...form, bed_id: e.target.value })} />
             </div>
           </div>
           <div>
-            <label className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">Admission Type</label>
-            <select className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded bg-white text-sm focus:outline-none focus:border-clinical-primary" value={form.admission_type} onChange={(e) => setForm({ ...form, admission_type: e.target.value as "Emergency" | "Elective" })}>
+            <label htmlFor="field-admit-type" className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">Admission Type</label>
+            <select id="field-admit-type" className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded bg-white text-sm focus:outline-none focus:border-clinical-primary" value={form.admission_type} onChange={(e) => setForm({ ...form, admission_type: e.target.value as "Emergency" | "Elective" })}>
               <option value="Emergency">Emergency</option>
               <option value="Elective">Elective</option>
             </select>
           </div>
           <div>
-            <label className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">Admission Diagnosis</label>
-            <textarea rows={2} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary" value={form.admission_diagnosis} onChange={(e) => setForm({ ...form, admission_diagnosis: e.target.value })} />
+            <label htmlFor="field-admit-diagnosis" className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">Admission Diagnosis</label>
+            <textarea id="field-admit-diagnosis" rows={2} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary" value={form.admission_diagnosis} onChange={(e) => setForm({ ...form, admission_diagnosis: e.target.value })} />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">Acuity Level</label>
-              <select className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded bg-white text-sm focus:outline-none focus:border-clinical-primary" value={form.acuity_level} onChange={(e) => setForm({ ...form, acuity_level: e.target.value as "Critical" | "High" | "Medium" | "Low" })}>
+              <label htmlFor="field-admit-acuity" className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">Acuity Level</label>
+              <select id="field-admit-acuity" className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded bg-white text-sm focus:outline-none focus:border-clinical-primary" value={form.acuity_level} onChange={(e) => setForm({ ...form, acuity_level: e.target.value as "Critical" | "High" | "Medium" | "Low" })}>
                 <option value="Low">Low</option>
                 <option value="Medium">Medium</option>
                 <option value="High">High</option>
@@ -334,5 +345,6 @@ export default function AdmissionsPage() {
         </form>
       </Modal>
     </div>
+    </RoleGuard>
   );
 }

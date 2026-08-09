@@ -13,9 +13,18 @@ import {
   Settings,
   Lock,
   Stethoscope,
+  Pill,
+  FlaskConical,
 } from "lucide-react";
 import { usePermissions } from "@/lib/hooks/usePermissions";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { useAdminSidebar } from "./AdminSidebarContext";
 import { cn } from "@/lib/utils";
+import {
+  Sheet,
+  SheetContent,
+  SheetTitle,
+} from "@/components/ui/sheet";
 
 type NavLink = {
   title: string;
@@ -71,6 +80,23 @@ const NAV: NavGroup[] = [
     ],
   },
   {
+    label: "Compliance",
+    items: [
+      {
+        title: "Controlled Substances",
+        href: "/system/controlled-substances",
+        icon: Pill,
+        permission: "controlled.dispense",
+      },
+      {
+        title: "Research Data",
+        href: "/system/research",
+        icon: FlaskConical,
+        permission: "research.export",
+      },
+    ],
+  },
+  {
     label: "System",
     items: [
       {
@@ -98,19 +124,20 @@ function allowed(
   return can(permission);
 }
 
-export function AdminSidebar() {
+function SidebarNav() {
   const pathname = usePathname();
   const { can } = usePermissions();
+  const { setOpenMobile } = useAdminSidebar();
 
   return (
-    <aside className="flex h-full w-60 shrink-0 flex-col border-r border-[var(--outline)] bg-[var(--sidebar)]">
-      <div className="flex h-14 items-center gap-2 border-b border-[var(--outline)] px-4">
-        <Shield className="h-5 w-5 text-[var(--clinical-primary)]" />
+    <>
+      <div className="flex h-14 items-center gap-2 border-b border-sidebar-border px-4">
+        <Shield className="h-5 w-5 text-sidebar-primary" />
         <div className="min-w-0">
-          <p className="truncate text-sm font-semibold text-[var(--clinical-text)]">
+          <p className="truncate text-sm font-semibold text-sidebar-foreground">
             System Admin
           </p>
-          <p className="truncate text-[11px] text-[var(--clinical-muted)]">
+          <p className="truncate text-[11px] text-sidebar-foreground/70">
             ClinOps console
           </p>
         </div>
@@ -124,7 +151,7 @@ export function AdminSidebar() {
           if (items.length === 0) return null;
           return (
             <div key={group.label} className="mb-5">
-              <p className="mb-1.5 px-2 text-[11px] font-medium uppercase tracking-wide text-[var(--clinical-muted)]">
+              <p className="mb-1.5 px-2 text-xs font-medium text-sidebar-foreground/70">
                 {group.label}
               </p>
               <ul className="space-y-0.5">
@@ -139,11 +166,12 @@ export function AdminSidebar() {
                     <li key={item.href}>
                       <Link
                         href={item.href}
+                        onClick={() => setOpenMobile(false)}
                         className={cn(
                           "flex items-center gap-2 rounded-md px-2 py-2 text-sm transition-colors duration-150",
                           active
-                            ? "bg-[var(--clinical-primary)]/10 font-medium text-[var(--clinical-primary)]"
-                            : "text-[var(--clinical-text)] hover:bg-black/5",
+                            ? "bg-primary! text-primary-foreground!"
+                            : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
                         )}
                       >
                         <Icon className="h-4 w-4 shrink-0" />
@@ -158,15 +186,42 @@ export function AdminSidebar() {
         })}
       </nav>
 
-      <div className="border-t border-[var(--outline)] p-3">
+      <div className="border-t border-sidebar-border p-3">
         <Link
           href="/dashboard"
-          className="flex items-center gap-2 rounded-md px-2 py-2 text-sm text-[var(--clinical-muted)] transition-colors hover:bg-black/5 hover:text-[var(--clinical-text)]"
+          onClick={() => setOpenMobile(false)}
+          className="flex items-center gap-2 rounded-md px-2 py-2 text-sm text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground"
         >
           <Stethoscope className="h-4 w-4" />
           Clinical EMR
         </Link>
       </div>
+    </>
+  );
+}
+
+export function AdminSidebar() {
+  const isMobile = useIsMobile();
+  const { openMobile, setOpenMobile } = useAdminSidebar();
+
+  // Mobile: Sheet/drawer
+  if (isMobile) {
+    return (
+      <Sheet open={openMobile} onOpenChange={setOpenMobile}>
+        <SheetContent side="left" showCloseButton={false} className="w-60 p-0">
+          <SheetTitle className="sr-only">Admin Navigation</SheetTitle>
+          <div className="flex h-full flex-col bg-sidebar">
+            <SidebarNav />
+          </div>
+        </SheetContent>
+      </Sheet>
+    );
+  }
+
+  // Desktop: fixed sidebar
+  return (
+    <aside className="flex h-full w-60 shrink-0 flex-col border-r border-sidebar-border bg-sidebar">
+      <SidebarNav />
     </aside>
   );
 }

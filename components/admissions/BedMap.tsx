@@ -35,7 +35,7 @@ export function BedMap({ ward, admissions, onBedClick }: BedMapProps) {
                   : admission.status === "Discharged"
                     ? "bg-emerald-50 border-emerald-200 text-emerald-700"
                     : "bg-amber-50 border-amber-200 text-amber-700"
-                : "bg-white border-gray-200 text-gray-400 hover:bg-gray-50"
+                : "bg-white border-gray-200 text-gray-500 hover:bg-gray-50"
             }`}
           >
             <p className="text-xs font-bold">Bed {bedNumber}</p>
@@ -49,7 +49,7 @@ export function BedMap({ ward, admissions, onBedClick }: BedMapProps) {
           </button>
         ))}
       </div>
-      <div className="mt-4 flex items-center gap-4 text-xs text-gray-400">
+      <div className="mt-4 flex items-center gap-4 text-xs text-gray-500">
         <span className="flex items-center gap-1">
           <span className="w-3 h-3 rounded bg-clinical-primary/20 border border-clinical-primary inline-block"></span> Occupied
         </span>

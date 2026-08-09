@@ -58,6 +58,15 @@ export default function HandoverModal({ open, onClose, patientId, encounterId, p
     onClose();
   };
 
+  useEffect(() => {
+    if (!open) return;
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === "Escape") handleClose();
+    };
+    document.addEventListener("keydown", handleEscape);
+    return () => document.removeEventListener("keydown", handleEscape);
+  }, [open, handleClose]);
+
   const handleSubmit = async () => {
     if (!toUserId || !situation.trim() || !background.trim() || !assessment.trim() || !recommendation.trim()) {
       setError("All SBAR fields and recipient are required.");
@@ -87,8 +96,8 @@ export default function HandoverModal({ open, onClose, patientId, encounterId, p
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" onClick={handleClose} />
+    <div className="fixed inset-0 z-50 flex items-center justify-center" role="dialog" aria-modal="true" aria-label="Clinical Handover">
+      <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" onClick={handleClose} aria-hidden="true" />
       <div className="relative bg-card rounded-xl shadow-2xl border w-full max-w-2xl max-h-[90vh] overflow-hidden mx-4">
         <div className="flex items-center justify-between px-6 py-4 border-b">
           <div className="flex items-center gap-3">
@@ -98,24 +107,25 @@ export default function HandoverModal({ open, onClose, patientId, encounterId, p
               <p className="text-sm text-muted-foreground">{patientName}</p>
             </div>
           </div>
-          <button onClick={handleClose} className="p-1 rounded-md hover:bg-muted transition-colors">
+          <button onClick={handleClose} className="p-1 rounded-md hover:bg-muted transition-colors" aria-label="Close">
             <X className="h-5 w-5" />
           </button>
         </div>
 
         <div className="p-6 overflow-y-auto max-h-[60vh] space-y-4">
           {error && (
-            <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-800 font-semibold">{error}</div>
+            <div role="alert" className="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-800 font-semibold">{error}</div>
           )}
           {success && (
-            <div className="rounded-lg bg-emerald-50 border border-emerald-200 px-4 py-3 text-sm text-emerald-800 font-semibold">Handover sent successfully.</div>
+            <div role="status" className="rounded-lg bg-emerald-50 border border-emerald-200 px-4 py-3 text-sm text-emerald-800 font-semibold">Handover sent successfully.</div>
           )}
 
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wide mb-1.5">
+            <label htmlFor="field-handover-to" className="block text-xs font-semibold uppercase tracking-wide mb-1.5">
               Hand Over To <span className="text-destructive">*</span>
             </label>
             <select
+              id="field-handover-to"
               value={toUserId}
               onChange={(e) => setToUserId(Number(e.target.value))}
               className="block w-full rounded-lg border border-input bg-background px-3 py-2 text-sm"
@@ -132,7 +142,9 @@ export default function HandoverModal({ open, onClose, patientId, encounterId, p
               <CardTitle className="text-xs font-bold uppercase tracking-wider text-blue-700">Situation</CardTitle>
             </CardHeader>
             <CardContent>
+              <label htmlFor="handover-situation" className="sr-only">Situation</label>
               <textarea
+                id="handover-situation"
                 rows={2}
                 value={situation}
                 onChange={(e) => setSituation(e.target.value)}
@@ -147,7 +159,9 @@ export default function HandoverModal({ open, onClose, patientId, encounterId, p
               <CardTitle className="text-xs font-bold uppercase tracking-wider text-purple-700">Background</CardTitle>
             </CardHeader>
             <CardContent>
+              <label htmlFor="handover-background" className="sr-only">Background</label>
               <textarea
+                id="handover-background"
                 rows={2}
                 value={background}
                 onChange={(e) => setBackground(e.target.value)}
@@ -162,7 +176,9 @@ export default function HandoverModal({ open, onClose, patientId, encounterId, p
               <CardTitle className="text-xs font-bold uppercase tracking-wider text-amber-700">Assessment</CardTitle>
             </CardHeader>
             <CardContent>
+              <label htmlFor="handover-assessment" className="sr-only">Assessment</label>
               <textarea
+                id="handover-assessment"
                 rows={2}
                 value={assessment}
                 onChange={(e) => setAssessment(e.target.value)}
@@ -177,7 +193,9 @@ export default function HandoverModal({ open, onClose, patientId, encounterId, p
               <CardTitle className="text-xs font-bold uppercase tracking-wider text-emerald-700">Recommendation</CardTitle>
             </CardHeader>
             <CardContent>
+              <label htmlFor="handover-recommendation" className="sr-only">Recommendation</label>
               <textarea
+                id="handover-recommendation"
                 rows={2}
                 value={recommendation}
                 onChange={(e) => setRecommendation(e.target.value)}

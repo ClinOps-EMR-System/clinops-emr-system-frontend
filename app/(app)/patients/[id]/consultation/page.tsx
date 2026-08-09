@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/store/RoleContext";
+import { RoleGuard } from "@/components/auth/RoleGuard";
 import { useRealtime } from "@/store/RealtimeContext";
 import { useLabResultBus } from "@/store/LabResultBus";
 import { usePermissions } from "@/lib/hooks/usePermissions";
@@ -22,6 +23,7 @@ import BillingConfirmation from "@/components/billing/BillingConfirmation";
 import LabResultsPanel from "@/components/consultation/LabResultsPanel";
 import ImagingPanel from "@/components/consultation/ImagingPanel";
 import type { BillingSummary } from "@/types/billing";
+import { friendlyError } from "@/lib/errors";
 import { cn } from "@/lib/utils";
 import { getTemplatesByCategory } from "@/lib/clinical-templates";
 import {
@@ -218,7 +220,7 @@ export default function ClinicianSOAPConsultation() {
   const { token, user } = useAuth();
   const { subscribe } = useRealtime();
   const { openResult } = useLabResultBus();
-  const { toast } = useToast();
+  const { toast, success } = useToast();
   const { can } = usePermissions();
   const isStudent = (user?.roles ?? []).some((r) => String(r).toLowerCase() === "medical student");
   const patientId = params.id as string;
@@ -231,7 +233,6 @@ export default function ClinicianSOAPConsultation() {
   const [loading, setLoading] = useState(true);
   const [submitLoading, setSubmitLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
   const [chiefComplaint, setChiefComplaint] = useState("");
   const [hpi, setHpi] = useState("");
@@ -374,8 +375,8 @@ export default function ClinicianSOAPConsultation() {
           }
         } catch { setPrescriptions([]); }
       }
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to load consultation data.");
+    } catch (err) {
+      setError(friendlyError(err, "load consultation data"));
     } finally {
       setLoading(false);
     }
@@ -481,8 +482,8 @@ export default function ClinicianSOAPConsultation() {
     try {
       await api.post(`/patients/${patientId}/check-in`, { encounter_type: "triage" }, token);
       fetchConsultationData();
-    } catch {
-      setError("Failed to start encounter.");
+    } catch (err) {
+      setError(friendlyError(err, "start encounter"));
     } finally {
       setSubmitLoading(false);
     }
@@ -493,15 +494,14 @@ export default function ClinicianSOAPConsultation() {
     if (!summary?.encounter?.id) return;
     setSubmitLoading(true);
     setError(null);
-    setSuccessMsg(null);
     try {
       await api.post(`/patients/${patientId}/triage/presenting-complaint`, {
         chief_complaint: chiefComplaint,
         history_of_present_illness: hpi || null,
       }, token);
-      setSuccessMsg("Subjective notes saved.");
+      success("Subjective notes saved.");
       fetchConsultationData();
-    } catch (err: unknown) {
+    } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save.");
     } finally {
       setSubmitLoading(false);
@@ -513,7 +513,6 @@ export default function ClinicianSOAPConsultation() {
     if (!selectedIcd || !summary?.encounter?.id) return;
     setSubmitLoading(true);
     setError(null);
-    setSuccessMsg(null);
     try {
       await api.post("/diagnoses", {
         patient_id: parseInt(patientId),
@@ -523,12 +522,12 @@ export default function ClinicianSOAPConsultation() {
         diagnosis_type: diagnosisType,
         certainty: certainty,
       }, token);
-      setSuccessMsg(`Diagnosis ${selectedIcd.code} logged.`);
+      success(`Diagnosis ${selectedIcd.code} logged.`);
       setSelectedIcd(null);
       setIcdQuery("");
       fetchConsultationData();
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to log diagnosis.");
+    } catch (err) {
+      setError(friendlyError(err, "log diagnosis"));
     } finally {
       setSubmitLoading(false);
     }
@@ -537,13 +536,12 @@ export default function ClinicianSOAPConsultation() {
   const handleDeleteDiagnosis = async (id: number) => {
     setSubmitLoading(true);
     setError(null);
-    setSuccessMsg(null);
     try {
       await api.delete(`/diagnoses/${id}`, token);
-      setSuccessMsg("Diagnosis removed.");
+      success("Diagnosis removed.");
       fetchConsultationData();
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to remove.");
+    } catch (err) {
+      setError(friendlyError(err, "remove diagnosis"));
     } finally {
       setSubmitLoading(false);
     }
@@ -554,16 +552,15 @@ export default function ClinicianSOAPConsultation() {
     if (!summary?.encounter?.id) return;
     setSubmitLoading(true);
     setError(null);
-    setSuccessMsg(null);
     try {
       await api.post(`/encounters/${summary.encounter.id}/clinical-notes`, {
         plan: planInstructions,
         note_type: "consultation_plan",
       }, token);
-      setSuccessMsg("Plan saved.");
+      success("Plan saved.");
       fetchConsultationData();
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to save plan.");
+    } catch (err) {
+      setError(friendlyError(err, "save plan"));
     } finally {
       setSubmitLoading(false);
     }
@@ -574,16 +571,15 @@ export default function ClinicianSOAPConsultation() {
     if (!summary?.encounter?.id || !physicalExam.trim()) return;
     setSubmitLoading(true);
     setError(null);
-    setSuccessMsg(null);
     try {
       await api.post(`/encounters/${summary.encounter.id}/clinical-notes`, {
         physical_examination: physicalExam,
         note_type: "physical_exam",
       }, token);
-      setSuccessMsg("Physical exam saved.");
+      success("Physical exam saved.");
       fetchConsultationData();
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to save.");
+    } catch (err) {
+      setError(friendlyError(err, "save physical exam"));
     } finally {
       setSubmitLoading(false);
     }
@@ -594,7 +590,6 @@ export default function ClinicianSOAPConsultation() {
     if (!summary?.encounter?.id) return;
     setSubmitLoading(true);
     setError(null);
-    setSuccessMsg(null);
     try {
       await api.post(`/encounters/${summary.encounter.id}/orders`, {
         patient_id: parseInt(patientId),
@@ -603,11 +598,11 @@ export default function ClinicianSOAPConsultation() {
         clinical_indication: orderForm.clinical_indication || null,
         priority: orderForm.priority,
       }, token);
-      setSuccessMsg("Order placed.");
+      success("Order placed.");
       setOrderForm({ test_name: "", clinical_indication: "", priority: "routine" });
       fetchConsultationData();
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to place order.");
+    } catch (err) {
+      setError(friendlyError(err, "place order"));
     } finally {
       setSubmitLoading(false);
     }
@@ -618,7 +613,6 @@ export default function ClinicianSOAPConsultation() {
     if (!summary?.encounter?.id || !selectedDrug) return;
     setSubmitLoading(true);
     setError(null);
-    setSuccessMsg(null);
     try {
       await api.post(`/encounters/${summary.encounter.id}/prescriptions`, {
         patient_id: parseInt(patientId),
@@ -634,22 +628,15 @@ export default function ClinicianSOAPConsultation() {
         allergy_override_reason: allergyWarnings.length > 0 ? overrideReason.trim() || null : null,
         is_controlled: rxForm.is_controlled,
       }, token);
-      setSuccessMsg(`Prescription for ${selectedDrug.name} created.`);
+      success(`Prescription for ${selectedDrug.name} created.`);
       setSelectedDrug(null);
       setDrugQuery("");
       setAllergyWarnings([]);
       setOverrideReason("");
       setRxForm({ dosage: "", route: "oral", frequency: "BD", duration: "7 days", quantity: "30", notes: "", is_controlled: false });
       fetchConsultationData();
-    } catch (err: unknown) {
-      const status = (err as { status?: number })?.status;
-      setError(
-        status === 422
-          ? "This medication matches a recorded allergy. Provide an override reason to prescribe it anyway."
-          : err instanceof Error
-            ? err.message
-            : "Failed to create prescription.",
-      );
+    } catch (err) {
+      setError(friendlyError(err, "create prescription"));
     } finally {
       setSubmitLoading(false);
     }
@@ -724,8 +711,8 @@ export default function ClinicianSOAPConsultation() {
         source_id: service.id,
       }, token);
       await loadBill();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to add service to bill");
+    } catch (err) {
+      setError(friendlyError(err, "add service to bill"));
     } finally {
       setAddingBillItem(false);
     }
@@ -812,10 +799,10 @@ export default function ClinicianSOAPConsultation() {
     setError(null);
     try {
       await api.post(`/encounters/${activeEncounterId}/transition`, { status: targetStatus }, token);
-      setSuccessMsg(`Status changed to ${statusLabel[targetStatus] ?? targetStatus}`);
+      success(`Status changed to ${statusLabel[targetStatus] ?? targetStatus}`);
       fetchConsultationData();
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to update status.");
+    } catch (err) {
+      setError(friendlyError(err, "update encounter status"));
     } finally {
       setSubmitLoading(false);
     }
@@ -827,10 +814,10 @@ export default function ClinicianSOAPConsultation() {
     setError(null);
     try {
       await api.post(`/encounters/${activeEncounterId}/sign-off`, {}, token);
-      setSuccessMsg("Clinical notes signed off successfully.");
+      success("Clinical notes signed off successfully.");
       fetchConsultationData();
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to sign off.");
+    } catch (err) {
+      setError(friendlyError(err, "sign off notes"));
     } finally {
       setSubmitLoading(false);
     }
@@ -842,10 +829,10 @@ export default function ClinicianSOAPConsultation() {
     setError(null);
     try {
       await api.post(`/encounters/${activeEncounterId}/submit-review`, {}, token);
-      setSuccessMsg("Consultation submitted for supervisor review.");
+      success("Consultation submitted for supervisor review.");
       void fetchConsultationData();
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to submit for review.");
+    } catch (err) {
+      setError(friendlyError(err, "submit for review"));
     } finally {
       setSubmitLoading(false);
     }
@@ -872,7 +859,7 @@ export default function ClinicianSOAPConsultation() {
         return (
           <button
             key={tab.key}
-            onClick={() => { setActiveSubTab(tab.key); setError(null); setSuccessMsg(null); }}
+            onClick={() => { setActiveSubTab(tab.key); setError(null); }}
             className={cn(
               "w-full flex items-center gap-2.5 px-4 py-2.5 text-sm rounded-lg font-bold transition-all text-left",
               isActive
@@ -897,6 +884,7 @@ export default function ClinicianSOAPConsultation() {
   );
 
   return (
+    <RoleGuard allowedRoles={["doctor", "clinical officer", "medical student", "clinical admin", "admin"]}>
     <div className="max-w-7xl mx-auto space-y-6">
       <SectionHeader
         title="Clinical Consultation"
@@ -912,15 +900,17 @@ export default function ClinicianSOAPConsultation() {
                   <ArrowRightLeft className="h-4 w-4" />
                   Handover
                 </Button>
+                {can("consultation.sign_off") && (
                 <Button
                   onClick={() => setDispositionOpen(true)}
                 >
                   <LogOut className="h-4 w-4" />
                   Disposition
                 </Button>
+                )}
               </>
             ) : null}
-            <Button variant="ghost" onClick={() => router.back()}>
+            <Button variant="ghost" onClick={() => router.back()} aria-label="Go back">
               <ArrowLeft className="h-4 w-4" />
             </Button>
           </div>
@@ -946,7 +936,7 @@ export default function ClinicianSOAPConsultation() {
                 Submit for Review
               </Button>
             )}
-            {(transitionTargets[encounterStatus] ?? []).map((t) => (
+            {can("consultation.edit") && (transitionTargets[encounterStatus] ?? []).map((t) => (
               <Button
                 key={t.target}
                 size="sm"
@@ -1035,10 +1025,12 @@ export default function ClinicianSOAPConsultation() {
               <h3 className="text-lg font-bold">No Active Encounter</h3>
               <p className="text-sm text-muted-foreground mt-1">Start a new visit to begin consultation.</p>
             </div>
+            {can("consultation.create") && (
             <Button onClick={handleStartEncounter} disabled={submitLoading} size="lg">
               {submitLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
               Start New Visit
             </Button>
+            )}
           </CardContent>
         </Card>
       ) : (
@@ -1054,11 +1046,6 @@ export default function ClinicianSOAPConsultation() {
           <div className="lg:col-span-3">
             <Card>
               <CardContent className="p-6 space-y-6">
-                {successMsg && (
-                  <div className="rounded-lg bg-emerald-50 border border-emerald-200 px-4 py-3 text-sm text-emerald-800 font-semibold flex items-center gap-2">
-                    <Check className="h-4 w-4 text-emerald-600" /> {successMsg}
-                  </div>
-                )}
                 {error && (
                   <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-800 font-semibold flex items-center gap-2">
                     <TriangleAlert className="h-4 w-4 text-red-600" /> {error}
@@ -1097,10 +1084,12 @@ export default function ClinicianSOAPConsultation() {
                       </div>
                     </div>
                     <div className="flex justify-end">
+                      {can("consultation.edit") && (
                       <Button type="submit" disabled={submitLoading || !chiefComplaint.trim()}>
                         {submitLoading && <Loader2 className="h-4 w-4 animate-spin" />}
                         Save Subjective
                       </Button>
+                      )}
                     </div>
                   </form>
                 )}
@@ -1179,10 +1168,12 @@ export default function ClinicianSOAPConsultation() {
                         onChange={(e) => setPhysicalExam(e.target.value)}
                       />
                       <div className="flex justify-end">
+                        {can("consultation.edit") && (
                         <Button type="submit" disabled={submitLoading || !physicalExam.trim()}>
                           {submitLoading && <Loader2 className="h-4 w-4 animate-spin" />}
                           Save Physical Exam
                         </Button>
+                        )}
                       </div>
                     </form>
                   </div>
@@ -1208,9 +1199,11 @@ export default function ClinicianSOAPConsultation() {
                                   <span className="text-xs text-muted-foreground">{d.diagnosis_type}{d.certainty ? ` · ${d.certainty}` : ""}</span>
                                 </div>
                               </div>
-                              <button onClick={() => handleDeleteDiagnosis(d.id)} className="text-xs text-destructive hover:text-destructive/80 font-bold uppercase shrink-0 ml-2">
+                              {can("consultation.edit") && (
+                              <button onClick={() => handleDeleteDiagnosis(d.id)} className="text-xs text-destructive hover:text-destructive/80 font-bold uppercase shrink-0 ml-2" aria-label="Remove diagnosis">
                                 <X className="h-3.5 w-3.5" />
                               </button>
+                              )}
                             </div>
                           ))}
                         </div>
@@ -1225,10 +1218,11 @@ export default function ClinicianSOAPConsultation() {
                       <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Add ICD-11 Code</h4>
 
                       <div className="relative">
-                        <label className="block text-xs font-semibold text-foreground uppercase tracking-wide mb-1.5">Search Diagnosis</label>
+                        <label htmlFor="field-search-diagnosis" className="block text-xs font-semibold text-foreground uppercase tracking-wide mb-1.5">Search Diagnosis</label>
                         <div className="relative">
                           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                           <input
+                            id="field-search-diagnosis"
                             type="text"
                             className="block w-full rounded-lg border border-input bg-background pl-10 pr-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                             placeholder="Search WHO ICD-11..."
@@ -1277,8 +1271,9 @@ export default function ClinicianSOAPConsultation() {
                       {selectedIcd && (
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                           <div>
-                            <label className="block text-xs font-semibold text-foreground uppercase tracking-wide mb-1.5">Type</label>
+                            <label htmlFor="field-diagnosis-type" className="block text-xs font-semibold text-foreground uppercase tracking-wide mb-1.5">Type</label>
                             <select
+                              id="field-diagnosis-type"
                               className="block w-full rounded-lg border border-input bg-background px-3 py-2 text-sm"
                               value={diagnosisType}
                               onChange={(e) => setDiagnosisType(e.target.value as typeof diagnosisType)}
@@ -1291,8 +1286,9 @@ export default function ClinicianSOAPConsultation() {
                             </select>
                           </div>
                           <div>
-                            <label className="block text-xs font-semibold text-foreground uppercase tracking-wide mb-1.5">Certainty</label>
+                            <label htmlFor="field-diagnosis-certainty" className="block text-xs font-semibold text-foreground uppercase tracking-wide mb-1.5">Certainty</label>
                             <select
+                              id="field-diagnosis-certainty"
                               className="block w-full rounded-lg border border-input bg-background px-3 py-2 text-sm"
                               value={certainty}
                               onChange={(e) => setCertainty(e.target.value)}
@@ -1306,10 +1302,12 @@ export default function ClinicianSOAPConsultation() {
                       )}
 
                       <div className="flex justify-end">
+                        {can("consultation.edit") && (
                         <Button type="submit" disabled={submitLoading || !selectedIcd}>
                           {submitLoading && <Loader2 className="h-4 w-4 animate-spin" />}
                           Log Diagnosis
                         </Button>
+                        )}
                       </div>
                     </form>
                   </div>
@@ -1348,10 +1346,12 @@ export default function ClinicianSOAPConsultation() {
                       />
                     </div>
                     <div className="flex justify-end">
+                      {can("consultation.edit") && (
                       <Button type="submit" disabled={submitLoading}>
                         {submitLoading && <Loader2 className="h-4 w-4 animate-spin" />}
                         Save Plan
                       </Button>
+                      )}
                     </div>
                   </form>
                 )}
@@ -1457,10 +1457,11 @@ export default function ClinicianSOAPConsultation() {
                     <form onSubmit={handleCreateOrder} className="space-y-4">
                       <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Place New Order</h4>
                       <div>
-                        <label className="block text-xs font-semibold text-foreground uppercase tracking-wide mb-1.5">
+                        <label htmlFor="field-order-test-name" className="block text-xs font-semibold text-foreground uppercase tracking-wide mb-1.5">
                           Test Name <span className="text-destructive">*</span>
                         </label>
                         <input
+                          id="field-order-test-name"
                           type="text"
                           required
                           className="block w-full rounded-lg border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -1470,10 +1471,11 @@ export default function ClinicianSOAPConsultation() {
                         />
                       </div>
                       <div>
-                        <label className="block text-xs font-semibold text-foreground uppercase tracking-wide mb-1.5">
+                        <label htmlFor="field-order-indication" className="block text-xs font-semibold text-foreground uppercase tracking-wide mb-1.5">
                           Clinical Indication
                         </label>
                         <input
+                          id="field-order-indication"
                           type="text"
                           className="block w-full rounded-lg border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                           placeholder="Reason for test"
@@ -1482,8 +1484,9 @@ export default function ClinicianSOAPConsultation() {
                         />
                       </div>
                       <div>
-                        <label className="block text-xs font-semibold text-foreground uppercase tracking-wide mb-1.5">Priority</label>
+                        <label htmlFor="field-order-priority" className="block text-xs font-semibold text-foreground uppercase tracking-wide mb-1.5">Priority</label>
                         <select
+                          id="field-order-priority"
                           className="block w-full rounded-lg border border-input bg-background px-3 py-2 text-sm"
                           value={orderForm.priority}
                           onChange={(e) => setOrderForm({ ...orderForm, priority: e.target.value })}
@@ -1494,10 +1497,12 @@ export default function ClinicianSOAPConsultation() {
                         </select>
                       </div>
                       <div className="flex justify-end">
+                        {(can("lab.order") || can("imaging.order")) && (
                         <Button type="submit" disabled={submitLoading || !orderForm.test_name.trim()}>
                           {submitLoading && <Loader2 className="h-4 w-4 animate-spin" />}
                           Place Order
                         </Button>
+                        )}
                       </div>
                     </form>
                   </div>
@@ -1595,10 +1600,11 @@ export default function ClinicianSOAPConsultation() {
                       <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-widest">New Prescription</h4>
 
                       <div className="relative">
-                        <label className="block text-xs font-semibold text-foreground uppercase tracking-wide mb-1.5">
+                        <label htmlFor="field-rx-drug" className="block text-xs font-semibold text-foreground uppercase tracking-wide mb-1.5">
                           Drug <span className="text-destructive">*</span>
                         </label>
                         <input
+                          id="field-rx-drug"
                           type="text"
                           required
                           className="block w-full rounded-lg border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -1660,10 +1666,11 @@ export default function ClinicianSOAPConsultation() {
                               {w.reaction && <span className="ml-1">— Reaction: {w.reaction}</span>}
                             </div>
                           ))}
-                          <label className="block text-xs font-semibold text-red-800 uppercase tracking-wide">
+                          <label htmlFor="field-rx-override" className="block text-xs font-semibold text-red-800 uppercase tracking-wide">
                             Override Reason <span className="text-destructive">*</span>
                           </label>
                           <textarea
+                            id="field-rx-override"
                             rows={2}
                             className="block w-full rounded-lg border border-red-200 bg-background px-3 py-2 text-sm"
                             placeholder="Type the clinical reason to prescribe this medication despite the allergy — it will be recorded for audit."
@@ -1676,12 +1683,12 @@ export default function ClinicianSOAPConsultation() {
 
                       <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                         <div>
-                          <label className="block text-xs font-semibold text-foreground uppercase tracking-wide mb-1.5">Dosage <span className="text-destructive">*</span></label>
-                          <input type="text" required className="block w-full rounded-lg border border-input bg-background px-3 py-2 text-sm" placeholder="500mg" value={rxForm.dosage} onChange={(e) => setRxForm({ ...rxForm, dosage: e.target.value })} />
+                          <label htmlFor="field-rx-dosage" className="block text-xs font-semibold text-foreground uppercase tracking-wide mb-1.5">Dosage <span className="text-destructive">*</span></label>
+                          <input id="field-rx-dosage" type="text" required className="block w-full rounded-lg border border-input bg-background px-3 py-2 text-sm" placeholder="500mg" value={rxForm.dosage} onChange={(e) => setRxForm({ ...rxForm, dosage: e.target.value })} />
                         </div>
                         <div>
-                          <label className="block text-xs font-semibold text-foreground uppercase tracking-wide mb-1.5">Route</label>
-                          <select className="block w-full rounded-lg border border-input bg-background px-3 py-2 text-sm" value={rxForm.route} onChange={(e) => setRxForm({ ...rxForm, route: e.target.value })}>
+                          <label htmlFor="field-rx-route" className="block text-xs font-semibold text-foreground uppercase tracking-wide mb-1.5">Route</label>
+                          <select id="field-rx-route" className="block w-full rounded-lg border border-input bg-background px-3 py-2 text-sm" value={rxForm.route} onChange={(e) => setRxForm({ ...rxForm, route: e.target.value })}>
                             <option value="oral">Oral</option>
                             <option value="iv">IV</option>
                             <option value="im">IM</option>
@@ -1693,8 +1700,8 @@ export default function ClinicianSOAPConsultation() {
                           </select>
                         </div>
                         <div>
-                          <label className="block text-xs font-semibold text-foreground uppercase tracking-wide mb-1.5">Frequency</label>
-                          <select className="block w-full rounded-lg border border-input bg-background px-3 py-2 text-sm" value={rxForm.frequency} onChange={(e) => setRxForm({ ...rxForm, frequency: e.target.value })}>
+                          <label htmlFor="field-rx-frequency" className="block text-xs font-semibold text-foreground uppercase tracking-wide mb-1.5">Frequency</label>
+                          <select id="field-rx-frequency" className="block w-full rounded-lg border border-input bg-background px-3 py-2 text-sm" value={rxForm.frequency} onChange={(e) => setRxForm({ ...rxForm, frequency: e.target.value })}>
                             <option value="OD">Once daily</option>
                             <option value="BD">Twice daily</option>
                             <option value="TDS">Three times</option>
@@ -1706,12 +1713,12 @@ export default function ClinicianSOAPConsultation() {
                           </select>
                         </div>
                         <div>
-                          <label className="block text-xs font-semibold text-foreground uppercase tracking-wide mb-1.5">Duration</label>
-                          <input type="text" className="block w-full rounded-lg border border-input bg-background px-3 py-2 text-sm" placeholder="7 days" value={rxForm.duration} onChange={(e) => setRxForm({ ...rxForm, duration: e.target.value })} />
+                          <label htmlFor="field-rx-duration" className="block text-xs font-semibold text-foreground uppercase tracking-wide mb-1.5">Duration</label>
+                          <input id="field-rx-duration" type="text" className="block w-full rounded-lg border border-input bg-background px-3 py-2 text-sm" placeholder="7 days" value={rxForm.duration} onChange={(e) => setRxForm({ ...rxForm, duration: e.target.value })} />
                         </div>
                         <div>
-                          <label className="block text-xs font-semibold text-foreground uppercase tracking-wide mb-1.5">Quantity</label>
-                          <input type="number" min="1" className="block w-full rounded-lg border border-input bg-background px-3 py-2 text-sm font-mono" value={rxForm.quantity} onChange={(e) => setRxForm({ ...rxForm, quantity: e.target.value })} />
+                          <label htmlFor="field-rx-quantity" className="block text-xs font-semibold text-foreground uppercase tracking-wide mb-1.5">Quantity</label>
+                          <input id="field-rx-quantity" type="number" min="1" className="block w-full rounded-lg border border-input bg-background px-3 py-2 text-sm font-mono" value={rxForm.quantity} onChange={(e) => setRxForm({ ...rxForm, quantity: e.target.value })} />
                         </div>
                         <div className="flex items-end pb-1">
                           <label className="flex items-center gap-2 text-sm cursor-pointer">
@@ -1721,10 +1728,11 @@ export default function ClinicianSOAPConsultation() {
                         </div>
                       </div>
                       <div>
-                        <label className="block text-xs font-semibold text-foreground uppercase tracking-wide mb-1.5">Notes</label>
-                        <input type="text" className="block w-full rounded-lg border border-input bg-background px-3 py-2 text-sm" placeholder="Take after food" value={rxForm.notes} onChange={(e) => setRxForm({ ...rxForm, notes: e.target.value })} />
+                          <label htmlFor="field-rx-notes" className="block text-xs font-semibold text-foreground uppercase tracking-wide mb-1.5">Notes</label>
+                          <input id="field-rx-notes" type="text" className="block w-full rounded-lg border border-input bg-background px-3 py-2 text-sm" placeholder="Take after food" value={rxForm.notes} onChange={(e) => setRxForm({ ...rxForm, notes: e.target.value })} />
                       </div>
                       <div className="flex justify-end">
+                        {can("prescription.create") && (
                         <Button
                           type="submit"
                           disabled={submitLoading || !selectedDrug || (allergyWarnings.length > 0 && !overrideReason.trim())}
@@ -1732,6 +1740,7 @@ export default function ClinicianSOAPConsultation() {
                           {submitLoading && <Loader2 className="h-4 w-4 animate-spin" />}
                           Create Prescription
                         </Button>
+                        )}
                       </div>
                     </form>
                   </div>
@@ -2015,5 +2024,6 @@ export default function ClinicianSOAPConsultation() {
         />
       )}
     </div>
+    </RoleGuard>
   );
 }

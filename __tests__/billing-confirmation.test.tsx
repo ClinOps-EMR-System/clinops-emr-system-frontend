@@ -1,6 +1,7 @@
 import React from "react";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { describe, it, expect, vi } from "vitest";
+import { ToastProvider } from "@/components/ui/Toast";
 import BillingConfirmation from "../components/billing/BillingConfirmation";
 import type { BillingSummary } from "../types/billing";
 
@@ -30,7 +31,7 @@ describe("BillingConfirmation", () => {
 
   it("fires onDone when Done is pressed", () => {
     const onDone = vi.fn();
-    render(<BillingConfirmation billing={billing} onDone={onDone} onClose={vi.fn()} />);
+    render(<ToastProvider><BillingConfirmation billing={billing} onDone={onDone} onClose={vi.fn()} /></ToastProvider>);
 
     fireEvent.click(screen.getByRole("button", { name: "Done" }));
     expect(onDone).toHaveBeenCalledTimes(1);
@@ -38,9 +39,9 @@ describe("BillingConfirmation", () => {
 
   it("fires onClose when Close is pressed", () => {
     const onClose = vi.fn();
-    render(<BillingConfirmation billing={billing} onDone={vi.fn()} onClose={onClose} />);
+    render(<ToastProvider><BillingConfirmation billing={billing} onDone={vi.fn()} onClose={onClose} /></ToastProvider>);
 
-    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+    fireEvent.click(screen.getByText("Close", { selector: "button" }));
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 });

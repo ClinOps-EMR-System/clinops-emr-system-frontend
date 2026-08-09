@@ -11,6 +11,13 @@ interface ApiError extends Error {
   errors?: Record<string, string[]>;
 }
 
+interface PendingMutation {
+  endpoint: string;
+  method: string;
+  body: unknown;
+  queued_at: number;
+}
+
 async function request(endpoint: string, options: RequestOptions = {}) {
   const { token, ...init } = options;
   const headers = new Headers(init.headers);
@@ -70,6 +77,78 @@ async function request(endpoint: string, options: RequestOptions = {}) {
   }
 
   return data;
+}
+
+/**
+ * Replay queued mutations when the browser comes back online.
+ * Deduplicates by endpoint+method+body and skips stale entries (>1h old).
+ */
+async function replayPending(): Promise<void> {
+  if (!navigator.onLine) return;
+
+  const raw = localStorage.getItem("clinops_pending");
+  if (!raw) return;
+
+  let pending: PendingMutation[];
+  try {
+    pending = JSON.parse(raw);
+  } catch {
+    localStorage.removeItem("clinops_pending");
+    return;
+  }
+
+  if (!pending.length) return;
+
+  const token = localStorage.getItem("clinops_token");
+  const oneHourAgo = Date.now() - 60 * 60 * 1000;
+
+  // Deduplicate: keep only the latest mutation per endpoint+method+body key
+  const deduped = new Map<string, PendingMutation>();
+  for (const mutation of pending) {
+    const key = `${mutation.method}:${mutation.endpoint}:${typeof mutation.body === "string" ? mutation.body : JSON.stringify(mutation.body)}`;
+    deduped.set(key, mutation);
+  }
+
+  const replayable = [...deduped.values()].filter((m) => m.queued_at > oneHourAgo);
+  const stale = pending.length - replayable.length;
+
+  let succeeded = 0;
+  let failed = 0;
+
+  for (const mutation of replayable) {
+    try {
+      await request(mutation.endpoint, {
+        method: mutation.method,
+        body: mutation.body instanceof FormData ? mutation.body : JSON.stringify(mutation.body),
+        token,
+      });
+      succeeded++;
+    } catch {
+      failed++;
+    }
+  }
+
+  // Clear the queue and re-add failed items
+  if (failed > 0) {
+    const failedMutations = replayable.slice(-failed);
+    localStorage.setItem("clinops_pending", JSON.stringify(failedMutations));
+  } else {
+    localStorage.removeItem("clinops_pending");
+  }
+
+  window.dispatchEvent(new Event("clinops_pending_change"));
+
+  if (succeeded > 0 || stale > 0) {
+    console.log(`[ClinOps] Synced ${succeeded} action(s). ${stale} expired entry(ies) discarded.${failed > 0 ? ` ${failed} failed.` : ""}`);
+  }
+}
+
+// Register online listener (browser only)
+if (typeof window !== "undefined") {
+  window.addEventListener("online", () => {
+    // Small delay to let network stabilize
+    setTimeout(replayPending, 1000);
+  });
 }
 
 export const api = {

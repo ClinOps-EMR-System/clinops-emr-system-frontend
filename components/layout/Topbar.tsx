@@ -5,8 +5,8 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "../../store/RoleContext";
 import { api } from "../../lib/api";
-import { X, Search, Bell, ChevronDown } from "lucide-react";
-import { SidebarTrigger } from "@/components/ui/sidebar";
+import { X, Search, Bell, ChevronDown, Menu } from "lucide-react";
+import { useSidebar } from "@/components/ui/sidebar";
 import { useRealtimeNotifications } from "@/hooks/useRealtimeNotifications";
 import type { NotificationData } from "@/types/admission";
 import { formatDistanceToNow } from "date-fns";
@@ -56,12 +56,36 @@ export default function Topbar() {
   const pathname = usePathname();
   const router = useRouter();
   const { user, logout, token } = useAuth();
+  const { setOpenMobile } = useSidebar();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const [dismissedIds, setDismissedIds] = useState<number[]>([]);
   const mobileSearchInputRef = useRef<HTMLInputElement>(null);
   const notificationsRef = useRef<HTMLDivElement>(null);
+
+  const handleMenuKeyDown = (e: React.KeyboardEvent, closeMenu: () => void) => {
+    if (e.key === "Escape") {
+      e.preventDefault();
+      closeMenu();
+      return;
+    }
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      e.preventDefault();
+      const menu = (e.currentTarget as HTMLElement).querySelector<HTMLElement>('[role="menu"]');
+      if (!menu) return;
+      const items = Array.from(menu.querySelectorAll<HTMLElement>('[role="menuitem"], button:not([disabled])'));
+      if (items.length === 0) return;
+      const currentIndex = items.indexOf(document.activeElement as HTMLElement);
+      let nextIndex: number;
+      if (e.key === "ArrowDown") {
+        nextIndex = currentIndex < items.length - 1 ? currentIndex + 1 : 0;
+      } else {
+        nextIndex = currentIndex > 0 ? currentIndex - 1 : items.length - 1;
+      }
+      items[nextIndex].focus();
+    }
+  };
 
   const {
     notifications: dbNotifications,
@@ -214,24 +238,29 @@ export default function Topbar() {
   return (
     <header className="h-16 bg-sidebar flex items-center gap-4 px-4 md:px-6 border-b border-sidebar-border z-10 font-sans">
 
-      <SidebarTrigger className="lg:hidden text-sidebar-foreground/70 hover:text-sidebar-foreground p-1.5 rounded-md hover:bg-sidebar-accent transition-colors cursor-pointer" />
+      <button
+        onClick={() => setOpenMobile(true)}
+        className="lg:hidden p-2 -ml-2 text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent rounded-md transition-colors"
+        aria-label="Open menu"
+      >
+        <Menu className="h-5 w-5" />
+      </button>
 
-      {/* Breadcrumbs */}
-      <nav aria-label="Breadcrumb" className="flex items-center shrink-0">
-        <ol className="flex items-center gap-1.5 text-[11px] font-bold font-mono tracking-wide">
+      {/* Breadcrumbs — desktop only */}
+      <nav aria-label="Breadcrumb" className="hidden lg:flex items-center shrink-0">
+        <ol className="flex items-center gap-1.5 text-xs font-medium">
           <li className="inline-flex items-center">
-            <Link href="/dashboard" className="text-sidebar-foreground/70 hover:text-sidebar-foreground transition-colors uppercase inline-flex items-center min-h-0 min-w-0 h-auto py-0">
-              <span className="sm:hidden">⌂</span>
-              <span className="hidden sm:inline">Home</span>
+            <Link href="/dashboard" className="text-sidebar-foreground/70 hover:text-sidebar-foreground transition-colors inline-flex items-center">
+              Home
             </Link>
           </li>
           {breadcrumbs.map((crumb, idx) => {
             const isLast = idx === breadcrumbs.length - 1;
             if (!isLast && idx < breadcrumbs.length - 1) {
               return (
-                <li key={idx} className="inline-flex items-center gap-1.5 hidden sm:inline-flex">
+                <li key={idx} className="inline-flex items-center gap-1.5">
                   <span className="text-sidebar-foreground/50 select-none inline-flex items-center" aria-hidden="true">/</span>
-                  <Link href={crumb.href} className="text-sidebar-foreground/70 hover:text-sidebar-foreground transition-colors uppercase inline-flex items-center min-h-0 min-w-0 h-auto py-0">
+                  <Link href={crumb.href} className="text-sidebar-foreground/70 hover:text-sidebar-foreground transition-colors inline-flex items-center">
                     {crumb.label}
                   </Link>
                 </li>
@@ -241,9 +270,9 @@ export default function Topbar() {
               <li key={idx} className="inline-flex items-center gap-1.5">
                 <span className="text-sidebar-foreground/50 select-none inline-flex items-center" aria-hidden="true">/</span>
                 {isLast ? (
-                  <span className="text-sidebar-primary font-bold uppercase inline-flex items-center" aria-current="page">{crumb.label}</span>
+                  <span className="text-sidebar-primary font-semibold inline-flex items-center" aria-current="page">{crumb.label}</span>
                 ) : (
-                  <Link href={crumb.href} className="text-sidebar-foreground/70 hover:text-sidebar-foreground transition-colors uppercase inline-flex items-center min-h-0 min-w-0 h-auto py-0">
+                  <Link href={crumb.href} className="text-sidebar-foreground/70 hover:text-sidebar-foreground transition-colors inline-flex items-center">
                     {crumb.label}
                   </Link>
                 )}
@@ -261,7 +290,7 @@ export default function Topbar() {
               <div className="relative flex-1">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   {searchLoading ? (
-                    <svg className="h-4 w-4 text-sidebar-primary animate-spin" fill="none" viewBox="0 0 24 24">
+                    <svg aria-hidden="true" className="h-4 w-4 text-sidebar-primary animate-spin" fill="none" viewBox="0 0 24 24">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                     </svg>
@@ -286,7 +315,7 @@ export default function Topbar() {
                     className="absolute inset-y-0 right-3 flex items-center text-sidebar-foreground/60 hover:text-sidebar-foreground transition-colors"
                     aria-label="Clear search"
                   >
-                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg aria-hidden="true" className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
                     </svg>
                   </button>
@@ -312,9 +341,9 @@ export default function Topbar() {
             </button>
           )}
           {searchOpen && mobileSearchOpen && (
-            <div className="absolute top-full left-0 right-0 mt-1.5 bg-white rounded-md shadow-2xl border border-gray-200 z-50 overflow-hidden mx-4">
+            <div className="absolute top-full left-0 right-0 mt-1.5 bg-[var(--surface)] rounded-md shadow-2xl border border-gray-200 z-50 overflow-hidden mx-4">
               {results.length === 0 && !searchLoading ? (
-                <div className="px-4 py-6 text-center text-sm text-gray-400 font-mono">
+                <div className="px-4 py-6 text-center text-sm text-gray-500 font-mono">
                   No patients found for &ldquo;{debouncedQuery}&rdquo;
                 </div>
               ) : (
@@ -334,7 +363,7 @@ export default function Topbar() {
                             <p className="text-sm font-semibold text-gray-900 truncate">
                               {p.first_name} {p.last_name}
                             </p>
-                            <p className="text-xs text-gray-400 font-mono">
+                            <p className="text-xs text-gray-500 font-mono">
                               {p.hospital_number} · {p.gender}
                             </p>
                           </div>
@@ -364,7 +393,7 @@ export default function Topbar() {
           <div className="relative">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               {searchLoading ? (
-                <svg className="h-4 w-4 text-sidebar-primary animate-spin" fill="none" viewBox="0 0 24 24">
+                <svg aria-hidden="true" className="h-4 w-4 text-sidebar-primary animate-spin" fill="none" viewBox="0 0 24 24">
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                 </svg>
@@ -394,7 +423,7 @@ export default function Topbar() {
                 className="absolute inset-y-0 right-3 flex items-center text-sidebar-foreground/60 hover:text-sidebar-foreground transition-colors"
                 aria-label="Clear search"
               >
-                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg aria-hidden="true" className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
@@ -402,9 +431,9 @@ export default function Topbar() {
           </div>
 
           {searchOpen && (
-            <div className="absolute top-full left-0 right-0 mt-1.5 bg-white rounded-md shadow-2xl border border-gray-200 z-50 overflow-hidden">
+            <div className="absolute top-full left-0 right-0 mt-1.5 bg-[var(--surface)] rounded-md shadow-2xl border border-gray-200 z-50 overflow-hidden">
               {results.length === 0 && !searchLoading ? (
-                <div className="px-4 py-6 text-center text-sm text-gray-400 font-mono">
+                <div className="px-4 py-6 text-center text-sm text-gray-500 font-mono">
                   No patients found for &ldquo;{debouncedQuery}&rdquo;
                 </div>
               ) : (
@@ -424,7 +453,7 @@ export default function Topbar() {
                             <p className="text-sm font-semibold text-gray-900 truncate">
                               {p.first_name} {p.last_name}
                             </p>
-                            <p className="text-xs text-gray-400 font-mono">
+                            <p className="text-xs text-gray-500 font-mono">
                               {p.hospital_number} · {p.gender} · {p.patient_category}
                             </p>
                           </div>
@@ -469,8 +498,8 @@ export default function Topbar() {
           {/* Notifications Dropdown */}
           {notificationsOpen && (
             <>
-              <div className="fixed inset-0 z-10" onClick={() => setNotificationsOpen(false)} />
-              <div className="absolute right-0 mt-2 w-80 bg-white rounded-md shadow-2xl border border-gray-200 z-20 overflow-hidden" role="menu">
+              <div className="fixed inset-0 z-10" onClick={() => setNotificationsOpen(false)} aria-hidden="true" />
+              <div className="absolute right-0 mt-2 w-80 bg-[var(--surface)] rounded-md shadow-2xl border border-gray-200 z-20 overflow-hidden" role="menu" onKeyDown={(e) => handleMenuKeyDown(e, () => setNotificationsOpen(false))}>
                 <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
                   <h3 className="text-sm font-semibold text-gray-900">Notifications</h3>
                   <div className="flex items-center gap-2">
@@ -494,13 +523,15 @@ export default function Topbar() {
                 </div>
                 <div className="overflow-y-auto max-h-80">
                   {notifications.length === 0 ? (
-                    <div className="px-4 py-8 text-center text-sm text-gray-400">
+                    <div className="px-4 py-8 text-center text-sm text-gray-500">
                       No notifications yet
                     </div>
                   ) : (
                     notifications.map((notification) => (
                       <div
                         key={notification.id}
+                        role="button"
+                        tabIndex={0}
                         onClick={() => {
                           markAsRead(notification.id);
                           if (notification.patientId) {
@@ -508,6 +539,7 @@ export default function Topbar() {
                             router.push(`/patients/${notification.patientId}/consultation`);
                           }
                         }}
+                        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); markAsRead(notification.id); if (notification.patientId) { setNotificationsOpen(false); router.push(`/patients/${notification.patientId}/consultation`); } } }}
                         className={`px-4 py-3 border-b border-gray-100 cursor-pointer hover:bg-gray-50 transition-colors ${
                           !notification.read ? "bg-blue-50" : ""
                         }`}
@@ -523,17 +555,17 @@ export default function Topbar() {
                             }`}
                           >
                             {notification.type === "order" && (
-                              <svg className="h-3.5 w-3.5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <svg aria-hidden="true" className="h-3.5 w-3.5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                               </svg>
                             )}
                             {notification.type === "result" && (
-                              <svg className="h-3.5 w-3.5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <svg aria-hidden="true" className="h-3.5 w-3.5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                               </svg>
                             )}
                             {notification.type === "status" && (
-                              <svg className="h-3.5 w-3.5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <svg aria-hidden="true" className="h-3.5 w-3.5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                               </svg>
                             )}
@@ -557,7 +589,7 @@ export default function Topbar() {
                                 {notification.priority}
                               </span>
                             )}
-                            <p className="text-xs text-gray-400 mt-1">
+                            <p className="text-xs text-gray-500 mt-1">
                               {formatDistanceToNow(notification.timestamp, { addSuffix: true })}
                             </p>
                           </div>
@@ -591,14 +623,14 @@ export default function Topbar() {
 
           {dropdownOpen && (
             <>
-              <div className="fixed inset-0 z-10" onClick={() => setDropdownOpen(false)} />
-              <div className="absolute right-0 mt-2 w-52 rounded-md bg-white shadow-lg py-1 ring-1 ring-black ring-opacity-5 z-20" role="menu">
+              <div className="fixed inset-0 z-10" onClick={() => setDropdownOpen(false)} aria-hidden="true" />
+              <div className="absolute right-0 mt-2 w-52 rounded-md bg-[var(--surface)] shadow-lg py-1 ring-1 ring-black ring-opacity-5 z-20" role="menu" onKeyDown={(e) => handleMenuKeyDown(e, () => setDropdownOpen(false))}>
                 <div className="px-4 py-2 border-b border-gray-100">
-                  <p className="text-xs text-gray-400 uppercase font-bold tracking-wide">Staff Name</p>
+                  <p className="text-xs text-gray-500 uppercase font-bold tracking-wide">Staff Name</p>
                   <p className="text-xs text-gray-900 font-bold truncate">{name}</p>
                 </div>
                 <div className="px-4 py-2 border-b border-gray-100">
-                  <p className="text-xs text-gray-400 uppercase font-bold tracking-wide">Email</p>
+                  <p className="text-xs text-gray-500 uppercase font-bold tracking-wide">Email</p>
                   <p className="text-xs text-gray-900 font-medium truncate">{email}</p>
                 </div>
                 <button

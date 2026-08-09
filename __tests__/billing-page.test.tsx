@@ -20,7 +20,12 @@ vi.mock("@/lib/api", () => ({
 }));
 
 vi.mock("@/store/RoleContext", () => ({
-  useAuth: () => ({ token: "test-token" }),
+  useAuth: () => ({
+    token: "test-token",
+    user: { id: 1, name: "Test User", email: "test@test.com", is_active: true, roles: ["admin"], permissions: [] },
+    isAuthenticated: true,
+    isLoading: false,
+  }),
 }));
 
 vi.mock("@/store/RealtimeContext", () => ({
@@ -36,8 +41,8 @@ vi.mock("@/components/ui/Toast", () => ({
 
 vi.mock("@/lib/hooks/usePermissions", () => ({
   usePermissions: () => ({
-    can: (permission: string) => permission === "billing.waiver",
-    permissions: new Set(["billing.waiver"]),
+    can: (permission: string) => ["billing.waiver", "billing.create"].includes(permission),
+    permissions: new Set(["billing.waiver", "billing.create"]),
     roles: [],
     isAdmin: false,
     canAccessAdmin: false,

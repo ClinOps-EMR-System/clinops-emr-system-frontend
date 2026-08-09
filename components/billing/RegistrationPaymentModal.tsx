@@ -101,10 +101,11 @@ export default function RegistrationPaymentModal({
         )}
 
         <div>
-          <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wide mb-1.5">
+          <label htmlFor="field-payment-amount" className="block text-xs font-semibold text-gray-700 uppercase tracking-wide mb-1.5">
             Amount (MK)
           </label>
           <input
+            id="field-payment-amount"
             type="number"
             min="0"
             step="0.01"
@@ -137,10 +138,11 @@ export default function RegistrationPaymentModal({
         </div>
 
         <div>
-          <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wide mb-1.5">
+          <label htmlFor="field-payment-reference" className="block text-xs font-semibold text-gray-700 uppercase tracking-wide mb-1.5">
             Reference (optional)
           </label>
           <input
+            id="field-payment-reference"
             type="text"
             value={reference}
             onChange={(e) => setReference(e.target.value)}

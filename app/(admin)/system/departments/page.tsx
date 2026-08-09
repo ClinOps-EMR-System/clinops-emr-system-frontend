@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import StatusBadge from "@/components/ui/StatusBadge";
 import EmptyState from "@/components/ui/EmptyState";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import Modal from "@/components/ui/Modal";
 import {
   Table,
@@ -27,6 +28,8 @@ export default function DepartmentsPage() {
   const [error, setError] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Department | null>(null);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState<Department | null>(null);
   const [form, setForm] = useState({
     name: "",
     code: "",
@@ -82,9 +85,14 @@ export default function DepartmentsPage() {
   };
 
   const remove = async (d: Department) => {
-    if (!confirm(`Delete department ${d.name}?`)) return;
+    setPendingDelete(d);
+    setDeleteOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!pendingDelete) return;
     try {
-      await adminApi.deleteDepartment(token, d.id);
+      await adminApi.deleteDepartment(token, pendingDelete.id);
       await load();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Delete failed");
@@ -180,31 +188,35 @@ export default function DepartmentsPage() {
         title={editing ? "Edit department" : "New department"}
       >
         <div className="space-y-3">
-          <label className="block space-y-1 text-sm">
+          <label htmlFor="field-dept-name" className="block space-y-1 text-sm">
             <span className="font-medium">Name</span>
             <Input
+              id="field-dept-name"
               value={form.name}
               onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
             />
           </label>
-          <label className="block space-y-1 text-sm">
+          <label htmlFor="field-dept-code" className="block space-y-1 text-sm">
             <span className="font-medium">Code</span>
             <Input
+              id="field-dept-code"
               value={form.code}
               onChange={(e) => setForm((f) => ({ ...f, code: e.target.value }))}
             />
           </label>
-          <label className="block space-y-1 text-sm">
+          <label htmlFor="field-dept-description" className="block space-y-1 text-sm">
             <span className="font-medium">Description</span>
             <Input
+              id="field-dept-description"
               value={form.description}
               onChange={(e) =>
                 setForm((f) => ({ ...f, description: e.target.value }))
               }
             />
           </label>
-          <label className="flex items-center gap-2 text-sm">
+          <label htmlFor="field-dept-is-active" className="flex items-center gap-2 text-sm">
             <input
+              id="field-dept-is-active"
               type="checkbox"
               checked={form.is_active}
               onChange={(e) =>
@@ -221,6 +233,16 @@ export default function DepartmentsPage() {
           </div>
         </div>
       </Modal>
+
+      <ConfirmDialog
+        open={deleteOpen}
+        onClose={() => { setDeleteOpen(false); setPendingDelete(null); }}
+        onConfirm={() => void confirmDelete()}
+        title="Delete department?"
+        message={`This will permanently delete ${pendingDelete?.name ?? "this department"}. This action cannot be undone.`}
+        variant="danger"
+        confirmLabel="Delete department"
+      />
     </div>
   );
 }

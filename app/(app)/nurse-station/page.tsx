@@ -412,7 +412,7 @@ export default function NurseStationPage() {
           ) : filteredEntries.length === 0 ? (
             <div className="py-12">
               <EmptyState
-                icon={entries.length === 0 ? <Users className="h-6 w-6 text-gray-400" /> : <Search className="h-6 w-6 text-gray-400" />}
+                icon={entries.length === 0 ? <Users className="h-6 w-6 text-gray-500" /> : <Search className="h-6 w-6 text-gray-500" />}
                 title={entries.length === 0 ? "No patients waiting" : "No patients match your filters"}
                 description={
                   entries.length === 0

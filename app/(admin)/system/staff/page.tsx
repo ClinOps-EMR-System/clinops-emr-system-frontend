@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { Plus, Search } from "lucide-react";
+import { Plus, Search, Activity } from "lucide-react";
 import { useAuth } from "@/store/RoleContext";
 import { adminApi } from "@/lib/services/admin";
 import type { AdminRole, AdminUser, Cadre, Department } from "@/types/admin";
@@ -254,6 +254,9 @@ export default function StaffPage() {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
+                        <Button variant="outline" size="sm" nativeButton={false} render={<Link href={`/system/staff/${user.id}/activity`} />}>
+                          <Activity className="h-3.5 w-3.5" />
+                        </Button>
                         <Button variant="outline" size="sm" nativeButton={false} render={<Link href={`/system/staff/${user.id}`} />}>
                           Edit
                         </Button>

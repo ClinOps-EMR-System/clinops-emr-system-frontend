@@ -104,8 +104,8 @@ interface AdmissionsTableProps {
   totalPages: number;
   onPageChange: (page: number) => void;
   onView: (admission: Admission) => void;
-  onTransfer: (admission: Admission) => void;
-  onDischarge: (admission: Admission) => void;
+  onTransfer?: (admission: Admission) => void;
+  onDischarge?: (admission: Admission) => void;
 }
 
 export default function AdmissionsTable({
@@ -254,22 +254,26 @@ export default function AdmissionsTable({
                               Ward Rounds
                             </Button>
                           </Link>
-                          <Button
-                            size="xs"
-                            variant="ghost"
-                            onClick={() => onTransfer(adm)}
-                            className="text-amber-600 hover:text-amber-800"
-                          >
-                            Transfer
-                          </Button>
-                          <Button
-                            size="xs"
-                            variant="ghost"
-                            onClick={() => onDischarge(adm)}
-                            className="text-clinical-primary hover:text-clinical-primary-hover"
-                          >
-                            Discharge
-                          </Button>
+                          {onTransfer && (
+                            <Button
+                              size="xs"
+                              variant="ghost"
+                              onClick={() => onTransfer(adm)}
+                              className="text-amber-600 hover:text-amber-800"
+                            >
+                              Transfer
+                            </Button>
+                          )}
+                          {onDischarge && (
+                            <Button
+                              size="xs"
+                              variant="ghost"
+                              onClick={() => onDischarge(adm)}
+                              className="text-clinical-primary hover:text-clinical-primary-hover"
+                            >
+                              Discharge
+                            </Button>
+                          )}
                         </>
                       )}
                     </div>

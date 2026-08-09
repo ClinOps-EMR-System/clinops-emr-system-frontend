@@ -1,6 +1,7 @@
 "use client";
 
-import { Sidebar, SidebarContent, SidebarHeader, SidebarFooter, SidebarMenu, SidebarMenuItem } from "@/components/ui/sidebar";
+import React from "react";
+import { Sidebar, SidebarContent, SidebarHeader, SidebarFooter, SidebarMenu, SidebarMenuItem, useSidebar } from "@/components/ui/sidebar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import Logo from "@/assets/logo/logo";
 import { NavItem, NavMain } from "@/components/shadcn-space/blocks/sidebar-01/nav-main";
@@ -11,19 +12,19 @@ import { usePermissions } from "@/lib/hooks/usePermissions";
 const ALL_NAV_ITEMS: NavItem[] = [
   { label: "Front Desk", isSection: true },
   { title: "Dashboard", icon: LayoutDashboard, href: "/dashboard", permissions: ["dashboard.view"] },
-  { title: "Front Desk", icon: Users, href: "/receptionist", permissions: ["registration.create", "registration.edit"] },
+  { title: "Front Desk", icon: Users, href: "/receptionist", permissions: ["registration.create", "registration.edit"], roles: ["receptionist", "admin"] },
   { title: "Appointments", icon: Calendar, href: "/appointments", permissions: ["appointment.view"] },
   { title: "Patient Search", icon: Users, href: "/patients", permissions: ["patient.view"] },
 
   { label: "Clinical", isSection: true },
-  { title: "Resuscitation", icon: HeartPulse, href: "/resuscitation", permissions: ["triage.view", "triage.create", "vital.create"] },
-  { title: "Nurse Station", icon: Stethoscope, href: "/nurse-station", permissions: ["vital.create", "vital.view", "medication.administer"] },
-  { title: "Triage Queue", icon: List, href: "/triage-queue", permissions: ["triage.view"] },
-  { title: "Consultation Queue", icon: ClipboardList, href: "/consultation-queue", permissions: ["consultation.view"] },
+  { title: "Resuscitation", icon: HeartPulse, href: "/resuscitation", permissions: ["triage.view", "triage.create", "vital.create"], roles: ["nurse", "doctor", "clinical officer", "admin"] },
+  { title: "Nurse Station", icon: Stethoscope, href: "/nurse-station", permissions: ["vital.create", "vital.view", "medication.administer"], roles: ["nurse", "admin"] },
+  { title: "Triage Queue", icon: List, href: "/triage-queue", permissions: ["triage.view"], roles: ["nurse", "clinical officer", "admin"] },
+  { title: "Consultation Queue", icon: ClipboardList, href: "/consultation-queue", permissions: ["consultation.view"], roles: ["doctor", "clinical officer", "clinical admin", "admin"] },
 
   { label: "Supervision", isSection: true },
-  { title: "Verification", icon: ShieldCheck, href: "/supervision", permissions: ["supervisor.review"] },
-  { title: "Students", icon: GraduationCap, href: "/supervision/students", permissions: ["supervisor.assign"] },
+  { title: "Verification", icon: ShieldCheck, href: "/supervision", permissions: ["supervisor.review"], roles: ["clinical admin", "supervisor", "admin"] },
+  { title: "Students", icon: GraduationCap, href: "/supervision/students", permissions: ["supervisor.assign"], roles: ["doctor", "clinical admin", "it admin", "admin"] },
 
   { label: "Services", isSection: true },
   {
@@ -31,6 +32,7 @@ const ALL_NAV_ITEMS: NavItem[] = [
     icon: Pill,
     href: "/pharmacy",
     permissions: ["pharmacy.view", "pharmacy.dispense", "pharmacy.stock.view", "pharmacy.stock.manage", "pharmacy.verify"],
+    roles: ["pharmacist", "admin"],
     children: [
       { title: "Overview", href: "/pharmacy", permissions: ["pharmacy.view"] },
       { title: "Dispensing", href: "/pharmacy/dispensing", permissions: ["pharmacy.dispense"] },
@@ -39,12 +41,12 @@ const ALL_NAV_ITEMS: NavItem[] = [
       { title: "Stock Alerts", href: "/pharmacy/alerts", permissions: ["pharmacy.stock.view"] },
     ],
   },
-  { title: "Laboratory", icon: FlaskConical, href: "/lab", permissions: ["lab.order", "lab.view", "lab.view_results"] },
-  { title: "Radiology", icon: ScanLine, href: "/radiology", permissions: ["imaging.order", "imaging.view", "imaging.report"] },
+  { title: "Laboratory", icon: FlaskConical, href: "/lab", permissions: ["lab.order", "lab.view", "lab.view_results"], roles: ["lab technician", "admin"] },
+  { title: "Radiology", icon: ScanLine, href: "/radiology", permissions: ["imaging.order", "imaging.view", "imaging.report"], roles: ["radiographer", "admin"] },
 
   { label: "Finance", isSection: true },
-  { title: "Billing", icon: DollarSign, href: "/billing", permissions: ["billing.view", "billing.create", "billing.waiver"] },
-  { title: "Payments", icon: CreditCard, href: "/payments", permissions: ["billing.create", "billing.waiver"] },
+  { title: "Billing", icon: DollarSign, href: "/billing", permissions: ["billing.view", "billing.create", "billing.waiver"], roles: ["billing officer", "admin"] },
+  { title: "Payments", icon: CreditCard, href: "/payments", permissions: ["billing.create", "billing.waiver"], roles: ["billing officer", "admin"] },
 
   { label: "Other", isSection: true },
   { title: "Queue", icon: ArrowRightLeft, href: "/queue", permissions: ["queue.view"] },
@@ -54,6 +56,7 @@ const ALL_NAV_ITEMS: NavItem[] = [
     icon: DoorOpen,
     href: "/admissions",
     permissions: ["admission.view", "ward.view", "ward.edit"],
+    roles: ["nurse", "doctor", "clinical officer", "clinical admin", "admin"],
     children: [
       { title: "Overview", href: "/admissions", permissions: ["admission.view"] },
       { title: "Ward Occupancy", href: "/wards/occupancy", permissions: ["ward.view"] },
@@ -69,11 +72,19 @@ const ALL_NAV_ITEMS: NavItem[] = [
 
 export function AppSidebar() {
   const { user } = useAuth();
-  const { canAccessAdmin, can } = usePermissions();
+  const { canAccessAdmin, can, roles } = usePermissions();
+  const { setOpenMobile } = useSidebar();
 
   const departmentName = user?.department?.name || "Clinical Operations";
 
-  const filteredItems = filterNavItems(ALL_NAV_ITEMS, can, canAccessAdmin);
+  const filteredItems = filterNavItems(ALL_NAV_ITEMS, can, canAccessAdmin, roles);
+
+  // Listen for "open-sidebar" event from BottomNav "More" button
+  React.useEffect(() => {
+    const handler = () => setOpenMobile(true);
+    window.addEventListener("open-sidebar", handler);
+    return () => window.removeEventListener("open-sidebar", handler);
+  }, [setOpenMobile]);
 
   return (
     <Sidebar className="px-0 h-full **:data-[slot=sidebar-inner]:h-full">
@@ -117,9 +128,14 @@ function filterNavItems(
   items: NavItem[],
   can: (permission: string) => boolean,
   canAccessAdmin: boolean,
+  userRoles: string[],
 ): NavItem[] {
   const isVisible = (item: NavItem): boolean => {
     if (item.href === "/system") return canAccessAdmin;
+    if (item.roles && item.roles.length > 0) {
+      const hasRole = item.roles.some((r) => userRoles.includes(r.toLowerCase()));
+      if (!hasRole) return false;
+    }
     if (item.permissions && item.permissions.length > 0) {
       return item.permissions.some((p) => can(p));
     }

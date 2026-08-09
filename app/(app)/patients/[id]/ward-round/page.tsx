@@ -364,7 +364,7 @@ export default function WardRoundPage() {
       <section className="bg-white rounded border border-[#becab7]/50 p-6 space-y-4">
         <div className="flex items-center gap-2">
           <span className="h-2 w-2 rounded-full bg-sky-500"></span>
-          <h3 className="text-lg font-bold text-gray-900">Nursing Shift Notes</h3>
+          <h2 className="text-lg font-bold text-gray-900">Nursing Shift Notes</h2>
         </div>
 
         {/* New shift note form */}
@@ -455,14 +455,14 @@ export default function WardRoundPage() {
                       </span>
                     )}
                   </div>
-                  <span className="text-xs text-gray-400 font-mono flex items-center gap-1">
+                  <span className="text-xs text-gray-500 font-mono flex items-center gap-1">
                     <Clock className="h-3 w-3" />
                     {new Date(note.created_at).toLocaleString()}
                   </span>
                 </div>
                 <p className="text-sm text-gray-700 whitespace-pre-wrap">{note.note_content}</p>
                 {note.nurse && (
-                  <p className="text-xs text-gray-400">By {note.nurse.name}</p>
+                  <p className="text-xs text-gray-500">By {note.nurse.name}</p>
                 )}
               </div>
             ))}
@@ -475,7 +475,7 @@ export default function WardRoundPage() {
         <section className="bg-white rounded border border-[#becab7]/50 p-6 space-y-4">
           <div className="flex items-center gap-2">
             <span className="h-2 w-2 rounded-full bg-amber-500"></span>
-            <h3 className="text-lg font-bold text-gray-900">Inpatient Decision</h3>
+            <h2 className="text-lg font-bold text-gray-900">Inpatient Decision</h2>
           </div>
           <p className="text-sm text-[#5f5e5e]">
             Based on today&apos;s ward round assessment, decide the next step for this patient.
@@ -485,7 +485,7 @@ export default function WardRoundPage() {
             <div className="flex flex-wrap gap-3 pt-2">
               <button
                 disabled
-                className="px-5 py-2.5 bg-gray-100 text-gray-400 text-sm font-bold rounded cursor-not-allowed"
+                className="px-5 py-2.5 bg-gray-100 text-gray-500 text-sm font-bold rounded cursor-not-allowed"
               >
                 Continue Inpatient Care
               </button>

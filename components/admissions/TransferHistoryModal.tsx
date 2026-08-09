@@ -226,8 +226,9 @@ export function TransferHistoryModal({ open, admission, wards, onClose, onTransf
           </div>}
 
           <div>
-            <label className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">Target Ward *</label>
+            <label htmlFor="field-transfer-ward" className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">Target Ward *</label>
             <select
+              id="field-transfer-ward"
               required
               className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded bg-white text-sm focus:outline-none focus:border-clinical-primary"
               value={wardId}
@@ -240,10 +241,11 @@ export function TransferHistoryModal({ open, admission, wards, onClose, onTransf
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">Target Bed *</label>
+            <label htmlFor="field-transfer-bed" className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">Target Bed *</label>
             <select
+              id="field-transfer-bed"
               required
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded bg-white text-sm focus:outline-none focus:border-clinical-primary disabled:bg-gray-50 disabled:text-gray-400"
+              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded bg-white text-sm focus:outline-none focus:border-clinical-primary disabled:bg-gray-50 disabled:text-gray-500"
               value={bedId}
               onChange={(e) => setBedId(e.target.value)}
               disabled={!wardId || beds.length === 0}
@@ -256,8 +258,9 @@ export function TransferHistoryModal({ open, admission, wards, onClose, onTransf
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">Transfer Reason</label>
+            <label htmlFor="field-transfer-reason" className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">Transfer Reason</label>
             <textarea
+              id="field-transfer-reason"
               rows={3}
               className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-clinical-primary"
               value={reason}

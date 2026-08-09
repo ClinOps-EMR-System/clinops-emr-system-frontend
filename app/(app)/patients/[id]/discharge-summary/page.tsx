@@ -187,12 +187,12 @@ export default function DischargeSummaryPage() {
       </section>
 
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded p-3 text-sm text-red-700">
+        <div role="alert" className="bg-red-50 border border-red-200 rounded p-3 text-sm text-red-700">
           {error}
         </div>
       )}
       {successMsg && (
-        <div className="bg-emerald-50 border border-emerald-200 rounded p-3 text-sm text-emerald-700">
+        <div role="status" className="bg-emerald-50 border border-emerald-200 rounded p-3 text-sm text-emerald-700">
           {successMsg}
         </div>
       )}
@@ -205,25 +205,25 @@ export default function DischargeSummaryPage() {
           {admission ? (
             <>
               <div>
-                <span className="text-gray-400 text-xs uppercase tracking-wider">Ward</span>
+                <span className="text-gray-500 text-xs uppercase tracking-wider">Ward</span>
                 <p className="font-semibold text-gray-900 mt-0.5">{admission.ward?.name} ({admission.ward?.code})</p>
               </div>
               <div>
-                <span className="text-gray-400 text-xs uppercase tracking-wider">Bed</span>
+                <span className="text-gray-500 text-xs uppercase tracking-wider">Bed</span>
                 <p className="font-semibold text-gray-900 mt-0.5">Bed #{admission.bed?.bed_number}</p>
               </div>
               <div>
-                <span className="text-gray-400 text-xs uppercase tracking-wider">Admission Date</span>
+                <span className="text-gray-500 text-xs uppercase tracking-wider">Admission Date</span>
                 <p className="font-semibold text-gray-900 mt-0.5 font-mono">
                   {new Date(admission.admission_date).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })}
                 </p>
               </div>
               <div>
-                <span className="text-gray-400 text-xs uppercase tracking-wider">Acuity Level</span>
+                <span className="text-gray-500 text-xs uppercase tracking-wider">Acuity Level</span>
                 <p className="font-semibold text-gray-900 mt-0.5">{admission.acuity_level || "Not specified"}</p>
               </div>
               <div className="sm:col-span-2">
-                <span className="text-gray-400 text-xs uppercase tracking-wider">Admission Diagnosis</span>
+                <span className="text-gray-500 text-xs uppercase tracking-wider">Admission Diagnosis</span>
                 <p className="font-semibold text-gray-900 mt-0.5">{admission.admission_diagnosis || "Not recorded"}</p>
               </div>
             </>
@@ -237,13 +237,13 @@ export default function DischargeSummaryPage() {
         {/* Diagnoses */}
         {diagnoses.length > 0 && (
           <div className="mt-4">
-            <span className="text-gray-400 text-xs uppercase tracking-wider">Diagnoses</span>
+            <span className="text-gray-500 text-xs uppercase tracking-wider">Diagnoses</span>
             <ul className="mt-1 space-y-1">
               {diagnoses.map((d) => (
                 <li key={d.id} className="text-sm font-semibold text-gray-900">
                   {d.is_primary && <span className="text-brand-green mr-1">●</span>}
                   {d.diagnosis_name}
-                  {d.icd_code && <span className="text-xs text-gray-400 ml-2 font-mono">{d.icd_code}</span>}
+                  {d.icd_code && <span className="text-xs text-gray-500 ml-2 font-mono">{d.icd_code}</span>}
                 </li>
               ))}
             </ul>
@@ -253,19 +253,19 @@ export default function DischargeSummaryPage() {
         {/* Latest Vitals */}
         {latestVitals && (
           <div className="mt-4">
-            <span className="text-gray-400 text-xs uppercase tracking-wider">Latest Vitals</span>
+            <span className="text-gray-500 text-xs uppercase tracking-wider">Latest Vitals</span>
             <div className="mt-1 flex flex-wrap gap-4 text-sm">
               {latestVitals.temperature != null && (
-                <span className="font-mono"><strong>{latestVitals.temperature}°C</strong> <span className="text-gray-400">Temp</span></span>
+                <span className="font-mono"><strong>{latestVitals.temperature}°C</strong> <span className="text-gray-500">Temp</span></span>
               )}
               {latestVitals.heart_rate != null && (
-                <span className="font-mono"><strong>{latestVitals.heart_rate}</strong> <span className="text-gray-400">HR</span></span>
+                <span className="font-mono"><strong>{latestVitals.heart_rate}</strong> <span className="text-gray-500">HR</span></span>
               )}
               {latestVitals.systolic_bp != null && latestVitals.diastolic_bp != null && (
-                <span className="font-mono"><strong>{latestVitals.systolic_bp}/{latestVitals.diastolic_bp}</strong> <span className="text-gray-400">BP</span></span>
+                <span className="font-mono"><strong>{latestVitals.systolic_bp}/{latestVitals.diastolic_bp}</strong> <span className="text-gray-500">BP</span></span>
               )}
               {latestVitals.spo2 != null && (
-                <span className="font-mono"><strong>{latestVitals.spo2}%</strong> <span className="text-gray-400">SpO2</span></span>
+                <span className="font-mono"><strong>{latestVitals.spo2}%</strong> <span className="text-gray-500">SpO2</span></span>
               )}
               {latestVitals.ews_score != null && (
                 <span className="font-mono"><strong>EWS {latestVitals.ews_score}</strong></span>

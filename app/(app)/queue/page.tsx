@@ -76,7 +76,7 @@ export default function QueuePage() {
         <LoadingState message="Loading queue..." />
       ) : waiting.length === 0 ? (
         <EmptyState
-          icon={<ListOrdered className="h-6 w-6 text-gray-400" />}
+          icon={<ListOrdered className="h-6 w-6 text-gray-500" />}
           title="No patients in queue"
           description="All patients have been seen or none are waiting"
         />

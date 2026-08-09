@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import EmptyState from "@/components/ui/EmptyState";
 import Modal from "@/components/ui/Modal";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import {
   Table,
   TableBody,
@@ -71,6 +72,8 @@ export default function ServicesCatalogPage() {
   const [loincLoading, setLoincLoading] = useState(false);
   const [loincSearched, setLoincSearched] = useState(false);
   const loincRequestId = useRef(0);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [pendingService, setPendingService] = useState<BillableService | null>(null);
 
   const load = useCallback(
     async (opts?: { search?: string; category?: string }) => {
@@ -169,12 +172,20 @@ export default function ServicesCatalogPage() {
   };
 
   const remove = async (s: BillableService) => {
-    if (!confirm(`Delete service ${s.name}?`)) return;
+    setPendingService(s);
+    setDeleteConfirmOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!pendingService) return;
+    setDeleteConfirmOpen(false);
     try {
-      await adminApi.deleteService(token, s.id);
+      await adminApi.deleteService(token, pendingService.id);
       await Promise.all([load(), loadAuto()]);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Delete failed");
+    } finally {
+      setPendingService(null);
     }
   };
 
@@ -447,18 +458,19 @@ export default function ServicesCatalogPage() {
         <div className="space-y-3">
           {form.category?.toLowerCase() === "lab" && (
             <div className="space-y-1 rounded-md border border-gray-200 bg-gray-50 p-3">
-              <label className="block space-y-1 text-sm">
+              <label htmlFor="field-service-loinc-search" className="block space-y-1 text-sm">
                 <span className="font-medium">Pick a lab test</span>
                 <Input
+                  id="field-service-loinc-search"
                   value={loincQuery}
                   onChange={(e) => setLoincQuery(e.target.value)}
                   placeholder="Search LOINC code or name…"
                 />
               </label>
               {loincLoading ? (
-                <p className="text-xs text-gray-400">Searching…</p>
+                <p className="text-xs text-gray-500">Searching…</p>
               ) : loincSearched && loincResults.length === 0 ? (
-                <p className="text-xs text-gray-400">No matches.</p>
+                <p className="text-xs text-gray-500">No matches.</p>
               ) : (
                 loincResults.length > 0 && (
                   <ul className="max-h-40 divide-y divide-gray-100 overflow-y-auto rounded-md border border-gray-200 bg-white">
@@ -470,7 +482,7 @@ export default function ServicesCatalogPage() {
                           onClick={() => applyLoinc(loinc)}
                         >
                           <span className="truncate">{loinc.display_name}</span>
-                          <span className="shrink-0 font-mono text-xs text-gray-400">
+                          <span className="shrink-0 font-mono text-xs text-gray-500">
                             {loinc.code}
                           </span>
                         </button>
@@ -483,14 +495,15 @@ export default function ServicesCatalogPage() {
           )}
           {(
             [
-              ["code", "Code"],
-              ["name", "Name"],
-              ["category", "Category"],
+              ["code", "Code", "field-service-code"],
+              ["name", "Name", "field-service-name"],
+              ["category", "Category", "field-service-category"],
             ] as const
-          ).map(([key, label]) => (
-            <label key={key} className="block space-y-1 text-sm">
+          ).map(([key, label, fieldId]) => (
+            <label key={key} htmlFor={fieldId} className="block space-y-1 text-sm">
               <span className="font-medium">{label}</span>
               <Input
+                id={fieldId}
                 value={form[key]}
                 onChange={(e) =>
                   setForm((f) => ({ ...f, [key]: e.target.value }))
@@ -498,9 +511,10 @@ export default function ServicesCatalogPage() {
               />
             </label>
           ))}
-          <label className="block space-y-1 text-sm">
+          <label htmlFor="field-service-billing-unit" className="block space-y-1 text-sm">
             <span className="font-medium">Billing unit</span>
             <select
+              id="field-service-billing-unit"
               className="h-10 w-full rounded-md border border-input bg-white px-3 text-sm"
               value={form.billing_unit}
               onChange={(e) =>
@@ -515,9 +529,10 @@ export default function ServicesCatalogPage() {
               ))}
             </select>
           </label>
-          <label className="block space-y-1 text-sm">
+          <label htmlFor="field-service-unit-price" className="block space-y-1 text-sm">
             <span className="font-medium">Unit price</span>
             <Input
+              id="field-service-unit-price"
               type="number"
               min={0}
               step="0.01"
@@ -535,6 +550,16 @@ export default function ServicesCatalogPage() {
           </div>
         </div>
       </Modal>
+
+      <ConfirmDialog
+        open={deleteConfirmOpen}
+        onClose={() => { setDeleteConfirmOpen(false); setPendingService(null); }}
+        onConfirm={confirmDelete}
+        title="Delete Service"
+        message={pendingService ? `Delete service ${pendingService.name}?` : ""}
+        confirmLabel="Delete service"
+        variant="danger"
+      />
     </div>
   );
 }

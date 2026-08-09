@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import StatusBadge from "@/components/ui/StatusBadge";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
 
 export default function StaffDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -26,6 +27,7 @@ export default function StaffDetailPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const [form, setForm] = useState({
     name: "",
     username: "",
@@ -139,7 +141,11 @@ export default function StaffDetailPage() {
 
   const remove = async () => {
     if (!user || isAdminUser) return;
-    if (!confirm(`Delete ${user.name}? This cannot be undone.`)) return;
+    setDeleteOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!user || isAdminUser) return;
     try {
       await adminApi.deleteUser(token, user.id);
       router.push("/system/staff");
@@ -211,15 +217,16 @@ export default function StaffDetailPage() {
       <div className="space-y-3 rounded-lg border border-[var(--outline)] bg-white p-4">
         {(
           [
-            ["name", "Full name"],
-            ["username", "Username"],
-            ["email", "Email"],
-            ["password", "New password (optional)"],
+            ["name", "Full name", "field-staff-name"],
+            ["username", "Username", "field-staff-username"],
+            ["email", "Email", "field-staff-email"],
+            ["password", "New password (optional)", "field-staff-password"],
           ] as const
-        ).map(([key, label]) => (
-          <label key={key} className="block space-y-1 text-sm">
+        ).map(([key, label, fieldId]) => (
+          <label key={key} htmlFor={fieldId} className="block space-y-1 text-sm">
             <span className="font-medium">{label}</span>
             <Input
+              id={fieldId}
               type={key === "password" ? "password" : "text"}
               disabled={isAdminUser}
               value={form[key]}
@@ -229,9 +236,10 @@ export default function StaffDetailPage() {
             />
           </label>
         ))}
-        <label className="block space-y-1 text-sm">
+        <label htmlFor="field-staff-department" className="block space-y-1 text-sm">
           <span className="font-medium">Department</span>
           <select
+            id="field-staff-department"
             disabled={isAdminUser}
             className="h-10 w-full rounded-md border border-input bg-white px-3 text-sm disabled:opacity-60"
             value={form.department_id}
@@ -247,9 +255,10 @@ export default function StaffDetailPage() {
             ))}
           </select>
         </label>
-        <label className="block space-y-1 text-sm">
+        <label htmlFor="field-staff-cadre" className="block space-y-1 text-sm">
           <span className="font-medium">Cadre</span>
           <select
+            id="field-staff-cadre"
             disabled={isAdminUser}
             className="h-10 w-full rounded-md border border-input bg-white px-3 text-sm disabled:opacity-60"
             value={form.cadre_id}
@@ -270,9 +279,10 @@ export default function StaffDetailPage() {
             ))}
           </select>
         </label>
-        <label className="block space-y-1 text-sm">
+        <label htmlFor="field-staff-rank" className="block space-y-1 text-sm">
           <span className="font-medium">Rank</span>
           <select
+            id="field-staff-rank"
             disabled={isAdminUser || !form.cadre_id}
             className="h-10 w-full rounded-md border border-input bg-white px-3 text-sm disabled:opacity-60"
             value={form.rank_id}
@@ -292,9 +302,10 @@ export default function StaffDetailPage() {
             ))}
           </select>
         </label>
-        <label className="block space-y-1 text-sm">
+        <label htmlFor="field-staff-supervisor" className="block space-y-1 text-sm">
           <span className="font-medium">Supervisor</span>
           <select
+            id="field-staff-supervisor"
             disabled={isAdminUser || !form.cadre_id || !form.rank_id}
             className="h-10 w-full rounded-md border border-input bg-white px-3 text-sm disabled:opacity-60"
             value={form.supervisor_id}
@@ -315,9 +326,10 @@ export default function StaffDetailPage() {
             </p>
           )}
         </label>
-        <label className="block space-y-1 text-sm">
+        <label htmlFor="field-staff-role" className="block space-y-1 text-sm">
           <span className="font-medium">Role (derived from cadre)</span>
           <input
+            id="field-staff-role"
             type="text"
             readOnly
             className="h-10 w-full rounded-md border border-input bg-gray-50 px-3 text-sm text-muted-foreground"
@@ -329,8 +341,9 @@ export default function StaffDetailPage() {
             }
           />
         </label>
-        <label className="flex items-center gap-2 text-sm">
+        <label htmlFor="field-staff-is-active" className="flex items-center gap-2 text-sm">
           <input
+            id="field-staff-is-active"
             type="checkbox"
             disabled={isAdminUser}
             checked={form.is_active}
@@ -377,16 +390,31 @@ export default function StaffDetailPage() {
         </div>
       )}
 
-      {!isAdminUser && (
-        <div className="flex flex-wrap gap-2">
-          <Button disabled={saving} onClick={() => void save()}>
-            {saving ? "Saving…" : "Save changes"}
-          </Button>
-          <Button variant="destructive" onClick={() => void remove()}>
-            Delete user
-          </Button>
-        </div>
-      )}
+      <div className="flex flex-wrap gap-2">
+        <Button variant="outline" nativeButton={false} render={<Link href={`/system/staff/${id}/activity`} />}>
+          View Activity
+        </Button>
+        {!isAdminUser && (
+          <>
+            <Button disabled={saving} onClick={() => void save()}>
+              {saving ? "Saving…" : "Save changes"}
+            </Button>
+            <Button variant="destructive" onClick={() => void remove()}>
+              Delete user
+            </Button>
+          </>
+        )}
+      </div>
+
+      <ConfirmDialog
+        open={deleteOpen}
+        onClose={() => setDeleteOpen(false)}
+        onConfirm={() => void confirmDelete()}
+        title="Delete user?"
+        message={`This will permanently delete ${user?.name ?? "this user"}. This action cannot be undone.`}
+        variant="danger"
+        confirmLabel="Delete user"
+      />
     </div>
   );
 }

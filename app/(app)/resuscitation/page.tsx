@@ -250,7 +250,7 @@ export default function ResuscitationPage() {
         <Card>
           <CardContent className="py-12">
             <EmptyState
-              icon={<HeartPulse className="h-6 w-6 text-gray-400" />}
+              icon={<HeartPulse className="h-6 w-6 text-gray-500" />}
               title="No active resuscitations"
               description="No patients are currently in resuscitation."
             />

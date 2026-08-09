@@ -10,6 +10,7 @@ import Modal from '@/components/ui/Modal';
 import FormField from '@/components/ui/FormField';
 import SelectField from '@/components/ui/SelectField';
 import { useToast } from '@/components/ui/Toast';
+import { Skeleton } from '@/components/ui/skeleton';
 
 type Ward = {
   id: number;
@@ -140,7 +141,7 @@ export default function WardsManagementPage() {
 
       <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
         <div className="relative w-full max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
           <input
             type="text"
             placeholder="Search wards by name or code..."
@@ -153,20 +154,29 @@ export default function WardsManagementPage() {
 
       <div className="bg-white rounded border border-[#becab7]/50 shadow-sm overflow-hidden">
         {loading ? (
-          <div className="flex justify-center items-center h-48">
-             <div className="w-8 h-8 border-4 border-gray-200 border-t-clinical-primary rounded-full animate-spin"></div>
+          <div className="p-6 space-y-4">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <div key={i} className="flex items-center gap-6">
+                <Skeleton className="h-5 w-36" />
+                <Skeleton className="h-5 w-16" />
+                <Skeleton className="h-5 w-24" />
+                <Skeleton className="h-5 w-12" />
+                <Skeleton className="h-5 w-12" />
+                <Skeleton className="h-8 w-16 ml-auto" />
+              </div>
+            ))}
           </div>
         ) : wards.length > 0 ? (
           <div className="overflow-x-auto">
             <table className="w-full text-sm text-left">
               <thead className="bg-gray-50/50 text-[#5f5e5e] uppercase text-[11px] font-bold tracking-wider border-b border-gray-100">
                 <tr>
-                  <th className="px-6 py-4">Ward Name</th>
-                  <th className="px-6 py-4">Code</th>
-                  <th className="px-6 py-4">Type</th>
-                  <th className="px-6 py-4">Total Beds</th>
-                  <th className="px-6 py-4">Configured Beds</th>
-                  <th className="px-6 py-4 text-right">Actions</th>
+                  <th scope="col" className="px-6 py-4">Ward Name</th>
+                  <th scope="col" className="px-6 py-4">Code</th>
+                  <th scope="col" className="px-6 py-4">Type</th>
+                  <th scope="col" className="px-6 py-4">Total Beds</th>
+                  <th scope="col" className="px-6 py-4">Configured Beds</th>
+                  <th scope="col" className="px-6 py-4 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">

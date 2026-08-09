@@ -144,6 +144,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     if (roles.includes("receptionist") || dept.includes("registration") || dept.includes("reception")) return "/receptionist";
     if (roles.includes("nurse") || dept.includes("nurse") || dept.includes("triage")) return "/nurse-station";
+    if (roles.includes("doctor") || roles.includes("clinical officer")) return "/dashboard/doctor";
     if (roles.includes("pharmacist") || dept.includes("pharm")) return "/pharmacy";
     if (roles.includes("lab technician") || roles.includes("lab") || dept.includes("lab")) return "/lab";
     if (roles.includes("billing officer") || roles.includes("billing") || dept.includes("bill") || dept.includes("finance")) return "/billing";

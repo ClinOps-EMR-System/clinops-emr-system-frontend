@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/store/RoleContext";
+import { useToast } from "@/components/ui/Toast";
 import { api } from "@/lib/api";
 import { SectionHeader } from "@/components/ui/PageLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,6 +17,7 @@ export default function NewAdmissionPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { token } = useAuth();
+  const { success } = useToast();
   const patientIdFromUrl = searchParams.get("patient_id");
   const encounterIdFromUrl = searchParams.get("encounter_id");
 
@@ -28,7 +30,6 @@ export default function NewAdmissionPage() {
   const [loading, setLoading] = useState(!!patientIdFromUrl);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [billingSummary, setBillingSummary] = useState<BillingSummary | null>(null);
   const [pendingNav, setPendingNav] = useState<string | null>(null);
 
@@ -115,7 +116,6 @@ export default function NewAdmissionPage() {
     }
     setSubmitting(true);
     setError(null);
-    setSuccessMsg(null);
     try {
       const res = await api.post(
         "/admissions",
@@ -140,7 +140,7 @@ export default function NewAdmissionPage() {
         setPendingNav("/admissions");
         return;
       }
-      setSuccessMsg("Patient admitted successfully.");
+      success("Patient admitted successfully.");
       setTimeout(() => router.push("/admissions"), 1500);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to admit patient.");
@@ -183,12 +183,6 @@ export default function NewAdmissionPage() {
             {error && (
               <div className="p-3 rounded bg-red-50 text-red-700 text-sm border border-red-200">
                 {error}
-              </div>
-            )}
-            {successMsg && (
-              <div className="p-3 rounded bg-green-50 text-green-700 text-sm border border-green-200 flex items-center gap-2">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                {successMsg}
               </div>
             )}
 

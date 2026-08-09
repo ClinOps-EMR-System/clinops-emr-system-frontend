@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useFetch } from "../../../../lib/useFetch";
 import { api } from "../../../../lib/api";
 import { useAuth } from "../../../../store/RoleContext";
+import { usePermissions } from "@/lib/hooks/usePermissions";
 import { SectionHeader } from "../../../../components/ui/PageLayout";
 import {
   Card,
@@ -30,6 +31,7 @@ import Modal from "../../../../components/ui/Modal";
 import BillingConfirmation from "../../../../components/billing/BillingConfirmation";
 import { parseBilling, type BillingSummary } from "../../../../types/billing";
 import { Search, X, Pill, Clock, CheckCircle, AlertTriangle, User } from "lucide-react";
+import { RoleGuard } from "@/components/auth/RoleGuard";
 
 interface Prescription {
   id: number;
@@ -107,6 +109,7 @@ function getVerificationBadge(rx: Prescription): { label: string; variant: "warn
 
 export default function DispensingPage() {
   const { token } = useAuth();
+  const { can } = usePermissions();
   const { data: prescriptionsRaw, loading, refetch } = useFetch<Prescription[]>("/prescriptions", { interval: 30000 });
 
   const [search, setSearch] = useState("");
@@ -221,6 +224,7 @@ export default function DispensingPage() {
   const controlledCount = prescriptions.filter((rx) => rx.drug?.is_controlled && rx.status?.toLowerCase() !== "dispensed").length;
 
   return (
+    <RoleGuard allowedRoles={["pharmacist", "admin"]}>
     <div className="flex flex-col gap-6">
       <SectionHeader
         title="Prescription Dispensing"
@@ -444,7 +448,7 @@ export default function DispensingPage() {
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">
-                            {rx.status?.toLowerCase() === "prescribed" && (
+                            {rx.status?.toLowerCase() === "prescribed" && can("pharmacy.verify") && (
                               <Button
                                 size="sm"
                                 variant="ghost"
@@ -454,7 +458,7 @@ export default function DispensingPage() {
                                 Verify
                               </Button>
                             )}
-                            {(rx.status?.toLowerCase() === "verified" || rx.status?.toLowerCase() === "prescribed") && (
+                            {(rx.status?.toLowerCase() === "verified" || rx.status?.toLowerCase() === "prescribed") && can("pharmacy.dispense") && (
                               <Button
                                 size="sm"
                                 onClick={() => openDispenseModal(rx)}
@@ -498,12 +502,14 @@ export default function DispensingPage() {
             >
               Cancel
             </Button>
-            <Button
-              onClick={handleDispense}
-              disabled={dispensing || !selectedBatchId || dispenseQuantity < 1}
-            >
-              {dispensing ? "Dispensing..." : "Confirm Dispense"}
-            </Button>
+            {can("pharmacy.dispense") && (
+              <Button
+                onClick={handleDispense}
+                disabled={dispensing || !selectedBatchId || dispenseQuantity < 1}
+              >
+                {dispensing ? "Dispensing..." : "Confirm Dispense"}
+              </Button>
+            )}
           </>
         }
       >
@@ -589,6 +595,7 @@ export default function DispensingPage() {
         />
       )}
     </div>
+    </RoleGuard>
   );
 }
 
