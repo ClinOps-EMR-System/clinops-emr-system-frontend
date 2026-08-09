@@ -7,6 +7,7 @@ import { useToast } from "@/components/ui/Toast";
 import { api } from "@/lib/api";
 import BillingConfirmation from "@/components/billing/BillingConfirmation";
 import { parseBilling, type BillingSummary } from "@/types/billing";
+import type { LabTest } from "@/types/lab";
 import {
   Card,
   CardContent,
@@ -21,13 +22,6 @@ interface EncounterOption {
   status: string;
   encounter_type: string | null;
   created_at: string;
-}
-
-interface LoincResult {
-  code: string;
-  display_name: string;
-  component_name: string | null;
-  system: string | null;
 }
 
 const priorityOptions: ("Routine" | "Urgent" | "Stat")[] = ["Routine", "Urgent", "Stat"];
@@ -46,9 +40,9 @@ export default function NewLabRequestPage() {
   const [encounters, setEncounters] = useState<EncounterOption[]>([]);
   const [loadingEncounters, setLoadingEncounters] = useState(!!patientIdFromUrl);
 
-  const [loincQuery, setLoincQuery] = useState("");
-  const [loincResults, setLoincResults] = useState<LoincResult[]>([]);
-  const [selectedLoinc, setSelectedLoinc] = useState<LoincResult | null>(null);
+  const [testQuery, setTestQuery] = useState("");
+  const [testResults, setTestResults] = useState<LabTest[]>([]);
+  const [selectedTest, setSelectedTest] = useState<LabTest | null>(null);
   const [searchLoading, setSearchLoading] = useState(false);
 
   const [specimenType, setSpecimenType] = useState("");
@@ -82,24 +76,26 @@ export default function NewLabRequestPage() {
     if (patientIdFromUrl) loadEncounters(patientIdFromUrl); // eslint-disable-line react-hooks/set-state-in-effect
   }, [patientIdFromUrl, loadEncounters]);
 
+  // Search lab test catalog
   useEffect(() => {
     const delayDebounceFn = setTimeout(async () => {
-      if (loincQuery.trim().length >= 2) {
+      if (testQuery.trim().length >= 2) {
         try {
           setSearchLoading(true);
-          const response = await api.get(`/loinc/search?q=${encodeURIComponent(loincQuery)}`, token);
-          setLoincResults(Array.isArray(response) ? response : response?.data ?? []);
+          const response = await api.get(`/lab-tests?search=${encodeURIComponent(testQuery)}&per_page=20`, token);
+          const data = response?.data ?? response;
+          setTestResults(Array.isArray(data) ? data : data?.data ?? []);
         } catch {
-          setLoincResults([]);
+          setTestResults([]);
         } finally {
           setSearchLoading(false);
         }
       } else {
-        setLoincResults([]);
+        setTestResults([]);
       }
-    }, 400);
+    }, 300);
     return () => clearTimeout(delayDebounceFn);
-  }, [loincQuery, token]);
+  }, [testQuery, token]);
 
   const handleLoadEncounters = (e: React.FormEvent) => {
     e.preventDefault();
@@ -107,9 +103,19 @@ export default function NewLabRequestPage() {
     loadEncounters(patientId);
   };
 
+  const handleSelectTest = (test: LabTest) => {
+    setSelectedTest(test);
+    setTestQuery(test.name);
+    setTestResults([]);
+    // Auto-fill specimen from catalog
+    if (test.specimen_type && !specimenType) {
+      setSpecimenType(test.specimen_type.name);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedLoinc || !encounterId.trim()) {
+    if (!selectedTest || !encounterId.trim()) {
       setError("Select an encounter and a test before submitting.");
       return;
     }
@@ -120,7 +126,7 @@ export default function NewLabRequestPage() {
         "/lab-requests",
         {
           encounter_id: parseInt(encounterId),
-          loinc_code: selectedLoinc.code,
+          lab_test_id: selectedTest.id,
           specimen_type: specimenType.trim() || null,
           priority,
           clinical_indication: clinicalIndication.trim() || null,
@@ -237,7 +243,7 @@ export default function NewLabRequestPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-xs text-muted-foreground mb-4">Search the LOINC catalog to select a test.</p>
+            <p className="text-xs text-muted-foreground mb-4">Search the lab test catalog to select a test.</p>
 
             <div className="relative">
               <label className="block text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1">
@@ -247,9 +253,9 @@ export default function NewLabRequestPage() {
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <input
                   type="text"
-                  value={loincQuery}
-                  onChange={(e) => { setLoincQuery(e.target.value); setSelectedLoinc(null); }}
-                  placeholder="Search by test name or LOINC code..."
+                  value={testQuery}
+                  onChange={(e) => { setTestQuery(e.target.value); setSelectedTest(null); }}
+                  placeholder="Search by test name (e.g., FBC, Malaria, Urinalysis)..."
                   className="block w-full pl-9 pr-3 py-2 border border-input rounded-lg text-sm focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary"
                 />
               </div>
@@ -258,17 +264,23 @@ export default function NewLabRequestPage() {
                   Searching...
                 </div>
               )}
-              {!searchLoading && loincResults.length > 0 && (
+              {!searchLoading && testResults.length > 0 && (
                 <ul className="absolute left-0 right-0 mt-1 bg-card border border-input rounded-lg shadow-lg max-h-60 overflow-y-auto z-30 divide-y text-sm">
-                  {loincResults.map((result) => (
-                    <li key={result.code}>
+                  {testResults.map((test) => (
+                    <li key={test.id}>
                       <button
                         type="button"
-                        onClick={() => { setSelectedLoinc(result); setLoincQuery(result.display_name); setLoincResults([]); }}
-                        className="w-full text-left px-4 py-2.5 hover:bg-muted flex items-baseline justify-between transition-colors"
+                        onClick={() => handleSelectTest(test)}
+                        className="w-full text-left px-4 py-2.5 hover:bg-muted flex items-center justify-between transition-colors"
                       >
-                        <span className="font-medium text-foreground">{result.display_name}</span>
-                        <span className="font-mono text-xs text-muted-foreground ml-3 shrink-0">{result.code}</span>
+                        <div className="min-w-0">
+                          <span className="font-medium text-foreground">{test.name}</span>
+                          <span className="text-xs text-muted-foreground ml-2">{test.category?.name}</span>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          {test.is_panel && <span className="px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded text-xs font-medium">Panel</span>}
+                          <span className="font-mono text-xs text-muted-foreground">{test.code}</span>
+                        </div>
                       </button>
                     </li>
                   ))}
@@ -276,13 +288,17 @@ export default function NewLabRequestPage() {
               )}
             </div>
 
-            {selectedLoinc && (
+            {selectedTest && (
               <div className="mt-3 rounded-lg bg-green-50 border border-green-200 p-3 flex items-center justify-between">
                 <div className="flex items-center gap-2 min-w-0">
                   <Check className="h-4 w-4 text-green-600 shrink-0" />
                   <div className="min-w-0">
-                    <p className="text-sm font-semibold text-green-900 truncate">{selectedLoinc.display_name}</p>
-                    <p className="text-xs text-green-700 font-mono">{selectedLoinc.code}</p>
+                    <p className="text-sm font-semibold text-green-900 truncate">{selectedTest.name}</p>
+                    <p className="text-xs text-green-700">
+                      {selectedTest.category?.name}
+                      {selectedTest.specimen_type && <> · {selectedTest.specimen_type.name}</>}
+                      {selectedTest.is_panel && <> · {selectedTest.components?.length || 0} components</>}
+                    </p>
                   </div>
                 </div>
                 <Button
@@ -290,7 +306,7 @@ export default function NewLabRequestPage() {
                   variant="ghost"
                   size="sm"
                   nativeButton={false}
-                  onClick={() => { setSelectedLoinc(null); setLoincQuery(""); }}
+                  onClick={() => { setSelectedTest(null); setTestQuery(""); setSpecimenType(""); }}
                 >
                   Clear
                 </Button>
@@ -306,7 +322,7 @@ export default function NewLabRequestPage() {
                   type="text"
                   value={specimenType}
                   onChange={(e) => setSpecimenType(e.target.value)}
-                  placeholder="e.g., Whole blood, Serum"
+                  placeholder={selectedTest?.specimen_type?.name || "e.g., EDTA blood, Serum"}
                   className="mt-1 block w-full px-3 py-2 border border-input rounded-lg text-sm focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary"
                 />
               </div>
@@ -354,7 +370,7 @@ export default function NewLabRequestPage() {
           <Button
             type="submit"
             nativeButton={false}
-            disabled={submitting || !selectedLoinc || !encounterId.trim()}
+            disabled={submitting || !selectedTest || !encounterId.trim()}
           >
             {submitting ? (
               <>
