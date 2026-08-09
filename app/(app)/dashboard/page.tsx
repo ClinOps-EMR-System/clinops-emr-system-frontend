@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "../../../store/RoleContext";
@@ -93,11 +94,13 @@ export default function Dashboard() {
   const isClinical = roles.some(r => ["nurse", "doctor", "clinical officer", "clinical admin", "admin"].includes(r));
   const isDoctor = roles.some(r => ["doctor", "clinical officer"].includes(r));
 
-  // Redirect doctors to their dedicated dashboard
-  if (isDoctor) {
-    router.replace("/dashboard/doctor");
-    return null;
-  }
+  useEffect(() => {
+    if (isDoctor) {
+      router.replace("/dashboard/doctor");
+    }
+  }, [isDoctor, router]);
+
+  if (isDoctor) return null;
 
   const stats = {
     totalPatients: dashboard?.patients?.total ?? 0,
