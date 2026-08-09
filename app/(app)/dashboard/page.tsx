@@ -1,7 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useAuth } from "../../../store/RoleContext";
+import { usePermissions } from "@/lib/hooks/usePermissions";
 import { useFetch } from "../../../lib/useFetch";
 import {
   Card,
@@ -83,11 +85,19 @@ interface FlowStage {
 
 export default function Dashboard() {
   const { user } = useAuth();
+  const router = useRouter();
   const { data: dashboard, loading, error } = useFetch<DashboardData>("/dashboard");
 
   const staffName = user?.name?.split(" ")[0] || "Staff";
-  const userRoles = (user?.roles || []).map((r) => r.toLowerCase());
-  const isAdmin = userRoles.includes("admin");
+  const { isAdmin, can, roles, canAccessAdmin } = usePermissions();
+  const isClinical = roles.some(r => ["nurse", "doctor", "clinical officer", "clinical admin", "admin"].includes(r));
+  const isDoctor = roles.some(r => ["doctor", "clinical officer"].includes(r));
+
+  // Redirect doctors to their dedicated dashboard
+  if (isDoctor) {
+    router.replace("/dashboard/doctor");
+    return null;
+  }
 
   const stats = {
     totalPatients: dashboard?.patients?.total ?? 0,
@@ -220,62 +230,67 @@ export default function Dashboard() {
           </Card>
         </Link>
 
-        <Link href="/triage-queue" className="block">
-          <Card className={cn(
-            "transition-all hover:shadow-sm",
-            stats.awaitingTriage > 0 && "ring-1 ring-amber-500/20"
-          )}>
-            <CardHeader className="flex-row items-center justify-between gap-4">
-              <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Awaiting Triage
-              </CardTitle>
-              <Clock className={cn(
-                "size-4",
-                stats.awaitingTriage > 0 ? "text-amber-500" : "text-muted-foreground/60"
-              )} />
-            </CardHeader>
-            <CardContent>
-              <div className={cn(
-                "text-3xl font-semibold tabular-nums tracking-tight",
-                stats.awaitingTriage > 0 ? "text-amber-600" : "text-foreground"
-              )}>
-                {loading ? <Skeleton className="h-8 w-16" /> : stats.awaitingTriage}
-              </div>
-            </CardContent>
-          </Card>
-        </Link>
-
-        <Link href="/triage-queue" className="block">
-          <Card className={cn(
-            "transition-all hover:shadow-sm",
-            stats.emergency > 0 && "ring-1 ring-red-500/20"
-          )}>
-            <CardHeader className="flex-row items-center justify-between gap-4">
-              <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-                <span className={cn(
-                  "size-1.5 rounded-full",
-                  stats.emergency > 0 ? "bg-red-500 animate-pulse" : "bg-muted-foreground/60"
+        {isClinical && (
+          <Link href="/triage-queue" className="block">
+            <Card className={cn(
+              "transition-all hover:shadow-sm",
+              stats.awaitingTriage > 0 && "ring-1 ring-amber-500/20"
+            )}>
+              <CardHeader className="flex-row items-center justify-between gap-4">
+                <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Awaiting Triage
+                </CardTitle>
+                <Clock className={cn(
+                  "size-4",
+                  stats.awaitingTriage > 0 ? "text-amber-500" : "text-muted-foreground/60"
                 )} />
-                Emergency
-              </CardTitle>
-              <Ambulance className={cn(
-                "size-4",
-                stats.emergency > 0 ? "text-red-500" : "text-muted-foreground/60"
-              )} />
-            </CardHeader>
-            <CardContent>
-              <div className={cn(
-                "text-3xl font-semibold tabular-nums tracking-tight",
-                stats.emergency > 0 ? "text-red-600" : "text-foreground"
-              )}>
-                {loading ? <Skeleton className="h-8 w-16" /> : stats.emergency}
-              </div>
-            </CardContent>
-          </Card>
-        </Link>
+              </CardHeader>
+              <CardContent>
+                <div className={cn(
+                  "text-3xl font-semibold tabular-nums tracking-tight",
+                  stats.awaitingTriage > 0 ? "text-amber-600" : "text-foreground"
+                )}>
+                  {loading ? <Skeleton className="h-8 w-16" /> : stats.awaitingTriage}
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
+        )}
+
+        {isClinical && (
+          <Link href="/triage-queue" className="block">
+            <Card className={cn(
+              "transition-all hover:shadow-sm",
+              stats.emergency > 0 && "ring-1 ring-red-500/20"
+            )}>
+              <CardHeader className="flex-row items-center justify-between gap-4">
+                <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                  <span className={cn(
+                    "size-1.5 rounded-full",
+                    stats.emergency > 0 ? "bg-red-500 animate-pulse" : "bg-muted-foreground/60"
+                  )} />
+                  Emergency
+                </CardTitle>
+                <Ambulance className={cn(
+                  "size-4",
+                  stats.emergency > 0 ? "text-red-500" : "text-muted-foreground/60"
+                )} />
+              </CardHeader>
+              <CardContent>
+                <div className={cn(
+                  "text-3xl font-semibold tabular-nums tracking-tight",
+                  stats.emergency > 0 ? "text-red-600" : "text-foreground"
+                )}>
+                  {loading ? <Skeleton className="h-8 w-16" /> : stats.emergency}
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
+        )}
       </div>
 
       {/* Patient Flow Pipeline */}
+      {isClinical && (
       <div className="rounded-xl bg-card p-5 ring-1 ring-foreground/10">
         <div className="flex items-center gap-2 mb-5">
           <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
@@ -320,9 +335,10 @@ export default function Dashboard() {
           ))}
         </div>
       </div>
+      )}
 
       {/* Quick Actions */}
-      {isAdmin && (
+      {canAccessAdmin && (
         <Card>
           <CardHeader>
             <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -487,45 +503,53 @@ export default function Dashboard() {
                           <StatusBadge label={statusLabel} variant={statusVariant} pulse={statusPulse} />
                           <div className="flex gap-1">
                             {isDraft ? (
-                              <Button
-                                size="xs"
-                                variant="ghost"
-                                nativeButton={false}
-                                render={<Link href={`/patients/register?complete=${patient.id}`} />}
-                              >
-                                <ClipboardCheck className="h-3.5 w-3.5 text-sky-600" />
-                                Complete
-                              </Button>
+                              can("registration.edit") && (
+                                <Button
+                                  size="xs"
+                                  variant="ghost"
+                                  nativeButton={false}
+                                  render={<Link href={`/patients/register?complete=${patient.id}`} />}
+                                >
+                                  <ClipboardCheck className="h-3.5 w-3.5 text-sky-600" />
+                                  Complete
+                                </Button>
+                              )
                             ) : !encounter ? (
-                              <Button
-                                size="xs"
-                                variant="ghost"
-                                nativeButton={false}
-                                render={<Link href={`/patients/${patient.id}/triage`} />}
-                              >
-                                <Stethoscope className="h-3.5 w-3.5 text-clinical-primary" />
-                                Triage
-                              </Button>
+                              can("triage.create") && (
+                                <Button
+                                  size="xs"
+                                  variant="ghost"
+                                  nativeButton={false}
+                                  render={<Link href={`/patients/${patient.id}/triage`} />}
+                                >
+                                  <Stethoscope className="h-3.5 w-3.5 text-clinical-primary" />
+                                  Triage
+                                </Button>
+                              )
                             ) : (encounter.status === "Triage Complete" || encounter.status === "waiting_for_clinician") ? (
-                              <Button
-                                size="xs"
-                                variant="ghost"
-                                nativeButton={false}
-                                render={<Link href={`/patients/${patient.id}/consultation`} />}
-                              >
-                                <MessageSquare className="h-3.5 w-3.5 text-teal-600" />
-                                Consult
-                              </Button>
+                              can("consultation.create") && (
+                                <Button
+                                  size="xs"
+                                  variant="ghost"
+                                  nativeButton={false}
+                                  render={<Link href={`/patients/${patient.id}/consultation`} />}
+                                >
+                                  <MessageSquare className="h-3.5 w-3.5 text-teal-600" />
+                                  Consult
+                                </Button>
+                              )
                             ) : (encounter.status === "In Consultation" || encounter.status === "in_consultation") ? (
-                              <Button
-                                size="xs"
-                                variant="ghost"
-                                nativeButton={false}
-                                render={<Link href={`/patients/${patient.id}/consultation`} />}
-                              >
-                                <MessageSquare className="h-3.5 w-3.5 text-teal-600" />
-                                Resume
-                              </Button>
+                              can("consultation.create") && (
+                                <Button
+                                  size="xs"
+                                  variant="ghost"
+                                  nativeButton={false}
+                                  render={<Link href={`/patients/${patient.id}/consultation`} />}
+                                >
+                                  <MessageSquare className="h-3.5 w-3.5 text-teal-600" />
+                                  Resume
+                                </Button>
+                              )
                             ) : (
                               <Button
                                 size="xs"

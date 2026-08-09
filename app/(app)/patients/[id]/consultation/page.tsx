@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/store/RoleContext";
+import { RoleGuard } from "@/components/auth/RoleGuard";
 import { useRealtime } from "@/store/RealtimeContext";
 import { useLabResultBus } from "@/store/LabResultBus";
 import { usePermissions } from "@/lib/hooks/usePermissions";
@@ -883,6 +884,7 @@ export default function ClinicianSOAPConsultation() {
   );
 
   return (
+    <RoleGuard allowedRoles={["doctor", "clinical officer", "medical student", "clinical admin", "admin"]}>
     <div className="max-w-7xl mx-auto space-y-6">
       <SectionHeader
         title="Clinical Consultation"
@@ -898,12 +900,14 @@ export default function ClinicianSOAPConsultation() {
                   <ArrowRightLeft className="h-4 w-4" />
                   Handover
                 </Button>
+                {can("consultation.sign_off") && (
                 <Button
                   onClick={() => setDispositionOpen(true)}
                 >
                   <LogOut className="h-4 w-4" />
                   Disposition
                 </Button>
+                )}
               </>
             ) : null}
             <Button variant="ghost" onClick={() => router.back()} aria-label="Go back">
@@ -932,7 +936,7 @@ export default function ClinicianSOAPConsultation() {
                 Submit for Review
               </Button>
             )}
-            {(transitionTargets[encounterStatus] ?? []).map((t) => (
+            {can("consultation.edit") && (transitionTargets[encounterStatus] ?? []).map((t) => (
               <Button
                 key={t.target}
                 size="sm"
@@ -1021,10 +1025,12 @@ export default function ClinicianSOAPConsultation() {
               <h3 className="text-lg font-bold">No Active Encounter</h3>
               <p className="text-sm text-muted-foreground mt-1">Start a new visit to begin consultation.</p>
             </div>
+            {can("consultation.create") && (
             <Button onClick={handleStartEncounter} disabled={submitLoading} size="lg">
               {submitLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
               Start New Visit
             </Button>
+            )}
           </CardContent>
         </Card>
       ) : (
@@ -1078,10 +1084,12 @@ export default function ClinicianSOAPConsultation() {
                       </div>
                     </div>
                     <div className="flex justify-end">
+                      {can("consultation.edit") && (
                       <Button type="submit" disabled={submitLoading || !chiefComplaint.trim()}>
                         {submitLoading && <Loader2 className="h-4 w-4 animate-spin" />}
                         Save Subjective
                       </Button>
+                      )}
                     </div>
                   </form>
                 )}
@@ -1160,10 +1168,12 @@ export default function ClinicianSOAPConsultation() {
                         onChange={(e) => setPhysicalExam(e.target.value)}
                       />
                       <div className="flex justify-end">
+                        {can("consultation.edit") && (
                         <Button type="submit" disabled={submitLoading || !physicalExam.trim()}>
                           {submitLoading && <Loader2 className="h-4 w-4 animate-spin" />}
                           Save Physical Exam
                         </Button>
+                        )}
                       </div>
                     </form>
                   </div>
@@ -1189,9 +1199,11 @@ export default function ClinicianSOAPConsultation() {
                                   <span className="text-xs text-muted-foreground">{d.diagnosis_type}{d.certainty ? ` · ${d.certainty}` : ""}</span>
                                 </div>
                               </div>
+                              {can("consultation.edit") && (
                               <button onClick={() => handleDeleteDiagnosis(d.id)} className="text-xs text-destructive hover:text-destructive/80 font-bold uppercase shrink-0 ml-2" aria-label="Remove diagnosis">
                                 <X className="h-3.5 w-3.5" />
                               </button>
+                              )}
                             </div>
                           ))}
                         </div>
@@ -1290,10 +1302,12 @@ export default function ClinicianSOAPConsultation() {
                       )}
 
                       <div className="flex justify-end">
+                        {can("consultation.edit") && (
                         <Button type="submit" disabled={submitLoading || !selectedIcd}>
                           {submitLoading && <Loader2 className="h-4 w-4 animate-spin" />}
                           Log Diagnosis
                         </Button>
+                        )}
                       </div>
                     </form>
                   </div>
@@ -1332,10 +1346,12 @@ export default function ClinicianSOAPConsultation() {
                       />
                     </div>
                     <div className="flex justify-end">
+                      {can("consultation.edit") && (
                       <Button type="submit" disabled={submitLoading}>
                         {submitLoading && <Loader2 className="h-4 w-4 animate-spin" />}
                         Save Plan
                       </Button>
+                      )}
                     </div>
                   </form>
                 )}
@@ -1481,10 +1497,12 @@ export default function ClinicianSOAPConsultation() {
                         </select>
                       </div>
                       <div className="flex justify-end">
+                        {(can("lab.order") || can("imaging.order")) && (
                         <Button type="submit" disabled={submitLoading || !orderForm.test_name.trim()}>
                           {submitLoading && <Loader2 className="h-4 w-4 animate-spin" />}
                           Place Order
                         </Button>
+                        )}
                       </div>
                     </form>
                   </div>
@@ -1714,6 +1732,7 @@ export default function ClinicianSOAPConsultation() {
                           <input id="field-rx-notes" type="text" className="block w-full rounded-lg border border-input bg-background px-3 py-2 text-sm" placeholder="Take after food" value={rxForm.notes} onChange={(e) => setRxForm({ ...rxForm, notes: e.target.value })} />
                       </div>
                       <div className="flex justify-end">
+                        {can("prescription.create") && (
                         <Button
                           type="submit"
                           disabled={submitLoading || !selectedDrug || (allergyWarnings.length > 0 && !overrideReason.trim())}
@@ -1721,6 +1740,7 @@ export default function ClinicianSOAPConsultation() {
                           {submitLoading && <Loader2 className="h-4 w-4 animate-spin" />}
                           Create Prescription
                         </Button>
+                        )}
                       </div>
                     </form>
                   </div>
@@ -2004,5 +2024,6 @@ export default function ClinicianSOAPConsultation() {
         />
       )}
     </div>
+    </RoleGuard>
   );
 }

@@ -9,6 +9,7 @@ import {
   FileText, Plus, Loader2, GitMerge, Search,
 } from "lucide-react";
 import { useAuth } from "@/store/RoleContext";
+import { usePermissions } from "@/lib/hooks/usePermissions";
 import { api } from "@/lib/api";
 import type { Patient, Allergy, Encounter, DuplicatePatient } from "@/types/patient";
 import { admissionsApi } from "@/lib/admissions";
@@ -98,6 +99,9 @@ export default function PatientProfilePage() {
   const patientId = params.id as string;
 
   const canMerge = (user?.permissions ?? []).includes("patient.merge");
+  const { roles } = usePermissions();
+  const isClinical = roles.some(r => ["nurse", "doctor", "clinical officer", "clinical admin", "admin"].includes(r));
+  const isReceptionist = roles.includes("receptionist");
 
   const [patient, setPatient] = useState<Patient | null>(null);
   const [summary, setSummary] = useState<TriageSummary | null>(null);
@@ -113,6 +117,12 @@ const [dupChecking, setDupChecking] = useState(false);
 const [dupLoading, setDupLoading] = useState(false);
 const [dupError, setDupError] = useState<string | null>(null);
 const [mergeTarget, setMergeTarget] = useState<DuplicatePatient | null>(null);
+
+  useEffect(() => {
+    if (!isClinical && activeTab !== "consents") {
+      setActiveTab("consents");
+    }
+  }, [isClinical]);
 
   const confidenceStyles: Record<string, string> = {
     High: "bg-red-100 text-red-800 border-red-200",
@@ -294,34 +304,40 @@ const [mergeTarget, setMergeTarget] = useState<DuplicatePatient | null>(null);
         description={`Hospital #${patient.hospital_number} · ${patient.patient_category ?? "No category"} · ${encounters.length} visit${encounters.length !== 1 ? "s" : ""} on record`}
         action={
           <div className="flex gap-2">
-            <Button variant="outline" nativeButton={false} render={<Link href={`/patients/register?edit=${patientId}`} />}>
-              <Edit className="h-4 w-4" />
-              Edit Profile
-            </Button>
-            {encounterStatus === "Checked-in" || encounterStatus === "In Triage" || encounterStatus === "awaiting_triage" || encounterStatus === "resuscitation" ? (
-              <Button nativeButton={false} render={<Link href={`/patients/${patientId}/triage`} />}>
-                <Stethoscope className="h-4 w-4" />
-                Continue Triage
+            {isReceptionist && (
+              <Button variant="outline" nativeButton={false} render={<Link href={`/patients/register?edit=${patientId}`} />}>
+                <Edit className="h-4 w-4" />
+                Edit Profile
               </Button>
-            ) : encounterStatus === "Triage Complete" || encounterStatus === "waiting_for_clinician" || encounterStatus === "In Consultation" || encounterStatus === "in_consultation" ? (
-              <Button nativeButton={false} render={<Link href={`/patients/${patientId}/consultation`} />}>
-                <MessageSquare className="h-4 w-4" />
-                {encounterStatus === "In Consultation" || encounterStatus === "in_consultation" ? "Continue Consult" : "Consult"}
-              </Button>
-            ) : encounterStatus === "Emergency" ? (
-              <Button nativeButton={false} render={<Link href={`/patients/${patientId}/emergency-triage`} />}>
-                <TriangleAlert className="h-4 w-4" />
-                Emergency Triage
-              </Button>
-            ) : (
-              <Button onClick={handleStartNewVisit} disabled={checkingIn}>
-                {checkingIn ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
+            )}
+            {isClinical && (
+              <>
+                {encounterStatus === "Checked-in" || encounterStatus === "In Triage" || encounterStatus === "awaiting_triage" || encounterStatus === "resuscitation" ? (
+                  <Button nativeButton={false} render={<Link href={`/patients/${patientId}/triage`} />}>
+                    <Stethoscope className="h-4 w-4" />
+                    Continue Triage
+                  </Button>
+                ) : encounterStatus === "Triage Complete" || encounterStatus === "waiting_for_clinician" || encounterStatus === "In Consultation" || encounterStatus === "in_consultation" ? (
+                  <Button nativeButton={false} render={<Link href={`/patients/${patientId}/consultation`} />}>
+                    <MessageSquare className="h-4 w-4" />
+                    {encounterStatus === "In Consultation" || encounterStatus === "in_consultation" ? "Continue Consult" : "Consult"}
+                  </Button>
+                ) : encounterStatus === "Emergency" ? (
+                  <Button nativeButton={false} render={<Link href={`/patients/${patientId}/emergency-triage`} />}>
+                    <TriangleAlert className="h-4 w-4" />
+                    Emergency Triage
+                  </Button>
                 ) : (
-                  <Plus className="h-4 w-4" />
+                  <Button onClick={handleStartNewVisit} disabled={checkingIn}>
+                    {checkingIn ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Plus className="h-4 w-4" />
+                    )}
+                    Start New Visit
+                  </Button>
                 )}
-                Start New Visit
-              </Button>
+              </>
             )}
             <Button variant="ghost" onClick={() => router.push("/patients")}>
               <ArrowLeft className="h-4 w-4" />
@@ -338,7 +354,7 @@ const [mergeTarget, setMergeTarget] = useState<DuplicatePatient | null>(null);
             ) : (
               <StatusBadge label="No Active Visit" variant="neutral" />
             )}
-            {latestTriageCategory && (
+            {isClinical && latestTriageCategory && (
               <Badge variant={latestTriageCategory >= 3 ? "destructive" : "secondary"}>
                 Triage Category {latestTriageCategory}
               </Badge>
@@ -346,7 +362,7 @@ const [mergeTarget, setMergeTarget] = useState<DuplicatePatient | null>(null);
             {patient.patient_category && (
               <Badge variant="outline">{patient.patient_category}</Badge>
             )}
-            {summary?.pregnancy_status && patient.gender === "Female" && (
+            {isClinical && summary?.pregnancy_status && patient.gender === "Female" && (
               <Badge variant="secondary" className="bg-purple-100 text-purple-800 border-purple-200 hover:bg-purple-100">
                 Active Pregnancy
               </Badge>
@@ -357,7 +373,7 @@ const [mergeTarget, setMergeTarget] = useState<DuplicatePatient | null>(null);
               </span>
             )}
           </div>
-          {summary?.encounter?.chief_complaint && (
+          {isClinical && summary?.encounter?.chief_complaint && (
             <div className="text-sm text-muted-foreground max-w-md text-right">
               <span className="font-semibold text-foreground">Chief Complaint:</span>{" "}
               {summary.encounter.chief_complaint}
@@ -545,11 +561,13 @@ const [mergeTarget, setMergeTarget] = useState<DuplicatePatient | null>(null);
           <Card>
             <Tabs
               tabs={[
-                { key: "vitals", label: "Vitals", icon: <HeartPulse className="h-3.5 w-3.5" />, count: summary?.vital_signs?.length },
-                { key: "diagnoses", label: "Diagnoses", icon: <ClipboardList className="h-3.5 w-3.5" />, count: diagnoses.length },
-                { key: "allergies", label: "Allergies", icon: <TriangleAlert className="h-3.5 w-3.5" />, count: summary?.allergies?.length },
-                { key: "admissions", label: "Admissions", icon: <FileText className="h-3.5 w-3.5" />, count: admissions.length },
-                { key: "encounters", label: "Visits", icon: <CalendarClock className="h-3.5 w-3.5" />, count: encounters.length },
+                ...(isClinical ? [
+                  { key: "vitals", label: "Vitals", icon: <HeartPulse className="h-3.5 w-3.5" />, count: summary?.vital_signs?.length },
+                  { key: "diagnoses", label: "Diagnoses", icon: <ClipboardList className="h-3.5 w-3.5" />, count: diagnoses.length },
+                  { key: "allergies", label: "Allergies", icon: <TriangleAlert className="h-3.5 w-3.5" />, count: summary?.allergies?.length },
+                  { key: "admissions", label: "Admissions", icon: <FileText className="h-3.5 w-3.5" />, count: admissions.length },
+                  { key: "encounters", label: "Visits", icon: <CalendarClock className="h-3.5 w-3.5" />, count: encounters.length },
+                ] : []),
                 { key: "consents", label: "Consents", icon: <FileText className="h-3.5 w-3.5" /> },
               ]}
               activeKey={activeTab}

@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/store/RoleContext";
+import { RoleGuard } from "@/components/auth/RoleGuard";
 import { api } from "@/lib/api";
 import { calculateNEWS2, type AVPU, type SpO2Scale, type NEWS2Result } from "@/lib/ews";
 import { friendlyError } from "@/lib/errors";
@@ -19,6 +20,7 @@ import { SectionHeader } from "@/components/ui/PageLayout";
 import TriageSidebar from "@/components/triage/TriageSidebar";
 import TriageProgressCard from "@/components/triage/TriageProgressCard";
 import { useToast } from "@/components/ui/Toast";
+import { usePermissions } from "@/lib/hooks/usePermissions";
 import { cn } from "@/lib/utils";
 import {
   ArrowLeft, Loader2, Check, TriangleAlert, Stethoscope,
@@ -112,6 +114,7 @@ export default function NurseTriageWorkbench() {
   const router = useRouter();
   const { token } = useAuth();
   const { success } = useToast();
+  const { can } = usePermissions();
   const patientId = params.id as string;
 
   const [activeTab, setActiveTab] = useState<"complaint" | "vitals" | "allergies" | "pregnancy" | "infection" | "trends">("complaint");
@@ -548,6 +551,7 @@ export default function NurseTriageWorkbench() {
   };
 
   return (
+    <RoleGuard allowedRoles={["nurse", "clinical officer", "admin"]}>
     <div className="max-w-7xl mx-auto space-y-6">
       <SectionHeader
         title="Triage Clinical Workbench"
@@ -863,7 +867,7 @@ export default function NurseTriageWorkbench() {
                   <Separator />
 
                   <div className="flex items-center justify-between">
-                    {hasVitals && (
+                    {hasVitals && can("triage.edit") && (
                       <Button type="button" variant="ghost" size="sm" onClick={handleUndoLastVitals} disabled={undoingVitals}>
                         <Undo2 className="h-4 w-4" />
                         {undoingVitals ? "Removing..." : "Undo Last Vitals Entry"}
@@ -1287,7 +1291,7 @@ export default function NurseTriageWorkbench() {
         hasVitals={hasVitals}
         hasAllergies={hasAllergies}
         completing={completing}
-        onComplete={handleCompleteTriage}
+        onComplete={can("triage.create") ? handleCompleteTriage : () => {}}
       />
 
       {/* Completion Modal */}
@@ -1317,5 +1321,6 @@ export default function NurseTriageWorkbench() {
         </div>
       )}
     </div>
+    </RoleGuard>
   );
 }

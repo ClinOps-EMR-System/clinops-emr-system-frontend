@@ -11,6 +11,8 @@ import { BedMap } from "@/components/admissions/BedMap";
 import { AdmissionStats } from "@/components/admissions/AdmissionStats";
 import AdmissionsToolbar from "@/components/admissions/AdmissionsToolbar";
 import AdmissionsTable from "@/components/admissions/AdmissionsTable";
+import { usePermissions } from "@/lib/hooks/usePermissions";
+import { RoleGuard } from "@/components/auth/RoleGuard";
 import { SectionHeader } from "@/components/ui/PageLayout";
 import EmptyState from "@/components/ui/EmptyState";
 import Modal from "@/components/ui/Modal";
@@ -28,6 +30,7 @@ const TABS = [
 export default function AdmissionsPage() {
   const router = useRouter();
   const { token } = useAuth();
+  const { can } = usePermissions();
   const [tab, setTab] = useState<"active" | "discharged" | "wards">("active");
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
@@ -165,15 +168,18 @@ export default function AdmissionsPage() {
   const displayedAdmissions = tab === "active" ? activeAdmissions : dischargedAdmissions;
 
   return (
+    <RoleGuard allowedRoles={["nurse", "doctor", "clinical officer", "clinical admin", "admin"]}>
     <div className="flex flex-col gap-6">
       <SectionHeader
         title="Admissions & Wards"
         description="Manage patient admissions, bed assignments, and discharges"
         action={
-          <Button onClick={() => router.push("/admissions/new")}>
-            <Plus data-icon="inline-start" />
-            Admit Patient
-          </Button>
+          can("admission.create") && (
+            <Button onClick={() => router.push("/admissions/new")}>
+              <Plus data-icon="inline-start" />
+              Admit Patient
+            </Button>
+          )
         }
       />
 
@@ -220,8 +226,8 @@ export default function AdmissionsPage() {
             totalPages={1}
             onPageChange={setCurrentPage}
             onView={openDetail}
-            onTransfer={(adm) => { setTransferAdmission(adm); setTransferOpen(true); }}
-            onDischarge={(adm) => router.push(`/admissions/${adm.id}/discharge`)}
+            onTransfer={can("admission.edit") ? (adm) => { setTransferAdmission(adm); setTransferOpen(true); } : undefined}
+            onDischarge={can("admission.edit") ? (adm) => router.push(`/admissions/${adm.id}/discharge`) : undefined}
           />
         </>
       ) : (
@@ -339,5 +345,6 @@ export default function AdmissionsPage() {
         </form>
       </Modal>
     </div>
+    </RoleGuard>
   );
 }

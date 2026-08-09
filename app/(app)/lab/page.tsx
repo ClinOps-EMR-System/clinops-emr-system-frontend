@@ -26,6 +26,8 @@ import EmptyState from "../../../components/ui/EmptyState";
 import Modal from "../../../components/ui/Modal";
 import { cn } from "../../../lib/utils";
 import { FlaskConical, Search, Clock, AlertTriangle, Plus, RefreshCw } from "lucide-react";
+import { RoleGuard } from "@/components/auth/RoleGuard";
+import { usePermissions } from "@/lib/hooks/usePermissions";
 
 interface LabOrder {
   id: number;
@@ -97,6 +99,7 @@ interface Service {
 export default function LabPage() {
   const { token, user } = useAuth();
   const { subscribe } = useRealtime();
+  const { can } = usePermissions();
   const [activeTab, setActiveTab] = useState<"pending" | "results" | "verified">("pending");
   const [orders, setOrders] = useState<LabOrder[]>([]);
   const [results, setResults] = useState<LabResult[]>([]);
@@ -229,6 +232,7 @@ export default function LabPage() {
   };
 
   return (
+    <RoleGuard allowedRoles={["lab technician", "doctor", "clinical officer", "medical student", "admin"]}>
     <div className="flex flex-col gap-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
@@ -244,10 +248,12 @@ export default function LabPage() {
           )}
         </div>
         <div className="flex items-center gap-3">
+          {can("lab.order") && (
           <Button nativeButton={false} render={<Link href="/lab/request" />}>
             <Plus data-icon="inline-start" />
             New Lab Request
           </Button>
+          )}
         </div>
       </div>
 
@@ -397,6 +403,7 @@ export default function LabPage() {
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-3">
+                          {can("lab.view_results") && (
                           <Button
                             size="sm"
                             variant="ghost"
@@ -405,6 +412,7 @@ export default function LabPage() {
                             <Plus className="h-3 w-3" />
                             Enter Result
                           </Button>
+                          )}
                           <Button
                             size="sm"
                             variant="ghost"
@@ -471,6 +479,7 @@ export default function LabPage() {
                           <TableCell><StatusBadge label={order.priority} variant="info" /></TableCell>
                           <TableCell><StatusBadge label={order.status} variant="info" /></TableCell>
                           <TableCell>
+                            {can("lab.view_results") && (
                             <Button
                               size="sm"
                               variant="ghost"
@@ -478,6 +487,7 @@ export default function LabPage() {
                             >
                               Enter Result
                             </Button>
+                            )}
                           </TableCell>
                         </TableRow>
                       ))}
@@ -546,7 +556,7 @@ export default function LabPage() {
               >
                 {submitSuccess ? "Close" : "Cancel"}
               </Button>
-              {!submitSuccess && (
+              {!submitSuccess && can("lab.view_results") && (
                 <Button
                   onClick={handleSubmitResult}
                   disabled={submitting || (!resultForm.result_value_text.trim() && !resultForm.result_value_numeric.trim()) || resultForm.billable_price === ""}
@@ -667,5 +677,6 @@ export default function LabPage() {
         </form>
       </Modal>
     </div>
+    </RoleGuard>
   );
 }

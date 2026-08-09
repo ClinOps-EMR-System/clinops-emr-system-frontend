@@ -606,7 +606,7 @@ export default function BillingPage() {
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
-                        {(statusKey(bill.payment_status) === "unpaid" || statusKey(bill.payment_status) === "partially_paid") && (
+                        {can("billing.create") && (statusKey(bill.payment_status) === "unpaid" || statusKey(bill.payment_status) === "partially_paid") && (
                           <Button
                             size="sm"
                             variant="outline"

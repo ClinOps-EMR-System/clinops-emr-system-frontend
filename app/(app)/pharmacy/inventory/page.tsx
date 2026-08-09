@@ -27,6 +27,7 @@ import SelectField from "../../../../components/ui/SelectField";
 import EmptyState from "../../../../components/ui/EmptyState";
 import Modal from "../../../../components/ui/Modal";
 import { Search, X, Plus, Package, AlertTriangle, Pill } from "lucide-react";
+import { RoleGuard } from "@/components/auth/RoleGuard";
 
 interface Drug {
   id: number;
@@ -175,6 +176,7 @@ export default function InventoryPage() {
   const hasFilters = search !== "" || controlledFilter !== "all";
 
   return (
+    <RoleGuard allowedRoles={["pharmacist", "admin"]}>
     <div className="flex flex-col gap-6">
       <SectionHeader
         title="Drug Catalog"
@@ -487,6 +489,7 @@ export default function InventoryPage() {
         </div>
       </Modal>
     </div>
+    </RoleGuard>
   );
 }
 

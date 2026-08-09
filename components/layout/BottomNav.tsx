@@ -11,12 +11,14 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { usePermissions } from "@/lib/hooks/usePermissions";
 
 interface BottomNavItem {
   label: string;
   href: string;
   icon: React.ComponentType<{ className?: string }>;
   matchPatterns?: string[];
+  roles?: string[];
 }
 
 const PRIMARY_ITEMS: BottomNavItem[] = [
@@ -37,21 +39,23 @@ const PRIMARY_ITEMS: BottomNavItem[] = [
     href: "/triage-queue",
     icon: ClipboardList,
     matchPatterns: ["/triage-queue", "/consultation-queue", "/emergency-queue", "/queue", "/nurse-station", "/resuscitation"],
+    roles: ["nurse", "doctor", "clinical officer", "medical student", "clinical admin", "admin"],
   },
   {
     label: "Pharmacy",
     href: "/pharmacy",
     icon: Pill,
     matchPatterns: ["/pharmacy"],
+    roles: ["pharmacist", "admin"],
   },
 ];
 
 const MORE_ITEMS: BottomNavItem[] = [
-  { label: "Lab", href: "/lab", icon: Pill },
-  { label: "Billing", href: "/billing", icon: Pill },
-  { label: "Admissions", href: "/admissions", icon: Pill },
+  { label: "Lab", href: "/lab", icon: Pill, roles: ["lab technician", "admin"] },
+  { label: "Billing", href: "/billing", icon: Pill, roles: ["billing officer", "admin"] },
+  { label: "Admissions", href: "/admissions", icon: Pill, roles: ["nurse", "doctor", "clinical officer", "clinical admin", "admin"] },
   { label: "Referrals", href: "/referrals", icon: Pill },
-  { label: "Radiology", href: "/radiology", icon: Pill },
+  { label: "Radiology", href: "/radiology", icon: Pill, roles: ["radiographer", "admin"] },
   { label: "Appointments", href: "/appointments", icon: Pill },
   { label: "System Admin", href: "/system", icon: Pill },
 ];
@@ -66,8 +70,17 @@ function isActive(pathname: string, item: BottomNavItem): boolean {
 export default function BottomNav() {
   const pathname = usePathname();
   const isMobile = useIsMobile();
+  const { roles, canAccessAdmin } = usePermissions();
 
   if (!isMobile) return null;
+
+  const filterByRole = (item: BottomNavItem): boolean => {
+    if (item.href === "/system") return canAccessAdmin;
+    if (item.roles) return item.roles.some((r) => roles.includes(r.toLowerCase()));
+    return true;
+  };
+
+  const visiblePrimaryItems = PRIMARY_ITEMS.filter(filterByRole);
 
   return (
     <nav
@@ -76,7 +89,7 @@ export default function BottomNav() {
       aria-label="Main navigation"
     >
       <div className="flex items-center justify-around h-16">
-        {PRIMARY_ITEMS.map((item) => {
+        {visiblePrimaryItems.map((item) => {
           const active = isActive(pathname, item);
           const Icon = item.icon;
           return (

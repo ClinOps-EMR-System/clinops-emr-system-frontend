@@ -9,6 +9,10 @@ const mocks = vi.hoisted(() => ({
   realtimeHandlers: new Map<string, (data: unknown) => void>(),
 }));
 
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: vi.fn(), back: vi.fn(), replace: vi.fn() }),
+}));
+
 vi.mock("@/lib/api", () => ({
   api: {
     get: mocks.get,
@@ -16,7 +20,12 @@ vi.mock("@/lib/api", () => ({
 }));
 
 vi.mock("@/store/RoleContext", () => ({
-  useAuth: () => ({ token: "test-token" }),
+  useAuth: () => ({
+    token: "test-token",
+    user: { id: 1, name: "Test User", email: "test@test.com", is_active: true, roles: ["admin"], permissions: [] },
+    isAuthenticated: true,
+    isLoading: false,
+  }),
 }));
 
 vi.mock("@/store/RealtimeContext", () => ({

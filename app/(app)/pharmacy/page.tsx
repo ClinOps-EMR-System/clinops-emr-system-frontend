@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/store/RoleContext";
 import { useRealtime } from "@/store/RealtimeContext";
+import { usePermissions } from "@/lib/hooks/usePermissions";
 import { api } from "@/lib/api";
 import {
   Card, CardContent, CardHeader, CardTitle,
@@ -19,6 +20,7 @@ import { cn } from "@/lib/utils";
 import {
   Pill, Clock, CheckCircle, AlertTriangle, Package, ArrowRight, TrendingDown,
 } from "lucide-react";
+import { RoleGuard } from "@/components/auth/RoleGuard";
 
 interface PharmacyWorklistItem {
   prescription_id: number;
@@ -52,6 +54,7 @@ const tabs: { key: TabKey; label: string; apiStatus: string; icon: React.ReactNo
 export default function PharmacyOverviewPage() {
   const { token } = useAuth();
   const { subscribe } = useRealtime();
+  const { can } = usePermissions();
   const [activeTab, setActiveTab] = useState<TabKey>("pending");
   const [items, setItems] = useState<PharmacyWorklistItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -129,6 +132,7 @@ export default function PharmacyOverviewPage() {
   };
 
   return (
+    <RoleGuard allowedRoles={["pharmacist", "nurse", "admin"]}>
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-1">
         <span className="text-xs font-semibold tracking-widest uppercase text-muted-foreground">Pharmacy</span>
@@ -264,7 +268,7 @@ export default function PharmacyOverviewPage() {
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-3">
-                        {activeTab === "pending" && (
+                        {activeTab === "pending" && can("pharmacy.verify") && (
                           <button
                             onClick={() => handleVerify(rx.prescription_id)}
                             disabled={submitting}
@@ -273,7 +277,7 @@ export default function PharmacyOverviewPage() {
                             Verify
                           </button>
                         )}
-                        {activeTab === "verified" && (
+                        {activeTab === "verified" && can("pharmacy.dispense") && (
                           <button
                             onClick={() => handleDispense(rx.prescription_id)}
                             disabled={submitting}
@@ -338,5 +342,6 @@ export default function PharmacyOverviewPage() {
         </Card>
       )}
     </div>
+    </RoleGuard>
   );
 }
