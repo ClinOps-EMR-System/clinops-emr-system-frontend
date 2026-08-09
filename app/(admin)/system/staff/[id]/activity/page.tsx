@@ -22,26 +22,30 @@ export default function UserActivityPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const [userRes, activityRes] = await Promise.all([
-        adminApi.getUser(token, id),
-        adminApi.userActivity(token, id, { per_page: 100 }),
-      ]);
-      setUser(userRes);
-      setEvents(activityRes.data);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to load user activity");
-    } finally {
-      setLoading(false);
-    }
-  }, [token, id]);
-
   useEffect(() => {
-    if (id) void load();
-  }, [load, id]);
+    if (!id) return;
+    let cancelled = false;
+    async function load() {
+      setLoading(true);
+      setError(null);
+      try {
+        const [userRes, activityRes] = await Promise.all([
+          adminApi.getUser(token, id),
+          adminApi.userActivity(token, id, { per_page: 100 }),
+        ]);
+        if (!cancelled) {
+          setUser(userRes);
+          setEvents(activityRes.data);
+        }
+      } catch (e) {
+        if (!cancelled) setError(e instanceof Error ? e.message : "Failed to load user activity");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+    void load();
+    return () => { cancelled = true; };
+  }, [token, id]);
 
   if (loading) {
     return (

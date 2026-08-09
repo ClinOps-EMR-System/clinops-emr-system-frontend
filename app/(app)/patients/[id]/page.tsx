@@ -112,7 +112,7 @@ export default function PatientProfilePage() {
   const [encounters, setEncounters] = useState<Encounter[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-const [activeTab, setActiveTab] = useState("vitals");
+
 const [checkingIn, setCheckingIn] = useState(false);
 const [admissions, setAdmissions] = useState<Admission[]>([]);
 const [dupMatches, setDupMatches] = useState<DuplicatePatient[]>([]);
@@ -122,12 +122,9 @@ const [dupError, setDupError] = useState<string | null>(null);
 const [mergeTarget, setMergeTarget] = useState<DuplicatePatient | null>(null);
 const [clinicalActivity, setClinicalActivity] = useState<AuditLogEntry[]>([]);
 const [clinicalActivityLoading, setClinicalActivityLoading] = useState(false);
+const [tabOverride, setTabOverride] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!isClinical && activeTab !== "consents") {
-      setActiveTab("consents");
-    }
-  }, [isClinical]);
+  const activeTab = tabOverride ?? (isClinical ? "vitals" : "consents");
 
   const confidenceStyles: Record<string, string> = {
     High: "bg-red-100 text-red-800 border-red-200",
@@ -587,7 +584,7 @@ const [clinicalActivityLoading, setClinicalActivityLoading] = useState(false);
                 { key: "consents", label: "Consents", icon: <FileText className="h-3.5 w-3.5" /> },
               ]}
               activeKey={activeTab}
-              onChange={setActiveTab}
+              onChange={setTabOverride}
               size="sm"
             />
 

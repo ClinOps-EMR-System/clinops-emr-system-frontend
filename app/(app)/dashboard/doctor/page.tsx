@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/store/RoleContext";
 import { useFetch } from "@/lib/useFetch";
 import { api } from "@/lib/api";
@@ -143,6 +144,7 @@ function getStatusBadge(status: string) {
 
 export default function DoctorDashboardPage() {
   const { token, user } = useAuth();
+  const router = useRouter();
   const { success, error: toastError } = useToast();
   const { data, loading, error } = useFetch<DoctorDashboardData>("/dashboard/doctor", { interval: 20000 });
 
@@ -156,7 +158,7 @@ export default function DoctorDashboardPage() {
     try {
       await api.post(`/queue/${entryId}/start`, {}, token);
       success("Consultation started");
-      window.location.href = `/patients/${data?.my_queue.find((e) => e.id === entryId)?.patient.id ?? ""}`;
+      router.push(`/patients/${data?.my_queue.find((e) => e.id === entryId)?.patient.id ?? ""}`);
     } catch {
       toastError("Failed to start consultation");
     } finally {
