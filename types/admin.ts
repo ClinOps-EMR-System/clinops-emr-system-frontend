@@ -92,14 +92,25 @@ export interface AuditLogEntry {
   id: number;
   user_id?: number | null;
   action: string;
+  event?: string | null;
   auditable_type: string;
   auditable_id?: string | number | null;
   old_values?: Record<string, unknown> | null;
   new_values?: Record<string, unknown> | null;
+  context?: Record<string, unknown> | null;
+  patient_id?: number | null;
+  encounter_id?: number | null;
   ip_address?: string | null;
   user_agent?: string | null;
   created_at: string;
   user?: { id: number; name: string; email: string; role?: string | null } | null;
+}
+
+export interface PaginationMeta {
+  current_page: number;
+  last_page: number;
+  per_page: number;
+  total: number;
 }
 
 export interface HospitalSettings {

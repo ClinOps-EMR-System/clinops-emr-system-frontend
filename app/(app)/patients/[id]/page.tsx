@@ -6,11 +6,13 @@ import Link from "next/link";
 import {
   Edit, Stethoscope, MessageSquare, ArrowLeft, Check, TriangleAlert,
   Phone, Shield, Users, HeartPulse, CalendarClock, ClipboardList,
-  FileText, Plus, Loader2, GitMerge, Search,
+  FileText, Plus, Loader2, GitMerge, Search, Activity,
 } from "lucide-react";
 import { useAuth } from "@/store/RoleContext";
 import { usePermissions } from "@/lib/hooks/usePermissions";
 import { api } from "@/lib/api";
+import { adminApi } from "@/lib/services/admin";
+import type { AuditLogEntry } from "@/types/admin";
 import type { Patient, Allergy, Encounter, DuplicatePatient } from "@/types/patient";
 import { admissionsApi } from "@/lib/admissions";
 import type { Admission } from "@/types/admission";
@@ -28,6 +30,7 @@ import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/components/ui/Toast";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
+import ClinicalTimeline from "@/components/audit/ClinicalTimeline";
 
 interface TriageSummary {
   encounter: {
@@ -117,6 +120,8 @@ const [dupChecking, setDupChecking] = useState(false);
 const [dupLoading, setDupLoading] = useState(false);
 const [dupError, setDupError] = useState<string | null>(null);
 const [mergeTarget, setMergeTarget] = useState<DuplicatePatient | null>(null);
+const [clinicalActivity, setClinicalActivity] = useState<AuditLogEntry[]>([]);
+const [clinicalActivityLoading, setClinicalActivityLoading] = useState(false);
 
   useEffect(() => {
     if (!isClinical && activeTab !== "consents") {
@@ -210,6 +215,16 @@ const [mergeTarget, setMergeTarget] = useState<DuplicatePatient | null>(null);
       const admissionsRes = await admissionsApi.getByPatient(parseInt(patientId));
       if (admissionsRes) {
         setAdmissions(Array.isArray(admissionsRes) ? admissionsRes : []);
+      }
+
+      setClinicalActivityLoading(true);
+      try {
+        const activityRes = await adminApi.patientTimeline(token, patientId, { per_page: 50 });
+        setClinicalActivity(activityRes.data);
+      } catch {
+        // Silently fail — audit data is non-critical
+      } finally {
+        setClinicalActivityLoading(false);
       }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to load patient profile data.");
@@ -567,6 +582,7 @@ const [mergeTarget, setMergeTarget] = useState<DuplicatePatient | null>(null);
                   { key: "allergies", label: "Allergies", icon: <TriangleAlert className="h-3.5 w-3.5" />, count: summary?.allergies?.length },
                   { key: "admissions", label: "Admissions", icon: <FileText className="h-3.5 w-3.5" />, count: admissions.length },
                   { key: "encounters", label: "Visits", icon: <CalendarClock className="h-3.5 w-3.5" />, count: encounters.length },
+                  { key: "clinical-activity", label: "Activity", icon: <Activity className="h-3.5 w-3.5" />, count: clinicalActivity.length },
                 ] : []),
                 { key: "consents", label: "Consents", icon: <FileText className="h-3.5 w-3.5" /> },
               ]}
@@ -795,6 +811,10 @@ const [mergeTarget, setMergeTarget] = useState<DuplicatePatient | null>(null);
                     <p>No encounters recorded for this patient.</p>
                   </div>
                 )}
+              </TabPanel>
+
+              <TabPanel tabKey="clinical-activity" activeKey={activeTab} tablistId="profile-tabs">
+                <ClinicalTimeline events={clinicalActivity} loading={clinicalActivityLoading} />
               </TabPanel>
 
               <TabPanel tabKey="consents" activeKey={activeTab} tablistId="profile-tabs">

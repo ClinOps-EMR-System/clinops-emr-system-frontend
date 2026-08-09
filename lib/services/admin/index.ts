@@ -11,6 +11,7 @@ import type {
   Department,
   HospitalSettings,
   LoincCode,
+  PaginationMeta,
   Rank,
   Ward,
 } from "@/types/admin";
@@ -196,6 +197,56 @@ export const adminApi = {
       token,
       "audit-logs.csv",
     );
+  },
+
+  patientTimeline: async (
+    token: string | null,
+    patientId: number | string,
+    params: Record<string, string | number | undefined> = {},
+  ) => {
+    const qs = new URLSearchParams();
+    Object.entries(params).forEach(([k, v]) => {
+      if (v !== undefined && v !== "") qs.set(k, String(v));
+    });
+    const q = qs.toString();
+    const res = await api.get(`/audit-logs/patient/${patientId}${q ? `?${q}` : ""}`, token);
+    return {
+      data: unwrap<AuditLogEntry[]>(res) ?? [],
+      meta: (res as { meta?: PaginationMeta }).meta,
+    };
+  },
+
+  userActivity: async (
+    token: string | null,
+    userId: number | string,
+    params: Record<string, string | number | undefined> = {},
+  ) => {
+    const qs = new URLSearchParams();
+    Object.entries(params).forEach(([k, v]) => {
+      if (v !== undefined && v !== "") qs.set(k, String(v));
+    });
+    const q = qs.toString();
+    const res = await api.get(`/audit-logs/user/${userId}${q ? `?${q}` : ""}`, token);
+    return {
+      data: unwrap<AuditLogEntry[]>(res) ?? [],
+      meta: (res as { meta?: PaginationMeta }).meta,
+    };
+  },
+
+  timeline: async (
+    token: string | null,
+    params: Record<string, string | number | undefined> = {},
+  ) => {
+    const qs = new URLSearchParams();
+    Object.entries(params).forEach(([k, v]) => {
+      if (v !== undefined && v !== "") qs.set(k, String(v));
+    });
+    const q = qs.toString();
+    const res = await api.get(`/audit-logs/timeline${q ? `?${q}` : ""}`, token);
+    return {
+      data: unwrap<AuditLogEntry[]>(res) ?? [],
+      meta: (res as { meta?: PaginationMeta }).meta,
+    };
   },
 
   listDepartments: async (token: string | null) =>

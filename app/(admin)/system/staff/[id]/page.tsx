@@ -390,16 +390,21 @@ export default function StaffDetailPage() {
         </div>
       )}
 
-      {!isAdminUser && (
-        <div className="flex flex-wrap gap-2">
-          <Button disabled={saving} onClick={() => void save()}>
-            {saving ? "Saving…" : "Save changes"}
-          </Button>
-          <Button variant="destructive" onClick={() => void remove()}>
-            Delete user
-          </Button>
-        </div>
-      )}
+      <div className="flex flex-wrap gap-2">
+        <Button variant="outline" nativeButton={false} render={<Link href={`/system/staff/${id}/activity`} />}>
+          View Activity
+        </Button>
+        {!isAdminUser && (
+          <>
+            <Button disabled={saving} onClick={() => void save()}>
+              {saving ? "Saving…" : "Save changes"}
+            </Button>
+            <Button variant="destructive" onClick={() => void remove()}>
+              Delete user
+            </Button>
+          </>
+        )}
+      </div>
 
       <ConfirmDialog
         open={deleteOpen}
