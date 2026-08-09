@@ -5,8 +5,8 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "../../store/RoleContext";
 import { api } from "../../lib/api";
-import { X, Search, Bell, ChevronDown } from "lucide-react";
-import { SidebarTrigger } from "@/components/ui/sidebar";
+import { X, Search, Bell, ChevronDown, Menu } from "lucide-react";
+import { useSidebar } from "@/components/ui/sidebar";
 import { useRealtimeNotifications } from "@/hooks/useRealtimeNotifications";
 import type { NotificationData } from "@/types/admission";
 import { formatDistanceToNow } from "date-fns";
@@ -56,6 +56,7 @@ export default function Topbar() {
   const pathname = usePathname();
   const router = useRouter();
   const { user, logout, token } = useAuth();
+  const { setOpenMobile } = useSidebar();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
@@ -237,7 +238,13 @@ export default function Topbar() {
   return (
     <header className="h-16 bg-sidebar flex items-center gap-4 px-4 md:px-6 border-b border-sidebar-border z-10 font-sans">
 
-      <SidebarTrigger className="lg:hidden text-sidebar-foreground/70 hover:text-sidebar-foreground p-1.5 rounded-md hover:bg-sidebar-accent transition-colors cursor-pointer" />
+      <button
+        onClick={() => setOpenMobile(true)}
+        className="lg:hidden p-2 -ml-2 text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent rounded-md transition-colors"
+        aria-label="Open menu"
+      >
+        <Menu className="h-5 w-5" />
+      </button>
 
       {/* Breadcrumbs — desktop only */}
       <nav aria-label="Breadcrumb" className="hidden lg:flex items-center shrink-0">

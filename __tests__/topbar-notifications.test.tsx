@@ -51,7 +51,12 @@ vi.mock("next/navigation", () => ({
 }));
 
 vi.mock("@/components/ui/sidebar", () => ({
-  SidebarTrigger: () => null,
+  useSidebar: () => ({
+    setOpenMobile: vi.fn(),
+    toggleSidebar: vi.fn(),
+    open: true,
+    isMobile: false,
+  }),
 }));
 
 vi.mock("@/store/RealtimeContext", () => ({

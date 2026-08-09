@@ -112,13 +112,13 @@ function SidebarNav() {
 
   return (
     <>
-      <div className="flex h-14 items-center gap-2 border-b border-[var(--outline)] px-4">
-        <Shield className="h-5 w-5 text-[var(--clinical-primary)]" />
+      <div className="flex h-14 items-center gap-2 border-b border-sidebar-border px-4">
+        <Shield className="h-5 w-5 text-sidebar-primary" />
         <div className="min-w-0">
-          <p className="truncate text-sm font-semibold text-[var(--clinical-text)]">
+          <p className="truncate text-sm font-semibold text-sidebar-foreground">
             System Admin
           </p>
-          <p className="truncate text-[11px] text-[var(--clinical-muted)]">
+          <p className="truncate text-[11px] text-sidebar-foreground/70">
             ClinOps console
           </p>
         </div>
@@ -132,7 +132,7 @@ function SidebarNav() {
           if (items.length === 0) return null;
           return (
             <div key={group.label} className="mb-5">
-              <p className="mb-1.5 px-2 text-[11px] font-medium uppercase tracking-wide text-[var(--clinical-muted)]">
+              <p className="mb-1.5 px-2 text-xs font-medium text-sidebar-foreground/70">
                 {group.label}
               </p>
               <ul className="space-y-0.5">
@@ -151,8 +151,8 @@ function SidebarNav() {
                         className={cn(
                           "flex items-center gap-2 rounded-md px-2 py-2 text-sm transition-colors duration-150",
                           active
-                            ? "bg-[var(--clinical-primary)]/10 font-medium text-[var(--clinical-primary)]"
-                            : "text-[var(--clinical-text)] hover:bg-black/5",
+                            ? "bg-primary! text-primary-foreground!"
+                            : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
                         )}
                       >
                         <Icon className="h-4 w-4 shrink-0" />
@@ -167,11 +167,11 @@ function SidebarNav() {
         })}
       </nav>
 
-      <div className="border-t border-[var(--outline)] p-3">
+      <div className="border-t border-sidebar-border p-3">
         <Link
           href="/dashboard"
           onClick={() => setOpenMobile(false)}
-          className="flex items-center gap-2 rounded-md px-2 py-2 text-sm text-[var(--clinical-muted)] transition-colors hover:bg-black/5 hover:text-[var(--clinical-text)]"
+          className="flex items-center gap-2 rounded-md px-2 py-2 text-sm text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground"
         >
           <Stethoscope className="h-4 w-4" />
           Clinical EMR
@@ -191,7 +191,7 @@ export function AdminSidebar() {
       <Sheet open={openMobile} onOpenChange={setOpenMobile}>
         <SheetContent side="left" showCloseButton={false} className="w-60 p-0">
           <SheetTitle className="sr-only">Admin Navigation</SheetTitle>
-          <div className="flex h-full flex-col bg-[var(--sidebar)]">
+          <div className="flex h-full flex-col bg-sidebar">
             <SidebarNav />
           </div>
         </SheetContent>
@@ -201,7 +201,7 @@ export function AdminSidebar() {
 
   // Desktop: fixed sidebar
   return (
-    <aside className="flex h-full w-60 shrink-0 flex-col border-r border-[var(--outline)] bg-[var(--sidebar)]">
+    <aside className="flex h-full w-60 shrink-0 flex-col border-r border-sidebar-border bg-sidebar">
       <SidebarNav />
     </aside>
   );
