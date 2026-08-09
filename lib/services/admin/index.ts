@@ -8,7 +8,9 @@ import type {
   AuditLogEntry,
   BillableService,
   Cadre,
+  ControlledSubstanceLog,
   Department,
+  Drug,
   HospitalSettings,
   LoincCode,
   PaginationMeta,
@@ -322,6 +324,129 @@ export const adminApi = {
     ),
 
   logout: async (token: string | null) => api.post("/logout", {}, token),
+
+  // Controlled Substance Audit Trail
+  csLogs: async (
+    token: string | null,
+    params: Record<string, string | number | undefined> = {},
+  ) => {
+    const qs = new URLSearchParams();
+    Object.entries(params).forEach(([k, v]) => {
+      if (v !== undefined && v !== "") qs.set(k, String(v));
+    });
+    const q = qs.toString();
+    const res = await api.get(`/controlled-substances/logs${q ? `?${q}` : ""}`, token);
+    return {
+      data: unwrap<ControlledSubstanceLog[]>(res) ?? [],
+      meta: (res as { meta?: PaginationMeta }).meta,
+    };
+  },
+
+  csDrugTrail: async (
+    token: string | null,
+    drugId: number | string,
+    params: Record<string, string | number | undefined> = {},
+  ) => {
+    const qs = new URLSearchParams();
+    Object.entries(params).forEach(([k, v]) => {
+      if (v !== undefined && v !== "") qs.set(k, String(v));
+    });
+    const q = qs.toString();
+    const res = await api.get(`/controlled-substances/drug/${drugId}${q ? `?${q}` : ""}`, token);
+    return {
+      data: unwrap<ControlledSubstanceLog[]>(res) ?? [],
+      meta: (res as { meta?: PaginationMeta }).meta,
+    };
+  },
+
+  csPatientHistory: async (
+    token: string | null,
+    patientId: number | string,
+  ) => {
+    const res = await api.get(`/controlled-substances/patient/${patientId}`, token);
+    return {
+      data: unwrap<ControlledSubstanceLog[]>(res) ?? [],
+      meta: (res as { meta?: PaginationMeta }).meta,
+    };
+  },
+
+  csLogEvent: async (token: string | null, body: Record<string, unknown>) =>
+    unwrap<ControlledSubstanceLog>(
+      await api.post("/controlled-substances/logs", body, token),
+    ),
+
+  csReconcile: async (token: string | null, body: { drug_id: number; physical_count: number; notes: string }) =>
+    unwrap<ControlledSubstanceLog>(
+      await api.post("/controlled-substances/reconcile", body, token),
+    ),
+
+  csDiscrepancies: async (token: string | null) => {
+    const res = await api.get("/controlled-substances/discrepancies", token);
+    return unwrap<ControlledSubstanceLog[]>(res) ?? [];
+  },
+
+  csReport: async (token: string | null, from: string, to: string) => {
+    const res = await api.get(`/controlled-substances/report?from=${from}&to=${to}`, token);
+    return unwrap<ControlledSubstanceLog[]>(res) ?? [];
+  },
+
+  // Drugs
+  listDrugs: async (
+    token: string | null,
+    params: Record<string, string | number | undefined> = {},
+  ) => {
+    const qs = new URLSearchParams();
+    Object.entries(params).forEach(([k, v]) => {
+      if (v !== undefined && v !== "") qs.set(k, String(v));
+    });
+    const q = qs.toString();
+    const res = await api.get(`/drugs${q ? `?${q}` : ""}`, token);
+    return {
+      data: unwrap<Drug[]>(res) ?? [],
+      meta: (res as { meta?: PaginationMeta }).meta,
+    };
+  },
+
+  searchDrugs: async (token: string | null, q: string) =>
+    unwrap<Drug[]>(await api.get(`/drugs/search?q=${encodeURIComponent(q)}`, token)) ?? [],
+
+  // Research Data Export
+  exportResearchData: async (
+    token: string | null,
+    body: {
+      format: "csv" | "json";
+      fields: string[];
+      filters?: {
+        date_from?: string;
+        date_to?: string;
+        department?: string;
+        patient_category?: string;
+      };
+    },
+  ) => {
+    const headers: HeadersInit = {};
+    if (token) headers.Authorization = `Bearer ${token}`;
+    const res = await fetch(`${getApiBaseUrl()}/research/export`, {
+      method: "POST",
+      headers: { ...headers, "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => null);
+      throw new Error(err?.message || "Export failed");
+    }
+    if (body.format === "csv") {
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `research_export_${new Date().toISOString().slice(0, 10)}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+      return null;
+    }
+    return res.json();
+  },
 
   exportStaffRoster: (token: string | null) =>
     downloadAuthenticated(

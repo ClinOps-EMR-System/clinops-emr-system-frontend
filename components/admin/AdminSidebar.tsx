@@ -13,6 +13,8 @@ import {
   Settings,
   Lock,
   Stethoscope,
+  Pill,
+  FlaskConical,
 } from "lucide-react";
 import { usePermissions } from "@/lib/hooks/usePermissions";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -74,6 +76,23 @@ const NAV: NavGroup[] = [
         href: "/system/catalogs/services",
         icon: Package,
         permission: ["catalog.manage", "billing.view"],
+      },
+    ],
+  },
+  {
+    label: "Compliance",
+    items: [
+      {
+        title: "Controlled Substances",
+        href: "/system/controlled-substances",
+        icon: Pill,
+        permission: "controlled.dispense",
+      },
+      {
+        title: "Research Data",
+        href: "/system/research",
+        icon: FlaskConical,
+        permission: "research.export",
       },
     ],
   },

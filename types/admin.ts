@@ -122,6 +122,42 @@ export interface HospitalSettings {
   signup_enabled: boolean;
 }
 
+export interface Drug {
+  id: number;
+  name: string;
+  generic_name?: string | null;
+  atc_code?: string | null;
+  formulation?: string | null;
+  strength?: string | null;
+  unit?: string | null;
+  route?: string | null;
+  is_controlled: boolean;
+  current_stock: number;
+  reorder_level: number;
+  sell_price?: string | number;
+}
+
+export interface ControlledSubstanceLog {
+  id: number;
+  drug_id: number;
+  prescription_id?: number | null;
+  patient_id?: number | null;
+  action: string;
+  quantity: number;
+  batch_number?: string | null;
+  performed_by: number;
+  witnessed_by?: number | null;
+  justification?: string | null;
+  stock_before?: number | null;
+  stock_after?: number | null;
+  performed_at: string;
+  drug?: Drug;
+  prescription?: { id: number; rx_number?: string } | null;
+  patient?: { id: number; hospital_number?: string; first_name?: string; last_name?: string } | null;
+  performedBy?: { id: number; name: string } | null;
+  witnessedBy?: { id: number; name: string } | null;
+}
+
 export interface AdminOverview {
   staff_active: number;
   staff_inactive: number;
