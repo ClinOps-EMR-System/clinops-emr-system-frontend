@@ -205,8 +205,8 @@ export default function ReceptionistDashboard() {
   const stats = [
     { label: "Appointments", value: appointments.length, icon: CalendarDays, color: "text-sky-600", href: "/appointments" },
     { label: "Awaiting Triage", value: awaitingTriageCount, icon: Clock, color: "text-amber-600", href: "/triage-queue" },
-    { label: "Awaiting Doctor", value: awaitingDoctorCount, icon: Users, color: "text-brand-green", href: "/consultation-queue" },
-    { label: "In Consultation", value: queueStats?.in_consultation_count ?? dashboard?.encounters?.in_consultation ?? 0, icon: CheckCircle, color: "text-emerald-600", href: "/consultation-queue" },
+    { label: "Awaiting Doctor", value: awaitingDoctorCount, icon: Users, color: "text-brand-green", href: "/queue" },
+    { label: "In Consultation", value: queueStats?.in_consultation_count ?? dashboard?.encounters?.in_consultation ?? 0, icon: CheckCircle, color: "text-emerald-600", href: "/queue" },
     { label: "Emergency", value: dashboard?.encounters?.emergency ?? 0, icon: XCircle, color: "text-red-600", href: "/triage-queue", pulse: true },
     { label: "Registered Today", value: dashboard?.patients?.today_registrations ?? 0, icon: ClipboardPlus, color: "text-purple-600", href: "/patients/register" },
   ];

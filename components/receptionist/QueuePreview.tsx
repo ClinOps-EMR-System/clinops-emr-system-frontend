@@ -165,7 +165,7 @@ export function QueuePreview({ queue, emergencyWaiting }: { queue: QueuePatient[
 
         {hasQueue && (
           <section className="flex flex-col gap-2">
-            <SectionHeading title="Awaiting Doctor" count={queue.length} tone="amber" href="/consultation-queue" />
+            <SectionHeading title="Awaiting Doctor" count={queue.length} tone="amber" href="/queue" />
             <div className="flex flex-col overflow-hidden rounded-lg ring-1 ring-foreground/10">
               {queue.slice(0, 5).map((entry, idx) => (
                 <div

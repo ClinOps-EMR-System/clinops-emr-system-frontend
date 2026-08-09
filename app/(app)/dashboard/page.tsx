@@ -104,7 +104,7 @@ export default function Dashboard() {
       key: "waiting",
       label: "Waiting",
       count: stats.waitingForDoctor,
-      href: "/consultation-queue",
+      href: "/queue",
       color: "text-amber-600",
       icon: Clock,
     },
