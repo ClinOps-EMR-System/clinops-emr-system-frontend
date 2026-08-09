@@ -31,7 +31,12 @@ function fallbackResult(ev: LabResultEvent): LabResult {
     reference_range: null,
     is_abnormal: ev.is_abnormal,
     is_critical: ev.is_critical,
+    specimen_quality: null,
+    clinical_comment: null,
+    interpretation: null,
     status: ev.status,
+    performed_at: null,
+    verified_at: null,
     released_at: ev.occurred_at,
     released_by: null,
   };

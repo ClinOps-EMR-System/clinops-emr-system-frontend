@@ -28,6 +28,8 @@ import { cn } from "../../../lib/utils";
 import { FlaskConical, Search, Clock, AlertTriangle, Plus, RefreshCw } from "lucide-react";
 import { RoleGuard } from "@/components/auth/RoleGuard";
 import { usePermissions } from "@/lib/hooks/usePermissions";
+import LabResultForm from "../../../components/lab/LabResultForm";
+import type { LabResultValue } from "@/types/lab";
 
 interface LabOrder {
   id: number;
@@ -47,6 +49,7 @@ interface LabOrder {
     id: number;
     test_name: string;
     loinc_code: string | null;
+    lab_test_id: number | null;
     specimen_type: string | null;
     status: string;
   };
@@ -110,6 +113,8 @@ export default function LabPage() {
   const [resultModalOpen, setResultModalOpen] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<LabOrder | null>(null);
   const [resultForm, setResultForm] = useState({ result_value_text: "", result_value_numeric: "", unit: "", reference_range: "", interpretation: "", is_abnormal: false, is_critical: false, billable_price: "" });
+  const [componentValues, setComponentValues] = useState<LabResultValue[]>([]);
+  const [resultMetadata, setResultMetadata] = useState<{ specimen_quality?: string; clinical_comment?: string; interpretation?: string }>({});
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitSuccess, setSubmitSuccess] = useState<string | null>(null);
@@ -185,6 +190,8 @@ export default function LabPage() {
       ...prev,
       billable_price: match ? String(match.unit_price) : "",
     }));
+    setComponentValues([]);
+    setResultMetadata({});
     setSubmitError(null);
     setSubmitSuccess(null);
     setResultModalOpen(true);
@@ -202,19 +209,31 @@ export default function LabPage() {
     }
     setSubmitting(true);
     try {
+      const hasComponents = componentValues.length > 0;
       const payload: Record<string, unknown> = {
         lab_request_id: labRequestId,
-        unit: resultForm.unit || null,
-        reference_range: resultForm.reference_range || null,
-        is_abnormal: resultForm.is_abnormal,
-        is_critical: resultForm.is_critical,
         billable_price: parseFloat(resultForm.billable_price),
       };
-      if (resultForm.result_value_numeric && !isNaN(parseFloat(resultForm.result_value_numeric))) {
-        payload.result_value_numeric = parseFloat(resultForm.result_value_numeric);
+
+      if (hasComponents) {
+        // New-style component-based result
+        payload.component_values = componentValues;
+        payload.specimen_quality = resultMetadata.specimen_quality || null;
+        payload.clinical_comment = resultMetadata.clinical_comment || null;
+        payload.interpretation = resultMetadata.interpretation || null;
       } else {
-        payload.result_value_text = resultForm.result_value_text;
+        // Legacy single-value result
+        payload.unit = resultForm.unit || null;
+        payload.reference_range = resultForm.reference_range || null;
+        payload.is_abnormal = resultForm.is_abnormal;
+        payload.is_critical = resultForm.is_critical;
+        if (resultForm.result_value_numeric && !isNaN(parseFloat(resultForm.result_value_numeric))) {
+          payload.result_value_numeric = parseFloat(resultForm.result_value_numeric);
+        } else {
+          payload.result_value_text = resultForm.result_value_text;
+        }
       }
+
       await api.post("/lab-results", payload, token);
       const isStudent = user?.roles?.includes("Medical Student") ?? false;
       setSubmitSuccess(
@@ -223,6 +242,8 @@ export default function LabPage() {
           : "Result submitted successfully and released to the clinical team."
       );
       setResultForm({ result_value_text: "", result_value_numeric: "", unit: "", reference_range: "", interpretation: "", is_abnormal: false, is_critical: false, billable_price: "" });
+      setComponentValues([]);
+      setResultMetadata({});
       fetchData();
     } catch (err: unknown) {
       setSubmitError(err instanceof Error ? err.message : "Failed to submit result");
@@ -559,7 +580,7 @@ export default function LabPage() {
               {!submitSuccess && can("lab.view_results") && (
                 <Button
                   onClick={handleSubmitResult}
-                  disabled={submitting || (!resultForm.result_value_text.trim() && !resultForm.result_value_numeric.trim()) || resultForm.billable_price === ""}
+                  disabled={submitting || resultForm.billable_price === ""}
                 >
                   {submitting ? "Submitting..." : "Submit Result"}
                 </Button>
@@ -578,102 +599,117 @@ export default function LabPage() {
               {submitError}
             </div>
           )}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-semibold uppercase tracking-wide text-muted-foreground">Numeric Result</label>
-              <input
-                type="number"
-                step="any"
-                className="mt-1 block w-full px-3 py-2 border border-input rounded-lg text-sm focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary"
-                value={resultForm.result_value_numeric}
-                onChange={(e) => setResultForm({ ...resultForm, result_value_numeric: e.target.value })}
-                placeholder="e.g., 12.5, 120"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold uppercase tracking-wide text-muted-foreground">Text Result</label>
-              <input
-                type="text"
-                className="mt-1 block w-full px-3 py-2 border border-input rounded-lg text-sm focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary"
-                value={resultForm.result_value_text}
-                onChange={(e) => setResultForm({ ...resultForm, result_value_text: e.target.value })}
-                placeholder="e.g., Positive, 120/80"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold uppercase tracking-wide text-muted-foreground">Unit</label>
-              <input
-                type="text"
-                className="mt-1 block w-full px-3 py-2 border border-input rounded-lg text-sm focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary"
-                value={resultForm.unit}
-                onChange={(e) => setResultForm({ ...resultForm, unit: e.target.value })}
-                placeholder="e.g., g/dL, mmol/L"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold uppercase tracking-wide text-muted-foreground">Reference Range</label>
-              <input
-                type="text"
-                className="mt-1 block w-full px-3 py-2 border border-input rounded-lg text-sm focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary"
-                value={resultForm.reference_range}
-                onChange={(e) => setResultForm({ ...resultForm, reference_range: e.target.value })}
-                placeholder="e.g., 12.0-16.0"
-              />
-            </div>
-          <div>
-            <label className="block text-xs font-semibold uppercase tracking-wide text-muted-foreground">Interpretation</label>
-            <input
-              type="text"
-              className="mt-1 block w-full px-3 py-2 border border-input rounded-lg text-sm focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary"
-              value={resultForm.interpretation}
-              onChange={(e) => setResultForm({ ...resultForm, interpretation: e.target.value })}
-              placeholder="Clinical interpretation"
+
+          {/* Dynamic catalog-driven result form */}
+          {selectedOrder?.lab_request?.lab_test_id ? (
+            <LabResultForm
+              labTestId={selectedOrder.lab_request.lab_test_id}
+              onValuesChange={setComponentValues}
+              onMetadataChange={setResultMetadata}
             />
-          </div>
-        </div>
-        <div>
-          <label className="block text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            Billable Price (MK) <span className="text-red-600">*</span>
-          </label>
-          <input
-            type="number"
-            step="0.01"
-            min="0"
-            required
-            className="mt-1 block w-full px-3 py-2 border border-input rounded-lg text-sm focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary font-mono"
-            value={resultForm.billable_price}
-            onChange={(e) => setResultForm({ ...resultForm, billable_price: e.target.value })}
-            placeholder="e.g., 3500"
-          />
-          <p className="mt-1 text-xs text-muted-foreground">
-            This amount is added to the patient&apos;s bill when the result is submitted.
-          </p>
-        </div>
-          <div className="flex gap-6">
-            <label className="flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={resultForm.is_abnormal}
-                onChange={(e) => setResultForm({ ...resultForm, is_abnormal: e.target.checked })}
-                className="rounded border-input text-clinical-primary focus:ring-clinical-primary"
-              />
-              <span className="font-medium text-foreground">Abnormal Result</span>
-            </label>
-            <label className="flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={resultForm.is_critical}
-                onChange={(e) => setResultForm({ ...resultForm, is_critical: e.target.checked })}
-                className="rounded border-input text-red-600 focus:ring-red-500"
-              />
-              <span className="font-medium text-foreground">Critical Result</span>
-            </label>
-          </div>
-          {resultForm.is_critical && (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-800 font-medium">
-              Critical results require immediate clinician notification and acknowledgment workflow.
-            </div>
+          ) : (
+            /* Legacy single-value form */
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wide text-muted-foreground">Numeric Result</label>
+                  <input
+                    type="number"
+                    step="any"
+                    className="mt-1 block w-full px-3 py-2 border border-input rounded-lg text-sm focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary"
+                    value={resultForm.result_value_numeric}
+                    onChange={(e) => setResultForm({ ...resultForm, result_value_numeric: e.target.value })}
+                    placeholder="e.g., 12.5, 120"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wide text-muted-foreground">Text Result</label>
+                  <input
+                    type="text"
+                    className="mt-1 block w-full px-3 py-2 border border-input rounded-lg text-sm focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary"
+                    value={resultForm.result_value_text}
+                    onChange={(e) => setResultForm({ ...resultForm, result_value_text: e.target.value })}
+                    placeholder="e.g., Positive, 120/80"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wide text-muted-foreground">Unit</label>
+                  <input
+                    type="text"
+                    className="mt-1 block w-full px-3 py-2 border border-input rounded-lg text-sm focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary"
+                    value={resultForm.unit}
+                    onChange={(e) => setResultForm({ ...resultForm, unit: e.target.value })}
+                    placeholder="e.g., g/dL, mmol/L"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wide text-muted-foreground">Reference Range</label>
+                  <input
+                    type="text"
+                    className="mt-1 block w-full px-3 py-2 border border-input rounded-lg text-sm focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary"
+                    value={resultForm.reference_range}
+                    onChange={(e) => setResultForm({ ...resultForm, reference_range: e.target.value })}
+                    placeholder="e.g., 12.0-16.0"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wide text-muted-foreground">Interpretation</label>
+                  <input
+                    type="text"
+                    className="mt-1 block w-full px-3 py-2 border border-input rounded-lg text-sm focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary"
+                    value={resultForm.interpretation}
+                    onChange={(e) => setResultForm({ ...resultForm, interpretation: e.target.value })}
+                    placeholder="Clinical interpretation"
+                  />
+                </div>
+              </div>
+              <div className="flex gap-6">
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={resultForm.is_abnormal}
+                    onChange={(e) => setResultForm({ ...resultForm, is_abnormal: e.target.checked })}
+                    className="rounded border-input text-clinical-primary focus:ring-clinical-primary"
+                  />
+                  <span className="font-medium text-foreground">Abnormal Result</span>
+                </label>
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={resultForm.is_critical}
+                    onChange={(e) => setResultForm({ ...resultForm, is_critical: e.target.checked })}
+                    className="rounded border-input text-red-600 focus:ring-red-500"
+                  />
+                  <span className="font-medium text-foreground">Critical Result</span>
+                </label>
+              </div>
+              {resultForm.is_critical && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-800 font-medium">
+                  Critical results require immediate clinician notification and acknowledgment workflow.
+                </div>
+              )}
+            </>
           )}
+
+          {/* Billable Price (always shown) */}
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Billable Price (MK) <span className="text-red-600">*</span>
+            </label>
+            <input
+              type="number"
+              step="0.01"
+              min="0"
+              required
+              className="mt-1 block w-full px-3 py-2 border border-input rounded-lg text-sm focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary font-mono"
+              value={resultForm.billable_price}
+              onChange={(e) => setResultForm({ ...resultForm, billable_price: e.target.value })}
+              placeholder="e.g., 3500"
+            />
+            <p className="mt-1 text-xs text-muted-foreground">
+              This amount is added to the patient&apos;s bill when the result is submitted.
+            </p>
+          </div>
         </form>
       </Modal>
     </div>
