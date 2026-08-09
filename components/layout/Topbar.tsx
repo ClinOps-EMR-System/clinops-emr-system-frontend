@@ -239,22 +239,21 @@ export default function Topbar() {
 
       <SidebarTrigger className="lg:hidden text-sidebar-foreground/70 hover:text-sidebar-foreground p-1.5 rounded-md hover:bg-sidebar-accent transition-colors cursor-pointer" />
 
-      {/* Breadcrumbs */}
-      <nav aria-label="Breadcrumb" className="flex items-center shrink-0">
-        <ol className="flex items-center gap-1.5 text-[11px] font-bold font-mono tracking-wide">
+      {/* Breadcrumbs — desktop only */}
+      <nav aria-label="Breadcrumb" className="hidden lg:flex items-center shrink-0">
+        <ol className="flex items-center gap-1.5 text-xs font-medium">
           <li className="inline-flex items-center">
-            <Link href="/dashboard" className="text-sidebar-foreground/70 hover:text-sidebar-foreground transition-colors uppercase inline-flex items-center min-h-0 min-w-0 h-auto py-0">
-              <span className="sm:hidden">⌂</span>
-              <span className="hidden sm:inline">Home</span>
+            <Link href="/dashboard" className="text-sidebar-foreground/70 hover:text-sidebar-foreground transition-colors inline-flex items-center">
+              Home
             </Link>
           </li>
           {breadcrumbs.map((crumb, idx) => {
             const isLast = idx === breadcrumbs.length - 1;
             if (!isLast && idx < breadcrumbs.length - 1) {
               return (
-                <li key={idx} className="inline-flex items-center gap-1.5 hidden sm:inline-flex">
+                <li key={idx} className="inline-flex items-center gap-1.5">
                   <span className="text-sidebar-foreground/50 select-none inline-flex items-center" aria-hidden="true">/</span>
-                  <Link href={crumb.href} className="text-sidebar-foreground/70 hover:text-sidebar-foreground transition-colors uppercase inline-flex items-center min-h-0 min-w-0 h-auto py-0">
+                  <Link href={crumb.href} className="text-sidebar-foreground/70 hover:text-sidebar-foreground transition-colors inline-flex items-center">
                     {crumb.label}
                   </Link>
                 </li>
@@ -264,9 +263,9 @@ export default function Topbar() {
               <li key={idx} className="inline-flex items-center gap-1.5">
                 <span className="text-sidebar-foreground/50 select-none inline-flex items-center" aria-hidden="true">/</span>
                 {isLast ? (
-                  <span className="text-sidebar-primary font-bold uppercase inline-flex items-center" aria-current="page">{crumb.label}</span>
+                  <span className="text-sidebar-primary font-semibold inline-flex items-center" aria-current="page">{crumb.label}</span>
                 ) : (
-                  <Link href={crumb.href} className="text-sidebar-foreground/70 hover:text-sidebar-foreground transition-colors uppercase inline-flex items-center min-h-0 min-w-0 h-auto py-0">
+                  <Link href={crumb.href} className="text-sidebar-foreground/70 hover:text-sidebar-foreground transition-colors inline-flex items-center">
                     {crumb.label}
                   </Link>
                 )}
@@ -335,7 +334,7 @@ export default function Topbar() {
             </button>
           )}
           {searchOpen && mobileSearchOpen && (
-            <div className="absolute top-full left-0 right-0 mt-1.5 bg-white rounded-md shadow-2xl border border-gray-200 z-50 overflow-hidden mx-4">
+            <div className="absolute top-full left-0 right-0 mt-1.5 bg-[var(--surface)] rounded-md shadow-2xl border border-gray-200 z-50 overflow-hidden mx-4">
               {results.length === 0 && !searchLoading ? (
                 <div className="px-4 py-6 text-center text-sm text-gray-500 font-mono">
                   No patients found for &ldquo;{debouncedQuery}&rdquo;
@@ -425,7 +424,7 @@ export default function Topbar() {
           </div>
 
           {searchOpen && (
-            <div className="absolute top-full left-0 right-0 mt-1.5 bg-white rounded-md shadow-2xl border border-gray-200 z-50 overflow-hidden">
+            <div className="absolute top-full left-0 right-0 mt-1.5 bg-[var(--surface)] rounded-md shadow-2xl border border-gray-200 z-50 overflow-hidden">
               {results.length === 0 && !searchLoading ? (
                 <div className="px-4 py-6 text-center text-sm text-gray-500 font-mono">
                   No patients found for &ldquo;{debouncedQuery}&rdquo;
@@ -493,7 +492,7 @@ export default function Topbar() {
           {notificationsOpen && (
             <>
               <div className="fixed inset-0 z-10" onClick={() => setNotificationsOpen(false)} aria-hidden="true" />
-              <div className="absolute right-0 mt-2 w-80 bg-white rounded-md shadow-2xl border border-gray-200 z-20 overflow-hidden" role="menu" onKeyDown={(e) => handleMenuKeyDown(e, () => setNotificationsOpen(false))}>
+              <div className="absolute right-0 mt-2 w-80 bg-[var(--surface)] rounded-md shadow-2xl border border-gray-200 z-20 overflow-hidden" role="menu" onKeyDown={(e) => handleMenuKeyDown(e, () => setNotificationsOpen(false))}>
                 <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
                   <h3 className="text-sm font-semibold text-gray-900">Notifications</h3>
                   <div className="flex items-center gap-2">
@@ -618,7 +617,7 @@ export default function Topbar() {
           {dropdownOpen && (
             <>
               <div className="fixed inset-0 z-10" onClick={() => setDropdownOpen(false)} aria-hidden="true" />
-              <div className="absolute right-0 mt-2 w-52 rounded-md bg-white shadow-lg py-1 ring-1 ring-black ring-opacity-5 z-20" role="menu" onKeyDown={(e) => handleMenuKeyDown(e, () => setDropdownOpen(false))}>
+              <div className="absolute right-0 mt-2 w-52 rounded-md bg-[var(--surface)] shadow-lg py-1 ring-1 ring-black ring-opacity-5 z-20" role="menu" onKeyDown={(e) => handleMenuKeyDown(e, () => setDropdownOpen(false))}>
                 <div className="px-4 py-2 border-b border-gray-100">
                   <p className="text-xs text-gray-500 uppercase font-bold tracking-wide">Staff Name</p>
                   <p className="text-xs text-gray-900 font-bold truncate">{name}</p>
