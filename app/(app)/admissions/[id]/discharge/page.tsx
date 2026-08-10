@@ -26,6 +26,7 @@ import {
   Pill,
   Plus,
   Printer,
+  Receipt,
   Send,
   ShieldCheck,
   Stethoscope,
@@ -105,6 +106,10 @@ export default function DischargePage({ params }: { params: Promise<{ id: string
   const [followUp, setFollowUp] = useState<string>("");
   const [medications, setMedications] = useState<DischargeMedication[]>([]);
 
+  // Bill guard: track whether the patient has any outstanding (unpaid) bills
+  const [billBlocked, setBillBlocked] = useState<boolean>(false);
+  const [billBlockedNumber, setBillBlockedNumber] = useState<string | null>(null);
+
   const fetchData = useCallback(async () => {
     if (!token || !admissionId) return;
     setLoading(true);
@@ -119,6 +124,31 @@ export default function DischargePage({ params }: { params: Promise<{ id: string
         const prescriptionsRes = await api.get(`/prescriptions?encounter_id=${fetchedAdmission.encounter_id}`, token);
         const payload = prescriptionsRes?.data ?? prescriptionsRes;
         setPrescriptions(payload?.data ?? payload ?? []);
+      }
+
+      // Check whether the patient has any outstanding bills that block discharge
+      if (fetchedAdmission?.patient_id) {
+        try {
+          const billsRes = await api.get(`/bills?patient_id=${fetchedAdmission.patient_id}`, token);
+          const billsList: Array<{ payment_status: string; bill_number?: string }> =
+            (billsRes?.data as Array<{ payment_status: string; bill_number?: string }>) ??
+            (billsRes as Array<{ payment_status: string; bill_number?: string }>) ??
+            [];
+          const BLOCKED_STATUSES = ["unpaid", "partially_paid", "partially_waived"];
+          const unpaidBill = billsList.find((b) =>
+            BLOCKED_STATUSES.includes((b.payment_status ?? "").toLowerCase().replace(" ", "_"))
+          );
+          if (unpaidBill) {
+            setBillBlocked(true);
+            setBillBlockedNumber(unpaidBill.bill_number ?? null);
+          } else {
+            setBillBlocked(false);
+            setBillBlockedNumber(null);
+          }
+        } catch {
+          // If billing check fails, don't block — let the backend enforce it
+          setBillBlocked(false);
+        }
       }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to load admission details");
@@ -169,6 +199,10 @@ export default function DischargePage({ params }: { params: Promise<{ id: string
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (billBlocked) {
+      setError("Cannot discharge: this patient has an outstanding bill that must be settled first.");
+      return;
+    }
     if (!summaryText.trim()) {
       setError("A discharge summary is required.");
       return;
@@ -356,6 +390,30 @@ export default function DischargePage({ params }: { params: Promise<{ id: string
             </Card>
           )}
 
+          {/* Bill guard banner — shown prominently above the form */}
+          {billBlocked && !success && (
+            <div className="flex items-start gap-3 bg-red-50 border border-red-300 text-red-800 px-5 py-4 rounded-xl shadow-sm print:hidden">
+              <Receipt className="size-5 shrink-0 mt-0.5 text-red-500" />
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold text-sm">
+                  Discharge blocked — outstanding bill
+                  {billBlockedNumber ? (
+                    <span className="font-mono ml-1">({billBlockedNumber})</span>
+                  ) : null}
+                </p>
+                <p className="text-xs mt-0.5 text-red-700">
+                  This patient has an unpaid or partially-paid bill. The bill must be settled before discharge can be completed.{" "}
+                  <a
+                    href="/billing"
+                    className="underline underline-offset-2 font-semibold hover:text-red-900"
+                  >
+                    Go to Billing
+                  </a>
+                </p>
+              </div>
+            </div>
+          )}
+
           {allChecked && (
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
               {!success && (
@@ -512,7 +570,13 @@ export default function DischargePage({ params }: { params: Promise<{ id: string
                             <ShieldCheck className="size-3.5 text-emerald-600" />
                             Submitting will discharge the patient and free the bed for cleaning.
                           </p>
-                          <Button type="submit" disabled={submitting} className="h-9 px-5 gap-2 text-xs w-full sm:w-auto">
+                          {billBlocked && (
+                            <p className="text-xs text-red-600 flex items-center gap-1.5 font-medium">
+                              <Receipt className="size-3.5" />
+                              Settle the outstanding bill before discharging.
+                            </p>
+                          )}
+                          <Button type="submit" disabled={submitting || billBlocked} className="h-9 px-5 gap-2 text-xs w-full sm:w-auto">
                             <Send className="size-3.5" />
                             {submitting ? "Dispatching..." : "Complete Discharge"}
                           </Button>

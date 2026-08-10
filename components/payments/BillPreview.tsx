@@ -50,12 +50,22 @@ export function BillPreview({ bill, loading }: BillPreviewProps) {
                 ))}
               </TableBody>
             </Table>
-            <div className="mt-4 pt-4 border-t flex items-center justify-between text-sm">
-              <div className="text-muted-foreground">
-                Total <span className="font-mono text-foreground ml-2">MK {Number(bill.total_amount).toLocaleString()}</span>
+            <div className="mt-4 pt-4 border-t space-y-1.5 text-sm">
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Total</span>
+                <span className="font-mono font-medium">MK {Number(bill.total_amount).toLocaleString()}</span>
               </div>
-              <div className="font-semibold">
-                Balance <span className="font-mono ml-2 text-red-600">MK {Number(bill.balance).toLocaleString()}</span>
+              {Number(bill.paid_amount) > 0 && (
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Paid</span>
+                  <span className="font-mono font-medium text-emerald-600">MK {Number(bill.paid_amount).toLocaleString()}</span>
+                </div>
+              )}
+              <div className="flex items-center justify-between font-semibold border-t border-border pt-1.5">
+                <span>Balance due</span>
+                <span className={`font-mono ml-2 ${Number(bill.balance) === 0 ? "text-emerald-600" : "text-red-600"}`}>
+                  MK {Number(bill.balance).toLocaleString()}
+                </span>
               </div>
             </div>
           </>

@@ -27,6 +27,11 @@ const FOCUSABLE_SELECTOR =
 export default function Modal({ open, onClose, title, subtitle, children, size = "md", footer }: ModalProps) {
   const overlayRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
+  const onCloseRef = useRef(onClose);
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
+
   const previousFocusRef = useRef<HTMLElement | null>(null);
 
   const getFocusableElements = useCallback(() => {
@@ -34,17 +39,18 @@ export default function Modal({ open, onClose, title, subtitle, children, size =
     return Array.from(panelRef.current.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR));
   }, []);
 
+  // Handle focus lock and initial autofocus only when 'open' changes
   useEffect(() => {
     if (!open) return;
 
     previousFocusRef.current = document.activeElement as HTMLElement;
-
     document.body.style.overflow = "hidden";
 
     const timer = setTimeout(() => {
       const focusable = getFocusableElements();
-      if (focusable.length > 0) {
-        focusable[0].focus();
+      const firstNonClose = focusable.find((el) => !el.hasAttribute("data-modal-close"));
+      if (firstNonClose) {
+        firstNonClose.focus();
       } else if (panelRef.current) {
         panelRef.current.focus();
       }
@@ -52,7 +58,7 @@ export default function Modal({ open, onClose, title, subtitle, children, size =
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
-        onClose();
+        onCloseRef.current();
         return;
       }
       if (e.key === "Tab") {
@@ -84,7 +90,7 @@ export default function Modal({ open, onClose, title, subtitle, children, size =
         previousFocusRef.current.focus();
       }
     };
-  }, [open, onClose, getFocusableElements]);
+  }, [open, getFocusableElements]);
 
   if (!open) return null;
 
@@ -112,6 +118,8 @@ export default function Modal({ open, onClose, title, subtitle, children, size =
             {subtitle && <p id={descriptionId} className="text-sm text-gray-500 mt-0.5">{subtitle}</p>}
           </div>
           <button
+            type="button"
+            data-modal-close
             onClick={onClose}
             className="p-1 rounded-md text-gray-500 hover:text-gray-600 hover:bg-gray-100 transition-colors"
             aria-label="Close"

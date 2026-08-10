@@ -208,16 +208,39 @@ export default function PaymentsPage() {
           {billDetail ? (
             <>
               <BillPreview bill={billDetail} loading={billLoading} />
-              <PaymentForm
-                token={token}
-                billId={billDetail.id}
-                billNumber={billDetail.bill_number}
-                balance={billDetail.balance}
-                disabled={isPaid}
-                onPaymentRecorded={handlePaymentRecorded}
-                onPayChanguInitiated={handlePayChanguInitiated}
-                onPayChanguCompleted={handlePayChanguCompleted}
-              />
+              {isPaid ? (
+                <div className="bg-card rounded-lg border p-6 flex flex-col items-center gap-3 text-center">
+                  <div className="h-10 w-10 rounded-full bg-emerald-100 flex items-center justify-center">
+                    <svg className="h-5 w-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="font-semibold text-foreground">This bill is fully paid</p>
+                    <p className="text-sm text-muted-foreground mt-0.5">
+                      Bill <span className="font-mono">{billDetail.bill_number}</span> has no outstanding balance.
+                      If the patient has other services to pay for, select a different bill below.
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => { setBillDetail(null); setSelectedBillId(null); }}
+                    className="text-xs font-semibold text-primary hover:underline flex items-center gap-1"
+                  >
+                    ← Choose another bill
+                  </button>
+                </div>
+              ) : (
+                <PaymentForm
+                  token={token}
+                  billId={billDetail.id}
+                  billNumber={billDetail.bill_number}
+                  balance={billDetail.balance}
+                  disabled={false}
+                  onPaymentRecorded={handlePaymentRecorded}
+                  onPayChanguInitiated={handlePayChanguInitiated}
+                  onPayChanguCompleted={handlePayChanguCompleted}
+                />
+              )}
             </>
           ) : (
             <BillPicker

@@ -6,11 +6,13 @@ import Link from "next/link";
 import {
   Edit, Stethoscope, MessageSquare, ArrowLeft, Check, TriangleAlert,
   Phone, Shield, Users, HeartPulse, CalendarClock, ClipboardList,
-  FileText, Plus, Loader2, GitMerge, Search, Activity,
+  FileText, Plus, Loader2, GitMerge, Search, Activity, CreditCard,
 } from "lucide-react";
 import { useAuth } from "@/store/RoleContext";
 import { usePermissions } from "@/lib/hooks/usePermissions";
 import { api } from "@/lib/api";
+import Modal from "@/components/ui/Modal";
+import HospitalCard from "@/components/patients/HospitalCard";
 import { adminApi } from "@/lib/services/admin";
 import type { AuditLogEntry } from "@/types/admin";
 import type { Patient, Allergy, Encounter, DuplicatePatient } from "@/types/patient";
@@ -123,6 +125,7 @@ const [mergeTarget, setMergeTarget] = useState<DuplicatePatient | null>(null);
 const [clinicalActivity, setClinicalActivity] = useState<AuditLogEntry[]>([]);
 const [clinicalActivityLoading, setClinicalActivityLoading] = useState(false);
 const [tabOverride, setTabOverride] = useState<string | null>(null);
+const [showCardModal, setShowCardModal] = useState(false);
 
   const activeTab = tabOverride ?? (isClinical ? "vitals" : "consents");
 
@@ -351,6 +354,10 @@ const [tabOverride, setTabOverride] = useState<string | null>(null);
                 )}
               </>
             )}
+            <Button variant="outline" onClick={() => setShowCardModal(true)}>
+              <CreditCard className="h-4 w-4" />
+              Hospital Card
+            </Button>
             <Button variant="ghost" onClick={() => router.push("/patients")}>
               <ArrowLeft className="h-4 w-4" />
             </Button>
@@ -843,6 +850,15 @@ const [tabOverride, setTabOverride] = useState<string | null>(null);
           </Card>
         </div>
       </div>
+      <Modal
+        open={showCardModal}
+        onClose={() => setShowCardModal(false)}
+        title="Hospital Identification Card"
+        subtitle="Verification & attendance identity card. Print or preview front/back."
+        size="md"
+      >
+        <HospitalCard patient={patient} onClose={() => setShowCardModal(false)} />
+      </Modal>
     </div>
   );
 }
