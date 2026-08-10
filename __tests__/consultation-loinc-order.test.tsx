@@ -128,4 +128,55 @@ describe("ConsultationPage LOINC order", () => {
       ),
     );
   });
+
+  it("shows the empty-state message only after a LOINC search completes", async () => {
+    render(<ToastProvider><ConsultationPage /></ToastProvider>);
+
+    fireEvent.click(await screen.findByRole("button", { name: /^Orders/ }));
+
+    const input = await screen.findByLabelText(/LOINC Test/i);
+    fireEvent.change(input, { target: { value: "xyz" } });
+
+    expect(screen.queryByText("No LOINC tests found.")).not.toBeInTheDocument();
+
+    expect(await screen.findByText("No LOINC tests found.")).toBeInTheDocument();
+  });
+
+  it("does not repopulate results from a stale LOINC search after the query is cleared", async () => {
+    let resolveStale!: (v: unknown) => void;
+    const base = mocks.get.getMockImplementation();
+    mocks.get.mockImplementation((endpoint: string) => {
+      if (endpoint === "/loinc/search?q=hemo") {
+        return new Promise((resolve) => { resolveStale = resolve; });
+      }
+      return base ? base(endpoint) : Promise.resolve({ data: [] });
+    });
+
+    render(<ToastProvider><ConsultationPage /></ToastProvider>);
+
+    fireEvent.click(await screen.findByRole("button", { name: /^Orders/ }));
+
+    const input = await screen.findByLabelText(/LOINC Test/i);
+    fireEvent.change(input, { target: { value: "hemo" } });
+    await waitFor(() => expect(mocks.get).toHaveBeenCalledWith("/loinc/search?q=hemo", "test-token"));
+
+    fireEvent.change(input, { target: { value: "" } });
+
+    resolveStale({
+      data: [
+        {
+          id: 1,
+          code: "882-1",
+          display_name: "Hemoglobin [Mass/volume] in Blood",
+          component_name: "Hemoglobin",
+          system: "Bld",
+          units: [{ unit_id: 1, unit_name: "g/dL", primary: true }],
+        },
+      ],
+    });
+
+    await new Promise((r) => setTimeout(r, 10));
+
+    expect(screen.queryByText("Hemoglobin [Mass/volume] in Blood")).not.toBeInTheDocument();
+  });
 });

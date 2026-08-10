@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/store/RoleContext";
 import { RoleGuard } from "@/components/auth/RoleGuard";
@@ -254,6 +254,8 @@ export default function ClinicianSOAPConsultation() {
   const [loincQuery, setLoincQuery] = useState("");
   const [loincResults, setLoincResults] = useState<LoincCode[]>([]);
   const [loincLoading, setLoincLoading] = useState(false);
+  const [loincSearched, setLoincSearched] = useState(false);
+  const loincRequestId = useRef(0);
   const [selectedLoinc, setSelectedLoinc] = useState<LoincCode | null>(null);
 
   const [prescriptions, setPrescriptions] = useState<Prescription[]>([]);
@@ -456,20 +458,28 @@ export default function ClinicianSOAPConsultation() {
   }, [drugQuery, token]);
 
   useEffect(() => {
+    if (loincQuery.trim().length < 2 || selectedLoinc) {
+      loincRequestId.current++;
+      setLoincResults([]); // eslint-disable-line react-hooks/set-state-in-effect
+      setLoincSearched(false);
+      setLoincLoading(false);
+      return;
+    }
     const delayDebounceFn = setTimeout(async () => {
-      if (loincQuery.trim().length < 2 || selectedLoinc) {
-        setLoincResults([]);
-        return;
-      }
+      const requestId = ++loincRequestId.current;
+      setLoincLoading(true);
       try {
-        setLoincLoading(true);
         const response = await api.get(`/loinc/search?q=${encodeURIComponent(loincQuery.trim())}`, token);
+        if (requestId !== loincRequestId.current) return;
         const payload = response?.data ?? response;
         setLoincResults(Array.isArray(payload) ? payload : payload?.data ?? []);
+        setLoincSearched(true);
       } catch {
+        if (requestId !== loincRequestId.current) return;
         setLoincResults([]);
+        setLoincSearched(true);
       } finally {
-        setLoincLoading(false);
+        if (requestId === loincRequestId.current) setLoincLoading(false);
       }
     }, 300);
     return () => clearTimeout(delayDebounceFn);
@@ -628,6 +638,7 @@ export default function ClinicianSOAPConsultation() {
       setSelectedLoinc(null);
       setLoincQuery("");
       setLoincResults([]);
+      setLoincSearched(false);
       setOrderForm({ clinical_indication: "", priority: "routine" });
       fetchConsultationData();
     } catch (err) {
@@ -879,6 +890,8 @@ export default function ClinicianSOAPConsultation() {
       o.order_type?.toLowerCase() === "lab" &&
       !["completed", "cancelled"].includes(o.status?.toLowerCase() ?? "")
   ).length;
+
+  const primaryUnit = selectedLoinc?.units?.find((u) => u.primary);
 
   const sidebarNav = (
     <nav className="flex flex-col gap-1">
@@ -1504,7 +1517,7 @@ export default function ClinicianSOAPConsultation() {
                               <li key={loinc.code}>
                                 <button
                                   type="button"
-                                  onClick={() => { setSelectedLoinc(loinc); setLoincQuery(loinc.display_name); setLoincResults([]); }}
+                                  onClick={() => { setSelectedLoinc(loinc); setLoincQuery(loinc.display_name); setLoincResults([]); setLoincSearched(false); }}
                                   className="w-full text-left px-4 py-2.5 hover:bg-muted/50 flex items-baseline justify-between transition-colors"
                                 >
                                   <span className="font-medium text-foreground">{loinc.display_name}</span>
@@ -1517,7 +1530,7 @@ export default function ClinicianSOAPConsultation() {
                             ))}
                           </ul>
                         )}
-                        {loincQuery.trim().length >= 2 && !loincLoading && loincResults.length === 0 && !selectedLoinc && (
+                        {loincQuery.trim().length >= 2 && loincSearched && !loincLoading && loincResults.length === 0 && !selectedLoinc && (
                           <p className="text-xs text-muted-foreground mt-1">No LOINC tests found.</p>
                         )}
                       </div>
@@ -1527,11 +1540,11 @@ export default function ClinicianSOAPConsultation() {
                             <span className="text-xs font-bold uppercase tracking-wider text-emerald-800">Selected: </span>
                             <span className="text-sm font-semibold text-emerald-950">{selectedLoinc.display_name}</span>
                             <span className="ml-2 text-xs text-emerald-700">{selectedLoinc.code}</span>
-                            {selectedLoinc.units?.find((u) => u.primary) && (
-                              <span className="ml-2 text-xs text-emerald-700">{selectedLoinc.units.find((u) => u.primary)?.unit_name}</span>
+                            {primaryUnit && (
+                              <span className="ml-2 text-xs text-emerald-700">{primaryUnit.unit_name}</span>
                             )}
                           </div>
-                          <button type="button" onClick={() => { setSelectedLoinc(null); setLoincQuery(""); setLoincResults([]); }} className="text-xs text-muted-foreground hover:text-foreground font-bold uppercase">Clear</button>
+                          <button type="button" onClick={() => { setSelectedLoinc(null); setLoincQuery(""); setLoincResults([]); setLoincSearched(false); }} className="text-xs text-muted-foreground hover:text-foreground font-bold uppercase">Clear</button>
                         </div>
                       )}
                       <div>
