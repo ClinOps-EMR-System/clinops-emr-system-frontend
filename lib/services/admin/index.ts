@@ -310,7 +310,7 @@ export const adminApi = {
     api.delete(`/services/${id}`, token),
 
   searchLoinc: async (token: string | null, q: string) =>
-    (await api.get(`/loinc/search?q=${encodeURIComponent(q)}`, token)) as LoincCode[],
+    unwrap<LoincCode[]>(await api.get(`/loinc/search?q=${encodeURIComponent(q)}`, token)),
 
   getSettings: async (token: string | null) =>
     unwrap<HospitalSettings>(await api.get("/settings", token)),

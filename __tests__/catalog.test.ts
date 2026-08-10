@@ -35,6 +35,7 @@ describe("resolveAutoBilled", () => {
 describe("loincToServiceFields", () => {
   it("maps a LOINC result to LAB-<code>, display_name, and Lab category", () => {
     const loinc: LoincCode = {
+      id: 1,
       code: "718-7",
       display_name: "Hemoglobin",
       component_name: "Hgb",

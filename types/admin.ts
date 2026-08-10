@@ -81,11 +81,23 @@ export interface BillableService {
   unit_price: string | number;
 }
 
+export interface LoincCodeUnit {
+  unit_id: number;
+  unit_name: string;
+  primary: boolean;
+}
+
 export interface LoincCode {
+  id: number;
   code: string;
   display_name: string;
   component_name?: string | null;
+  long_common_name?: string | null;
+  short_name?: string | null;
   system?: string | null;
+  order_obs?: string | null;
+  status?: string | null;
+  units?: LoincCodeUnit[];
 }
 
 export interface AuditLogEntry {
