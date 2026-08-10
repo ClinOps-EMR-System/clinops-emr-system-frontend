@@ -11,6 +11,7 @@ import { useToast } from "@/components/ui/Toast";
 import { api } from "@/lib/api";
 import type { Patient, Allergy } from "@/types/patient";
 import type { LabResult } from "@/types/lab";
+import type { LoincCode } from "@/types/admin";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import StatusBadge from "@/components/ui/StatusBadge";
@@ -249,7 +250,11 @@ export default function ClinicianSOAPConsultation() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [resultsRefreshKey, setResultsRefreshKey] = useState(0);
   const [imagingRefreshKey, setImagingRefreshKey] = useState(0);
-  const [orderForm, setOrderForm] = useState({ test_name: "", clinical_indication: "", priority: "routine" });
+  const [orderForm, setOrderForm] = useState({ clinical_indication: "", priority: "routine" });
+  const [loincQuery, setLoincQuery] = useState("");
+  const [loincResults, setLoincResults] = useState<LoincCode[]>([]);
+  const [loincLoading, setLoincLoading] = useState(false);
+  const [selectedLoinc, setSelectedLoinc] = useState<LoincCode | null>(null);
 
   const [prescriptions, setPrescriptions] = useState<Prescription[]>([]);
   const [drugQuery, setDrugQuery] = useState("");
@@ -451,6 +456,26 @@ export default function ClinicianSOAPConsultation() {
   }, [drugQuery, token]);
 
   useEffect(() => {
+    const delayDebounceFn = setTimeout(async () => {
+      if (loincQuery.trim().length < 2 || selectedLoinc) {
+        setLoincResults([]);
+        return;
+      }
+      try {
+        setLoincLoading(true);
+        const response = await api.get(`/loinc/search?q=${encodeURIComponent(loincQuery.trim())}`, token);
+        const payload = response?.data ?? response;
+        setLoincResults(Array.isArray(payload) ? payload : payload?.data ?? []);
+      } catch {
+        setLoincResults([]);
+      } finally {
+        setLoincLoading(false);
+      }
+    }, 300);
+    return () => clearTimeout(delayDebounceFn);
+  }, [loincQuery, selectedLoinc, token]);
+
+  useEffect(() => {
     if (!selectedDrug || !token || !patientId) return;
     let cancelled = false;
     api.get(`/patients/${patientId}/allergy-check?drug_id=${selectedDrug.id}`, token)
@@ -587,19 +612,23 @@ export default function ClinicianSOAPConsultation() {
 
   const handleCreateOrder = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!summary?.encounter?.id) return;
+    if (!summary?.encounter?.id || !selectedLoinc) return;
     setSubmitLoading(true);
     setError(null);
     try {
       await api.post(`/encounters/${summary.encounter.id}/orders`, {
         patient_id: parseInt(patientId),
         order_type: "lab",
-        test_name: orderForm.test_name || null,
+        test_name: selectedLoinc.display_name,
+        loinc_code: selectedLoinc.code,
         clinical_indication: orderForm.clinical_indication || null,
         priority: orderForm.priority,
       }, token);
       success("Order placed.");
-      setOrderForm({ test_name: "", clinical_indication: "", priority: "routine" });
+      setSelectedLoinc(null);
+      setLoincQuery("");
+      setLoincResults([]);
+      setOrderForm({ clinical_indication: "", priority: "routine" });
       fetchConsultationData();
     } catch (err) {
       setError(friendlyError(err, "place order"));
@@ -1456,20 +1485,55 @@ export default function ClinicianSOAPConsultation() {
 
                     <form onSubmit={handleCreateOrder} className="space-y-4">
                       <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Place New Order</h4>
-                      <div>
-                        <label htmlFor="field-order-test-name" className="block text-xs font-semibold text-foreground uppercase tracking-wide mb-1.5">
-                          Test Name <span className="text-destructive">*</span>
+                      <div className="relative">
+                        <label htmlFor="field-order-loinc" className="block text-xs font-semibold text-foreground uppercase tracking-wide mb-1.5">
+                          LOINC Test <span className="text-destructive">*</span>
                         </label>
                         <input
-                          id="field-order-test-name"
+                          id="field-order-loinc"
                           type="text"
                           required
                           className="block w-full rounded-lg border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                          placeholder="e.g. CBC, Basic Metabolic Panel"
-                          value={orderForm.test_name}
-                          onChange={(e) => setOrderForm({ ...orderForm, test_name: e.target.value })}
+                          placeholder="Search LOINC test..."
+                          value={loincQuery}
+                          onChange={(e) => { setLoincQuery(e.target.value); setSelectedLoinc(null); }}
                         />
+                        {loincResults.length > 0 && !selectedLoinc && (
+                          <ul className="absolute left-0 right-0 mt-1 bg-card border rounded-lg shadow-lg max-h-48 overflow-y-auto z-30 divide-y text-sm">
+                            {loincResults.map((loinc) => (
+                              <li key={loinc.code}>
+                                <button
+                                  type="button"
+                                  onClick={() => { setSelectedLoinc(loinc); setLoincQuery(loinc.display_name); setLoincResults([]); }}
+                                  className="w-full text-left px-4 py-2.5 hover:bg-muted/50 flex items-baseline justify-between transition-colors"
+                                >
+                                  <span className="font-medium text-foreground">{loinc.display_name}</span>
+                                  <span className="text-xs text-muted-foreground flex items-center gap-2">
+                                    <span>{loinc.code}</span>
+                                    {loinc.units?.find((u) => u.primary)?.unit_name ?? loinc.units?.[0]?.unit_name ?? ""}
+                                  </span>
+                                </button>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                        {loincQuery.trim().length >= 2 && !loincLoading && loincResults.length === 0 && !selectedLoinc && (
+                          <p className="text-xs text-muted-foreground mt-1">No LOINC tests found.</p>
+                        )}
                       </div>
+                      {selectedLoinc && (
+                        <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 flex items-center justify-between">
+                          <div>
+                            <span className="text-xs font-bold uppercase tracking-wider text-emerald-800">Selected: </span>
+                            <span className="text-sm font-semibold text-emerald-950">{selectedLoinc.display_name}</span>
+                            <span className="ml-2 text-xs text-emerald-700">{selectedLoinc.code}</span>
+                            {selectedLoinc.units?.find((u) => u.primary) && (
+                              <span className="ml-2 text-xs text-emerald-700">{selectedLoinc.units.find((u) => u.primary)?.unit_name}</span>
+                            )}
+                          </div>
+                          <button type="button" onClick={() => { setSelectedLoinc(null); setLoincQuery(""); setLoincResults([]); }} className="text-xs text-muted-foreground hover:text-foreground font-bold uppercase">Clear</button>
+                        </div>
+                      )}
                       <div>
                         <label htmlFor="field-order-indication" className="block text-xs font-semibold text-foreground uppercase tracking-wide mb-1.5">
                           Clinical Indication
@@ -1498,7 +1562,7 @@ export default function ClinicianSOAPConsultation() {
                       </div>
                       <div className="flex justify-end">
                         {(can("lab.order") || can("imaging.order")) && (
-                        <Button type="submit" disabled={submitLoading || !orderForm.test_name.trim()}>
+                        <Button type="submit" disabled={submitLoading || !selectedLoinc}>
                           {submitLoading && <Loader2 className="h-4 w-4 animate-spin" />}
                           Place Order
                         </Button>
