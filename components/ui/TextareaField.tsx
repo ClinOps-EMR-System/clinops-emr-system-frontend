@@ -43,7 +43,7 @@ export default function TextareaField({ label, error, hint, required, id, classN
         </p>
       )}
       {!hasError && hint && (
-        <p id={`${fieldId}-hint`} className="text-[11px] text-gray-400">
+        <p id={`${fieldId}-hint`} className="text-[11px] text-gray-500">
           {hint}
         </p>
       )}

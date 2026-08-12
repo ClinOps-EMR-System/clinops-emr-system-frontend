@@ -20,8 +20,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { usePageTitle } from "@/lib/hooks/usePageTitle";
 
 export default function StaffPage() {
+  usePageTitle("Staff Management");
   const { token } = useAuth();
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [roles, setRoles] = useState<AdminRole[]>([]);

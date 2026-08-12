@@ -198,7 +198,7 @@ export default function ReceptionistDashboard() {
 
       {/* Patient Search */}
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
         <input
           type="text"
           placeholder="Search today's appointments..."
@@ -207,7 +207,7 @@ export default function ReceptionistDashboard() {
           className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded text-sm focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary"
         />
         {searchQuery && filteredAppointments.length === 0 && appointments.length > 0 && (
-          <p className="text-xs text-gray-400 mt-1">No appointments match your search.</p>
+          <p className="text-xs text-gray-500 mt-1">No appointments match your search.</p>
         )}
       </div>
 

@@ -58,7 +58,7 @@ export default function KeyboardShortcutsOverlay() {
           <h2 className="text-lg font-bold text-gray-900">Keyboard Shortcuts</h2>
           <button
             onClick={() => setOpen(false)}
-            className="text-gray-400 hover:text-gray-600 cursor-pointer"
+            className="text-gray-500 hover:text-gray-600 cursor-pointer"
             aria-label="Close shortcuts"
           >
             <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -76,7 +76,7 @@ export default function KeyboardShortcutsOverlay() {
             </div>
           ))}
         </div>
-        <div className="px-6 py-3 bg-[#fcf9f8] border-t border-gray-100 text-xs text-gray-400 text-center">
+        <div className="px-6 py-3 bg-[#fcf9f8] border-t border-gray-100 text-xs text-gray-500 text-center">
           Press <kbd className="px-1.5 py-0.5 bg-gray-200 rounded font-mono">?</kbd> to toggle this overlay
         </div>
       </div>

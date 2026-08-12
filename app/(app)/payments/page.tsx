@@ -6,8 +6,8 @@ import { useAuth } from "@/store/RoleContext";
 import { BillPreviewSkeleton } from "@/components/payments/BillPreviewSkeleton";
 import { PaymentFormSkeleton } from "@/components/payments/PaymentFormSkeleton";
 import { ReceiptPreviewSkeleton } from "@/components/payments/ReceiptPreviewSkeleton";
-import { BackendNote } from "@/components/payments/BackendNote";
 import { Banknote } from "lucide-react";
+import { usePageTitle } from "@/lib/hooks/usePageTitle";
 
 interface Patient {
   id: number;
@@ -17,6 +17,7 @@ interface Patient {
 }
 
 export default function PaymentsPage() {
+  usePageTitle("Payments");
   const { token } = useAuth();
   const [patientQuery, setPatientQuery] = useState("");
   const [patientResults, setPatientResults] = useState<Patient[]>([]);
@@ -69,7 +70,7 @@ export default function PaymentsPage() {
                   className="w-full text-left px-4 py-3 text-sm hover:bg-[#fcf9f8] flex items-center justify-between border-b border-gray-50 last:border-b-0"
                 >
                   <span className="font-semibold text-gray-900">{p.first_name} {p.last_name}</span>
-                  <span className="text-xs text-gray-400 font-mono">{p.hospital_number}</span>
+                  <span className="text-xs text-gray-500 font-mono">{p.hospital_number}</span>
                 </button>
               ))}
             </div>
@@ -115,17 +116,6 @@ export default function PaymentsPage() {
           <p className="text-sm text-gray-500 mt-2">Find a patient to view their bill and collect payment</p>
         </div>
       )}
-
-      {/* Backend Note */}
-      <BackendNote
-        title="Billing Backend Required"
-        items={[
-          "Create apiResource('bills') with store, show, update endpoints",
-          "Add POST /bills/{id}/payments for payment recording",
-          "Add GET /bills/{id}/receipt for receipt generation",
-          "Bill, BillItem, Payment, and Service models already exist — just need controllers and routes",
-        ]}
-      />
     </div>
   );
 }

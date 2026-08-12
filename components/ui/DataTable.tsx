@@ -92,7 +92,7 @@ export default function DataTable<T>({
   if (error) {
     return (
       <div className="bg-white rounded border border-[#becab7]/50 overflow-hidden shadow-sm">
-        <div className="p-12 text-center text-sm text-red-600 font-semibold">{error}</div>
+        <div role="alert" className="p-12 text-center text-sm text-red-600 font-semibold">{error}</div>
       </div>
     );
   }
@@ -114,6 +114,11 @@ export default function DataTable<T>({
               {columns.map((col) => (
                 <th
                   key={col.key}
+                  aria-sort={
+                    col.sortable && sortKey === col.key
+                      ? sortDir === "asc" ? "ascending" : "descending"
+                      : undefined
+                  }
                   className={clsx(
                     "px-6 py-3.5 text-left text-xs font-bold text-[#5f5e5e] uppercase tracking-wider",
                     col.sortable && "cursor-pointer select-none hover:text-gray-900 transition-colors",
@@ -121,12 +126,22 @@ export default function DataTable<T>({
                     col.className
                   )}
                   onClick={col.sortable ? () => handleSort(col.key) : undefined}
+                  onKeyDown={col.sortable
+                    ? (e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          handleSort(col.key);
+                        }
+                      }
+                    : undefined}
+                  role={col.sortable ? "button" : undefined}
+                  tabIndex={col.sortable ? 0 : undefined}
                   scope="col"
                 >
                   <div className="flex items-center gap-1.5">
                     {col.header}
                     {col.sortable && (
-                      <span className="text-gray-400">
+                      <span className="text-gray-500">
                         {sortKey === col.key ? (
                           sortDir === "asc" ? (
                             <ChevronUp className="h-3.5 w-3.5" />
@@ -148,9 +163,18 @@ export default function DataTable<T>({
               <tr
                 key={keyExtractor(row)}
                 onClick={onRowClick ? () => onRowClick(row) : undefined}
+                onKeyDown={onRowClick
+                  ? (e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        onRowClick(row);
+                      }
+                    }
+                  : undefined}
+                tabIndex={onRowClick ? 0 : undefined}
                 className={clsx(
-                  "hover:bg-[#fcf9f8]/40 hover:border-l-4 hover:border-brand-green/80 transition-all divide-x divide-gray-100",
-                  onRowClick && "cursor-pointer"
+                  "hover:bg-muted/50 transition-colors divide-x divide-gray-100",
+                  onRowClick && "cursor-pointer focus:outline-none focus-visible:bg-muted/50"
                 )}
               >
                 {columns.map((col) => (

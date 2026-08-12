@@ -37,7 +37,7 @@ export function QueueSection({ title, entries, color }: QueueSectionProps) {
         <h3 className="text-sm font-bold text-[#5f5e5e] uppercase tracking-wider">
           {title}
         </h3>
-        <span className="text-xs font-mono text-gray-400">({entries.length})</span>
+        <span className="text-xs font-mono text-gray-500">({entries.length})</span>
       </div>
       <div className="divide-y divide-gray-50">
         {entries.map((entry) => (

@@ -28,7 +28,7 @@ function formatWait(minutes: number): string {
 
 function getWaitColor(minutes: number): string {
   if (minutes > 30) return "text-red-600 bg-red-50";
-  if (minutes > 10) return "text-amber-600 bg-amber-50";
+  if (minutes > 10) return "text-amber-700 bg-amber-50";
   return "text-emerald-600 bg-emerald-50";
 }
 
@@ -52,7 +52,7 @@ export function QueuePatientCard({ entry }: { entry: QueueEntry }) {
           <Link href={`/patients/${entry.patient.id}`} className="text-sm font-semibold text-gray-900 hover:text-clinical-primary hover:underline">
             {entry.patient.first_name} {entry.patient.last_name}
           </Link>
-          <p className="text-xs text-gray-400 font-mono">{entry.patient.hospital_number}</p>
+          <p className="text-xs text-gray-500 font-mono">{entry.patient.hospital_number}</p>
         </div>
       </div>
       <div className="flex items-center gap-3">

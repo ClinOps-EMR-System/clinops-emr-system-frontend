@@ -24,6 +24,7 @@ import {
   HeartPulse, Syringe, Baby, AlertTriangle, Activity, Undo2,
   ChevronRight, ChevronDown,
 } from "lucide-react";
+import { usePageTitle } from "@/lib/hooks/usePageTitle";
 
 const digitsOnly = (v: string) => v.replace(/\D/g, "");
 const decimalOnly = (v: string) => {
@@ -107,6 +108,7 @@ function LoadingPlaceholder() {
 }
 
 export default function NurseTriageWorkbench() {
+  usePageTitle("Triage Workbench");
   const params = useParams();
   const router = useRouter();
   const { token } = useAuth();
@@ -486,8 +488,6 @@ export default function NurseTriageWorkbench() {
   const hasComplaint = !!summary?.encounter?.chief_complaint;
   const hasAllergies = (summary?.allergies && summary.allergies.length > 0) || summary?.allergies_confirmed === true;
 
-  const scrollMargin = "scroll-mt-24";
-
   if (loading) return <LoadingPlaceholder />;
 
   if (error && !patient) {
@@ -543,10 +543,10 @@ export default function NurseTriageWorkbench() {
         isPregnant={summary?.pregnancy_status}
       />
 
-      <Card className="border-l-4 border-l-primary">
+      <Card>
         <CardContent className="p-4 flex items-center justify-between flex-wrap gap-3">
           <div className="flex items-center gap-3">
-            <StatusBadge label="In Triage" variant="purple" pulse />
+            <StatusBadge label="In Triage" variant="purple" />
             {hasComplaint && <Badge variant="outline">Chief Complaint Recorded</Badge>}
             {hasVitals && <Badge variant="outline">Vitals Logged</Badge>}
           </div>
@@ -617,7 +617,7 @@ export default function NurseTriageWorkbench() {
                       <span className="text-sm font-semibold uppercase tracking-widest">{news2.riskLevel} RISK</span>
                       <span className={cn(
                         "text-5xl font-black font-mono tracking-tighter",
-                        news2.score >= 7 ? "text-red-600" : news2.score >= 5 ? "text-amber-600" : "text-emerald-600"
+                        news2.score >= 7 ? "text-red-600" : news2.score >= 5 ? "text-amber-700" : "text-emerald-600"
                       )}>{news2.score}</span>
                     </div>
                   </div>
@@ -1236,7 +1236,7 @@ export default function NurseTriageWorkbench() {
                 {news2.score > 0 && (
                   <p className="font-mono text-xs">
                     NEWS2 Score: <span className={cn("font-bold",
-                      news2.score >= 7 ? "text-red-600" : news2.score >= 5 ? "text-amber-600" : "text-emerald-600"
+                      news2.score >= 7 ? "text-red-600" : news2.score >= 5 ? "text-amber-700" : "text-emerald-600"
                     )}>{news2.score}</span> · {news2.riskLevel} Risk
                   </p>
                 )}

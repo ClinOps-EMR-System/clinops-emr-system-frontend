@@ -11,6 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import StatusBadge from "@/components/ui/StatusBadge";
 import EmptyState from "@/components/ui/EmptyState";
 import Modal from "@/components/ui/Modal";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import {
   Table,
   TableBody,
@@ -19,8 +20,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { usePageTitle } from "@/lib/hooks/usePageTitle";
 
 export default function DepartmentsPage() {
+  usePageTitle("Departments");
   const { token } = useAuth();
   const [items, setItems] = useState<Department[]>([]);
   const [loading, setLoading] = useState(true);
@@ -33,6 +36,7 @@ export default function DepartmentsPage() {
     description: "",
     is_active: true,
   });
+  const [pendingDelete, setPendingDelete] = useState<Department | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -47,7 +51,7 @@ export default function DepartmentsPage() {
   }, [token]);
 
   useEffect(() => {
-    void load();
+    void load(); // eslint-disable-line react-hooks/set-state-in-effect
   }, [load]);
 
   const openCreate = () => {
@@ -82,12 +86,13 @@ export default function DepartmentsPage() {
   };
 
   const remove = async (d: Department) => {
-    if (!confirm(`Delete department ${d.name}?`)) return;
     try {
       await adminApi.deleteDepartment(token, d.id);
+      setPendingDelete(null);
       await load();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Delete failed");
+      setPendingDelete(null);
     }
   };
 
@@ -161,7 +166,7 @@ export default function DepartmentsPage() {
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => void remove(d)}
+                        onClick={() => setPendingDelete(d)}
                       >
                         Delete
                       </Button>
@@ -221,6 +226,16 @@ export default function DepartmentsPage() {
           </div>
         </div>
       </Modal>
+
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        onClose={() => setPendingDelete(null)}
+        onConfirm={() => void (pendingDelete && remove(pendingDelete))}
+        title={`Delete department ${pendingDelete?.name ?? ""}?`}
+        message="Staff assigned to this department will no longer be linked to it."
+        confirmLabel="Delete department"
+        variant="danger"
+      />
     </div>
   );
 }

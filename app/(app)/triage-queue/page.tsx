@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Search, X, Stethoscope, Users, AlertTriangle, Clock } from "lucide-react";
 
 import { useFetch } from "@/lib/useFetch";
+import { useRealtime } from "@/lib/hooks/useRealtime";
 import { cn } from "@/lib/utils";
 
 import { SectionHeader } from "@/components/ui/PageLayout";
@@ -23,6 +24,7 @@ import { Input } from "@/components/ui/input";
 import SelectField from "@/components/ui/SelectField";
 import StatusBadge from "@/components/ui/StatusBadge";
 import EmptyState from "@/components/ui/EmptyState";
+import { usePageTitle } from "@/lib/hooks/usePageTitle";
 
 interface EmergencyPatient {
   patient_id: number;
@@ -80,7 +82,7 @@ const priorityOptions = [
 
 function getWaitColor(minutes: number): string {
   if (minutes >= 30) return "text-red-600 font-bold";
-  if (minutes >= 15) return "text-amber-600 font-semibold";
+  if (minutes >= 15) return "text-amber-700 font-semibold";
   return "text-muted-foreground";
 }
 
@@ -118,6 +120,7 @@ function matchesPriorityFilter(priority: number, filter: PriorityFilter): boolea
 const unwrap = (val: any): any[] => (Array.isArray(val) ? val : val?.data) ?? [];
 
 export default function TriageQueuePage() {
+  usePageTitle("Triage Queue");
   const [search, setSearch] = useState("");
   const [sourceFilter, setSourceFilter] = useState<SourceFilter>("all");
   const [priorityFilter, setPriorityFilter] = useState<PriorityFilter>("all");
@@ -125,12 +128,19 @@ export default function TriageQueuePage() {
 
   const today = useMemo(() => new Date().toLocaleDateString("en-CA"), []);
 
-  const { data: emergencyRaw, loading: emergLoading } = useFetch<EmergencyPatient[]>(
+  const { data: emergencyRaw, loading: emergLoading, refetch: refetchEmergency } = useFetch<EmergencyPatient[]>(
     "/emergency/waiting", { interval: 20000 }
   );
-  const { data: appointmentsRaw, loading: apptLoading } = useFetch<CheckedInAppointment[]>(
+  const { data: appointmentsRaw, loading: apptLoading, refetch: refetchAppointments } = useFetch<CheckedInAppointment[]>(
     `/appointments?date=${today}&status=Checked-in`, { interval: 20000 }
   );
+
+  useRealtime(["clinops_consultation_queue", "clinops_vital_signs", "clinops_notifications"], {
+    onEvent: () => {
+      refetchEmergency();
+      refetchAppointments();
+    },
+  });
 
   const loading = emergLoading || apptLoading;
 
@@ -325,7 +335,7 @@ export default function TriageQueuePage() {
           ) : filteredEntries.length === 0 ? (
             <div className="py-12">
               <EmptyState
-                icon={entries.length === 0 ? <Users className="h-6 w-6 text-gray-400" /> : <Search className="h-6 w-6 text-gray-400" />}
+                icon={entries.length === 0 ? <Users className="h-6 w-6 text-gray-500" /> : <Search className="h-6 w-6 text-gray-500" />}
                 title={entries.length === 0 ? "No patients waiting for triage" : "No patients match your filters"}
                 description={
                   entries.length === 0

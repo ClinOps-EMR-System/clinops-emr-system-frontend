@@ -12,7 +12,7 @@ colors:
   clinical-muted: "#5f5e5e"
   clinical-error: "#ba1a1a"
   brand-green: "#22c55e"
-  success: "#00a651"
+  success: "#0d7c3f"
   brand-dark: "#18181b"
 typography:
   body:

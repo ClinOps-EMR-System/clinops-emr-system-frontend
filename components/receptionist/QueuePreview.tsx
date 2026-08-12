@@ -36,7 +36,7 @@ function getWaitColor(enteredAt: string): string {
   const diff = Date.now() - new Date(enteredAt).getTime();
   const mins = Math.floor(diff / 60000);
   if (mins > 30) return "text-red-600";
-  if (mins > 10) return "text-amber-600";
+  if (mins > 10) return "text-amber-700";
   return "text-emerald-600";
 }
 
@@ -62,7 +62,7 @@ export function QueuePreview({ queue, emergencyWaiting }: { queue: QueuePatient[
     return (
       <div className="bg-white rounded border border-[#becab7]/50 p-6">
         <h3 className="text-sm font-bold text-[#5f5e5e] uppercase tracking-wider mb-3">Queue</h3>
-        <p className="text-sm text-gray-400">No patients waiting</p>
+        <p className="text-sm text-gray-500">No patients waiting</p>
       </div>
     );
   }
@@ -95,7 +95,7 @@ export function QueuePreview({ queue, emergencyWaiting }: { queue: QueuePatient[
                     <Link href={`/patients/${patient.patient_id}`} className="text-sm font-semibold text-gray-900 hover:text-clinical-primary hover:underline">
                       {patient.full_name}
                     </Link>
-                    <p className="text-xs text-gray-400 font-mono">{patient.hospital_number}</p>
+                    <p className="text-xs text-gray-500 font-mono">{patient.hospital_number}</p>
                   </div>
                 </div>
                 <span className={`text-xs font-mono font-semibold ${patient.wait_minutes > 10 ? "text-red-600" : "text-emerald-600"}`}>
@@ -133,7 +133,7 @@ export function QueuePreview({ queue, emergencyWaiting }: { queue: QueuePatient[
                     <Link href={`/patients/${entry.patient.id}`} className="text-sm font-semibold text-gray-900 hover:text-clinical-primary hover:underline">
                       {entry.patient.first_name} {entry.patient.last_name}
                     </Link>
-                    <p className="text-xs text-gray-400 font-mono">{entry.patient.hospital_number}</p>
+                    <p className="text-xs text-gray-500 font-mono">{entry.patient.hospital_number}</p>
                   </div>
                 </div>
                 <span className={`text-xs font-mono font-semibold ${getWaitColor(entry.entered_queue_at)}`}>

@@ -3,6 +3,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
+import { api } from "@/lib/api";
 
 export interface User {
   id: number;
@@ -116,16 +117,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     let finalUser: User = newUser;
 
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000/api"}/user`, {
-        headers: { Authorization: `Bearer ${newToken}` },
-      });
-      if (res.ok) {
-        const { data } = await res.json();
-        finalUser = data;
-        localStorage.setItem("clinops_user", JSON.stringify(data));
-        setUser(data);
-      } else {
-        throw new Error("me endpoint returned non-ok");
+      const res = await api.get("/user", newToken);
+      if (res && res.data) {
+        finalUser = res.data as User;
+        localStorage.setItem("clinops_user", JSON.stringify(finalUser));
+        setUser(finalUser);
       }
     } catch {
       localStorage.setItem("clinops_user", JSON.stringify(newUser));

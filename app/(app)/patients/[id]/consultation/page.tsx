@@ -2,7 +2,6 @@
 
 import React, { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import Link from "next/link";
 import { useAuth } from "@/store/RoleContext";
 import { api } from "@/lib/api";
 import type { Patient, Allergy } from "@/types/patient";
@@ -13,12 +12,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SectionHeader } from "@/components/ui/PageLayout";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { cn } from "@/lib/utils";
 import {
   ArrowLeft, Loader2, Check, TriangleAlert, HeartPulse, Stethoscope,
   ClipboardList, ClipboardPen, FlaskConical, Pill, LogOut, DoorOpen,
-  Search, Plus, X, History, Clock, Activity,
+  Search, Plus, X, History, Clock,
 } from "lucide-react";
+import { usePageTitle } from "@/lib/hooks/usePageTitle";
 
 interface TimelineEvent {
   timestamp: string;
@@ -139,6 +140,7 @@ function LoadingPlaceholder() {
 }
 
 export default function ClinicianSOAPConsultation() {
+  usePageTitle("Clinical Consultation");
   const params = useParams();
   const router = useRouter();
   const { token } = useAuth();
@@ -175,6 +177,7 @@ export default function ClinicianSOAPConsultation() {
   const [rxForm, setRxForm] = useState({ dosage: "", route: "oral", frequency: "BD", duration: "7 days", quantity: "30", notes: "", is_controlled: false });
 
   const [completingConsultation, setCompletingConsultation] = useState(false);
+  const [confirmDischarge, setConfirmDischarge] = useState(false);
 
   async function fetchConsultationData() {
     try {
@@ -369,6 +372,11 @@ export default function ClinicianSOAPConsultation() {
     }
   };
 
+  const requestDischarge = () => {
+    if (!summary?.encounter?.id || completingConsultation) return;
+    setConfirmDischarge(true);
+  };
+
   const handleCompleteConsultation = async (disposition: "discharge" | "admit") => {
     if (!summary?.encounter?.id || completingConsultation) return;
     setCompletingConsultation(true);
@@ -377,6 +385,7 @@ export default function ClinicianSOAPConsultation() {
     try {
       const targetStatus = disposition === "discharge" ? "discharged" : "admitted";
       await api.post(`/encounters/${summary.encounter.id}/transition`, { status: targetStatus }, token);
+      setConfirmDischarge(false);
       setSuccessMsg(disposition === "discharge" ? "Patient discharged." : "Consultation completed.");
       setTimeout(() => router.push(`/patients/${patientId}`), 1500);
     } catch (err: unknown) {
@@ -513,7 +522,7 @@ export default function ClinicianSOAPConsultation() {
           <div className="flex gap-2">
             {activeEncounterId ? (
               <Button
-                onClick={() => handleCompleteConsultation("discharge")}
+                onClick={requestDischarge}
                 disabled={completingConsultation}
               >
                 {completingConsultation ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogOut className="h-4 w-4" />}
@@ -527,10 +536,10 @@ export default function ClinicianSOAPConsultation() {
         }
       />
 
-      <Card className="border-l-4 border-l-primary">
+      <Card>
         <CardContent className="p-4 flex items-center justify-between flex-wrap gap-3">
           <div className="flex items-center gap-3">
-            <StatusBadge label="In Consultation" variant="purple" pulse />
+            <StatusBadge label="In Consultation" variant="purple" />
             {patient.patient_category && <Badge variant="outline">{patient.patient_category}</Badge>}
           </div>
           <div className="flex items-center gap-4 text-sm text-muted-foreground">
@@ -1080,7 +1089,7 @@ export default function ClinicianSOAPConsultation() {
             </Card>
 
             {activeEncounterId && (
-              <Card className="mt-6 border-l-4 border-l-primary">
+              <Card className="mt-6">
                 <CardHeader className="pb-3">
                   <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                     Patient Case Disposition & Sign-Off
@@ -1094,7 +1103,7 @@ export default function ClinicianSOAPConsultation() {
                     <Button
                       variant="default"
                       className="h-auto py-3 flex flex-col items-center justify-center gap-1.5"
-                      onClick={() => handleCompleteConsultation("discharge")}
+                      onClick={requestDischarge}
                       disabled={completingConsultation}
                     >
                       <LogOut className="h-5 w-5" />
@@ -1141,6 +1150,21 @@ export default function ClinicianSOAPConsultation() {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={confirmDischarge}
+        onClose={() => { if (!completingConsultation) setConfirmDischarge(false); }}
+        onConfirm={() => void handleCompleteConsultation("discharge")}
+        title="Discharge patient?"
+        message={
+          patient
+            ? `${patient.first_name} ${patient.last_name} (${patient.hospital_number}) will be marked as discharged and moved out of the consultation queue. This action cannot be undone.`
+            : "This patient will be marked as discharged and moved out of the consultation queue. This action cannot be undone."
+        }
+        confirmLabel="Confirm Discharge"
+        variant="danger"
+        loading={completingConsultation}
+      />
     </div>
   );
 }

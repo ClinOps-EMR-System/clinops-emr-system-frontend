@@ -9,6 +9,7 @@ import EmptyState from "../../../components/ui/EmptyState";
 import LoadingState from "../../../components/ui/LoadingState";
 import Modal from "../../../components/ui/Modal";
 import { BedDouble, Search, Plus, AlertTriangle, CheckCircle } from "lucide-react";
+import { usePageTitle } from "@/lib/hooks/usePageTitle";
 
 interface Admission {
   id: number;
@@ -39,6 +40,7 @@ interface Ward {
 }
 
 export default function AdmissionsPage() {
+  usePageTitle("Admissions");
   const { token } = useAuth();
   const [admissions, setAdmissions] = useState<Admission[]>([]);
   const [wards, setWards] = useState<Ward[]>([]);
@@ -175,7 +177,7 @@ export default function AdmissionsPage() {
       {tab !== "wards" && (
         <section className="bg-white rounded border border-[#becab7]/50 p-4">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
             <input type="text" placeholder="Search by patient name or hospital #..." aria-label="Search admissions" className="w-full pl-9 pr-4 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
           </div>
         </section>
@@ -231,7 +233,7 @@ export default function AdmissionsPage() {
                       <tr key={adm.id} className="hover:bg-[#fcf9f8]/40 transition-colors">
                         <td className="px-6 py-4">
                           <div className="text-sm font-semibold text-gray-900">{adm.patient ? `${adm.patient.first_name} ${adm.patient.last_name}` : `#${adm.patient_id}`}</div>
-                          <div className="text-xs text-gray-400 font-mono">{adm.patient?.hospital_number}</div>
+                          <div className="text-xs text-gray-500 font-mono">{adm.patient?.hospital_number}</div>
                         </td>
                         <td className="px-6 py-4 text-sm text-gray-600">{adm.ward?.name || "—"} {adm.bed?.bed_number ? `/ Bed ${adm.bed.bed_number}` : ""}</td>
                         <td className="px-6 py-4 text-sm text-gray-600 max-w-xs truncate">{adm.admission_diagnosis || "—"}</td>

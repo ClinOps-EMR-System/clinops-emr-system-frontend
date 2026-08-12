@@ -6,10 +6,12 @@ import { useEffect, useState } from "react";
 import { useAuth } from "../../store/RoleContext";
 import { getApiBaseUrl } from "../../lib/config";
 import { adminApi } from "@/lib/services/admin";
+import { usePageTitle } from "@/lib/hooks/usePageTitle";
 
 const API_BASE = getApiBaseUrl();
 
 export default function LoginPage() {
+  usePageTitle("Sign in");
   const { login } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -79,7 +81,7 @@ export default function LoginPage() {
               name="email"
               type="email"
               autoComplete="email"
-              className="appearance-none block w-full px-3 py-3 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:border-[#00a651] focus:ring-[#00a651] sm:text-sm text-gray-900 font-mono"
+              className="appearance-none block w-full px-3 py-3 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:border-clinical-primary focus:ring-clinical-primary sm:text-sm text-gray-900"
               placeholder="Enter your email address"
               value={email}
               onChange={(event) => setEmail(event.target.value)}
@@ -98,7 +100,7 @@ export default function LoginPage() {
               name="password"
               type={showPassword ? "text" : "password"}
               autoComplete="current-password"
-              className="appearance-none block w-full px-3 py-3 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:border-[#00a651] focus:ring-[#00a651] sm:text-sm text-gray-900 font-mono pr-10"
+              className="appearance-none block w-full px-3 py-3 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:border-clinical-primary focus:ring-clinical-primary sm:text-sm text-gray-900 font-mono pr-10"
               placeholder="Enter Password"
               value={password}
               onChange={(event) => setPassword(event.target.value)}
@@ -107,7 +109,9 @@ export default function LoginPage() {
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 focus:outline-none cursor-pointer"
+              aria-label={showPassword ? "Hide password" : "Show password"}
+              aria-pressed={showPassword}
+              className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-600 hover:text-gray-800 focus:outline-none cursor-pointer"
             >
               {showPassword ? (
                 // Eye Off Icon
@@ -129,22 +133,29 @@ export default function LoginPage() {
           <label className="flex items-center gap-2 text-sm text-gray-500">
             <input
               type="checkbox"
-              className="h-4 w-4 text-[#00a651] border-gray-300 rounded cursor-pointer focus:ring-[#00a651]"
+              className="h-4 w-4 text-clinical-primary border-gray-300 rounded cursor-pointer focus:ring-clinical-primary"
               checked={remember}
               onChange={(event) => setRemember(event.target.checked)}
             />
             Remember this device
           </label>
-          <Link href="/auth/forgot-password" className="text-sm font-medium text-[#0ea5e9] hover:text-[#0288c4]">
+          <Link href="/auth/forgot-password" className="text-sm font-medium text-clinical-primary hover:text-clinical-primary-hover">
             Forgot password?
           </Link>
         </div>
 
         {message ? (
-          <div className="rounded-md border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700">
+          <div
+            role="alert"
+            className={`rounded-md border px-4 py-3 text-sm ${
+              message.startsWith("Signed in successfully")
+                ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+                : "border-red-200 bg-red-50 text-red-800"
+            }`}
+          >
             {message}
             {Object.keys(errors).length > 0 ? (
-              <ul className="mt-2 list-disc space-y-1 pl-5 text-gray-600">
+              <ul className={`mt-2 list-disc space-y-1 pl-5 ${message.startsWith("Signed in successfully") ? "text-emerald-700" : "text-red-700"}`}>
                 {Object.entries(errors).map(([field, messages]) => (
                   <li key={field}>
                     <span className="font-semibold">{field}:</span> {messages.join(" ")}
@@ -158,7 +169,7 @@ export default function LoginPage() {
         <button
           type="submit"
           disabled={submitLoading}
-          className="w-full flex justify-center rounded-md bg-[#00a651] px-4 py-3 text-sm font-bold text-white shadow-sm hover:bg-[#048f47] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#00a651] disabled:cursor-not-allowed disabled:opacity-70"
+          className="w-full flex justify-center rounded-md bg-clinical-primary px-4 py-3 text-sm font-bold text-white shadow-sm hover:bg-clinical-primary-hover focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-clinical-primary disabled:cursor-not-allowed disabled:opacity-70"
         >
           {submitLoading ? "Signing in..." : "Sign in"}
         </button>
@@ -166,7 +177,7 @@ export default function LoginPage() {
 
       {signupEnabled ? (
         <div className="text-center text-sm text-gray-500">
-          <Link href="/auth/signup" className="font-medium text-[#0ea5e9] hover:text-[#0288c4]">
+          <Link href="/auth/signup" className="font-medium text-clinical-primary hover:text-clinical-primary-hover">
             Create account
           </Link>
         </div>

@@ -1,14 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { useAuth } from "../../../store/RoleContext";
 import { api } from "../../../lib/api";
+import { useRealtime } from "@/lib/hooks/useRealtime";
 import StatusBadge from "../../../components/ui/StatusBadge";
 import EmptyState from "../../../components/ui/EmptyState";
 import LoadingState from "../../../components/ui/LoadingState";
 import Modal from "../../../components/ui/Modal";
 import { FlaskConical, Search, Clock, AlertTriangle, Plus } from "lucide-react";
+import { usePageTitle } from "@/lib/hooks/usePageTitle";
 
 interface LabOrder {
   id: number;
@@ -58,6 +60,7 @@ interface LabResult {
 }
 
 export default function LabPage() {
+  usePageTitle("Laboratory");
   const { token } = useAuth();
   const [activeTab, setActiveTab] = useState<"pending" | "results" | "verified">("pending");
   const [orders, setOrders] = useState<LabOrder[]>([]);
@@ -95,6 +98,14 @@ export default function LabPage() {
       setLoading(false);
     }
   }
+
+  const refetch = useCallback(() => {
+    if (token) fetchData();
+  }, [token]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useRealtime(["clinops_lab_requests", "clinops_lab_results"], {
+    onEvent: () => refetch(),
+  });
 
   /* eslint-disable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
   useEffect(() => {
@@ -216,7 +227,7 @@ export default function LabPage() {
       {/* Search */}
       <section className="bg-white rounded border border-[#becab7]/50 p-4">
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
           <input
             type="text"
             placeholder="Search by test name, patient name, or hospital #..."
@@ -256,18 +267,18 @@ export default function LabPage() {
               <tbody className="bg-white divide-y divide-gray-100">
                 {activeTab === "pending" && (
                   pendingOrders.length === 0 ? (
-                    <tr><td colSpan={5}><EmptyState icon={<FlaskConical className="h-6 w-6 text-gray-400" />} title="No pending orders" description="All lab orders have been processed" /></td></tr>
+                    <tr><td colSpan={5}><EmptyState icon={<FlaskConical className="h-6 w-6 text-gray-500" />} title="No pending orders" description="All lab orders have been processed" /></td></tr>
                   ) : pendingOrders.map((order) => (
                     <tr key={order.id} className="hover:bg-[#fcf9f8]/40 transition-colors">
                       <td className="px-6 py-4">
                         <div className="text-sm font-semibold text-gray-900">
                           {order.patient ? `${order.patient.first_name} ${order.patient.last_name}` : `Patient #${order.patient_id}`}
                         </div>
-                        <div className="text-xs text-gray-400 font-mono">{order.patient?.hospital_number}</div>
+                        <div className="text-xs text-gray-500 font-mono">{order.patient?.hospital_number}</div>
                       </td>
                       <td className="px-6 py-4">
                         <div className="text-sm font-semibold text-gray-900">{order.lab_request?.test_name || "—"}</div>
-                        {order.lab_request?.loinc_code && <div className="text-xs text-gray-400 font-mono">LOINC: {order.lab_request.loinc_code}</div>}
+                        {order.lab_request?.loinc_code && <div className="text-xs text-gray-500 font-mono">LOINC: {order.lab_request.loinc_code}</div>}
                       </td>
                       <td className="px-6 py-4">
                         <StatusBadge label={order.priority} variant={order.priority?.toLowerCase() === "stat" ? "error" : order.priority?.toLowerCase() === "urgent" ? "warning" : "info"} />
@@ -330,7 +341,7 @@ export default function LabPage() {
                       <td className="px-6 py-4 text-sm font-semibold text-gray-900">{result.lab_request?.test_name}</td>
                       <td className="px-6 py-4">
                         <span className="font-mono text-sm font-bold">{result.result_value_numeric ?? result.result_value_text ?? "—"}</span>
-                        {result.unit && <span className="text-xs text-gray-400 ml-1">{result.unit}</span>}
+                        {result.unit && <span className="text-xs text-gray-500 ml-1">{result.unit}</span>}
                         {result.is_abnormal && <StatusBadge label="Abnormal" variant="warning" className="ml-2" />}
                         {result.is_critical && <StatusBadge label="Critical" variant="error" pulse className="ml-2" />}
                       </td>

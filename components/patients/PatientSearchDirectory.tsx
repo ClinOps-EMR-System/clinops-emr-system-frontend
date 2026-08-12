@@ -9,8 +9,10 @@ import { Button } from "@/components/ui/button";
 import { SectionHeader } from "@/components/ui/PageLayout";
 import PatientSearchToolbar from "./PatientSearchToolbar";
 import PatientSearchTable from "./PatientSearchTable";
+import { usePageTitle } from "@/lib/hooks/usePageTitle";
 
 export default function PatientSearchDirectory() {
+  usePageTitle("Patient Search");
   const { token } = useAuth();
   const [patients, setPatients] = useState<Patient[]>([]);
   const [search, setSearch] = useState("");

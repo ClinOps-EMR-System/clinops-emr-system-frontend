@@ -29,7 +29,7 @@ export default function SettingsPage() {
   }, [token]);
 
   useEffect(() => {
-    void load();
+    void load(); // eslint-disable-line react-hooks/set-state-in-effect
   }, [load]);
 
   const save = async () => {

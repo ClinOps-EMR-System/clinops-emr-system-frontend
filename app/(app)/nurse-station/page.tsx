@@ -24,6 +24,7 @@ import { Input } from "../../../components/ui/input";
 import SelectField from "../../../components/ui/SelectField";
 import StatusBadge from "../../../components/ui/StatusBadge";
 import EmptyState from "../../../components/ui/EmptyState";
+import { usePageTitle } from "@/lib/hooks/usePageTitle";
 
 interface EmergencyPatient {
   patient_id: number;
@@ -97,7 +98,7 @@ const priorityOptions = [
 
 function getWaitColor(minutes: number): string {
   if (minutes >= 30) return "text-red-600 font-bold";
-  if (minutes >= 15) return "text-amber-600 font-semibold";
+  if (minutes >= 15) return "text-amber-700 font-semibold";
   return "text-muted-foreground";
 }
 
@@ -134,6 +135,7 @@ function matchesPriorityFilter(priority: number, filter: PriorityFilter): boolea
 const unwrap = (val: any): any[] => (Array.isArray(val) ? val : val?.data) ?? [];
 
 export default function NurseStationPage() {
+  usePageTitle("Nurse Station");
   const { user } = useAuth();
   const { data: dashboard } = useFetch<DashboardData>("/dashboard", { interval: 30000 });
   const { data: resuscitationData } = useFetch<ResuscitationPatient[]>("/emergency/resuscitation", { interval: 15000 });
@@ -240,8 +242,12 @@ export default function NurseStationPage() {
 
       {/* Resuscitation Alert Banner */}
       {resuscitationPatients.length > 0 && (
-        <section className="bg-red-600 text-white rounded-lg p-4 animate-pulse">
+        <section className="bg-red-600 text-white rounded-lg p-4">
           <div className="flex items-center gap-3 mb-2">
+            <span className="relative flex h-3 w-3">
+              <span className="absolute inline-flex h-full w-full rounded-full bg-white/40 animate-ping opacity-75" />
+              <span className="relative inline-flex h-3 w-3 rounded-full bg-white" />
+            </span>
             <AlertTriangle className="h-6 w-6" />
             <h2 className="text-lg font-extrabold uppercase tracking-wider">
               Resuscitation Alert — {resuscitationPatients.length} Patient{resuscitationPatients.length !== 1 ? "s" : ""}
@@ -310,7 +316,7 @@ export default function NurseStationPage() {
             <CardContent>
               <div className={cn(
                 "text-3xl font-semibold tabular-nums tracking-tight",
-                (dashboard?.encounters?.awaiting_triage ?? 0) > 0 ? "text-amber-600" : "text-foreground"
+                (dashboard?.encounters?.awaiting_triage ?? 0) > 0 ? "text-amber-700" : "text-foreground"
               )}>
                 {loading ? <Skeleton className="h-8 w-16" /> : dashboard?.encounters?.awaiting_triage ?? "\u2014"}
               </div>
@@ -444,7 +450,7 @@ export default function NurseStationPage() {
           ) : filteredEntries.length === 0 ? (
             <div className="py-12">
               <EmptyState
-                icon={entries.length === 0 ? <Users className="h-6 w-6 text-gray-400" /> : <Search className="h-6 w-6 text-gray-400" />}
+                icon={entries.length === 0 ? <Users className="h-6 w-6 text-gray-500" /> : <Search className="h-6 w-6 text-gray-500" />}
                 title={entries.length === 0 ? "No patients waiting" : "No patients match your filters"}
                 description={
                   entries.length === 0

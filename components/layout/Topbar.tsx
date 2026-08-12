@@ -150,13 +150,13 @@ export default function Topbar() {
   return (
     <header className="h-16 bg-sidebar flex items-center gap-4 px-4 md:px-6 border-b border-sidebar-border z-10 font-sans">
 
-      <SidebarTrigger className="lg:hidden text-sidebar-foreground/70 hover:text-sidebar-foreground p-1.5 rounded-md hover:bg-sidebar-accent transition-colors cursor-pointer" />
+      <SidebarTrigger className="lg:hidden text-sidebar-foreground hover:text-sidebar-foreground p-1.5 rounded-md hover:bg-sidebar-accent transition-colors cursor-pointer" />
 
       {/* Breadcrumbs — last crumb visible on mobile, full trail on sm+ */}
       <nav aria-label="Breadcrumb" className="flex items-center shrink-0">
         <ol className="flex items-center gap-1.5 text-[11px] font-bold font-mono tracking-wide">
           <li className="inline-flex items-center">
-            <Link href="/dashboard" className="text-sidebar-foreground/70 hover:text-sidebar-foreground transition-colors uppercase inline-flex items-center min-h-0 min-w-0 h-auto py-0">
+            <Link href="/dashboard" className="text-sidebar-foreground hover:underline transition-colors uppercase inline-flex items-center min-h-0 min-w-0 h-auto py-0">
               <span className="sm:hidden">⌂</span>
               <span className="hidden sm:inline">Home</span>
             </Link>
@@ -168,7 +168,7 @@ export default function Topbar() {
               return (
                 <li key={idx} className="inline-flex items-center gap-1.5 hidden sm:inline-flex">
                   <span className="text-sidebar-foreground/50 select-none inline-flex items-center" aria-hidden="true">/</span>
-                  <Link href={crumb.href} className="text-sidebar-foreground/70 hover:text-sidebar-foreground transition-colors uppercase inline-flex items-center min-h-0 min-w-0 h-auto py-0">
+                  <Link href={crumb.href} className="text-sidebar-foreground hover:underline transition-colors uppercase inline-flex items-center min-h-0 min-w-0 h-auto py-0">
                     {crumb.label}
                   </Link>
                 </li>
@@ -180,7 +180,7 @@ export default function Topbar() {
                 {isLast ? (
                   <span className="text-sidebar-primary font-bold uppercase inline-flex items-center" aria-current="page">{crumb.label}</span>
                 ) : (
-                  <Link href={crumb.href} className="text-sidebar-foreground/70 hover:text-sidebar-foreground transition-colors uppercase inline-flex items-center min-h-0 min-w-0 h-auto py-0">
+                  <Link href={crumb.href} className="text-sidebar-foreground hover:underline transition-colors uppercase inline-flex items-center min-h-0 min-w-0 h-auto py-0">
                     {crumb.label}
                   </Link>
                 )}
@@ -211,6 +211,10 @@ export default function Topbar() {
                   ref={mobileSearchInputRef}
                   type="text"
                   autoComplete="off"
+                  role="combobox"
+                  aria-expanded={searchOpen && mobileSearchOpen}
+                  aria-controls="global-patient-search-results-mobile"
+                  aria-autocomplete="list"
                   className="w-full pl-9 pr-9 py-2 rounded-md bg-sidebar-accent border border-sidebar-border text-sidebar-foreground placeholder-sidebar-foreground/60 text-sm focus:outline-none focus:border-sidebar-primary focus:ring-1 focus:ring-sidebar-primary transition"
                   placeholder="Search name, hospital #..."
                   value={query}
@@ -233,7 +237,7 @@ export default function Topbar() {
               <button
                 type="button"
                 onClick={() => { setMobileSearchOpen(false); setQuery(""); setResults([]); setSearchOpen(false); }}
-                className="p-2 text-sidebar-foreground/70 hover:text-sidebar-foreground rounded-md hover:bg-sidebar-accent transition-colors shrink-0"
+                className="p-2 text-sidebar-foreground hover:text-sidebar-foreground rounded-md hover:bg-sidebar-accent transition-colors shrink-0"
                 aria-label="Close search"
               >
                 <X className="h-5 w-5" />
@@ -243,7 +247,7 @@ export default function Topbar() {
             <button
               type="button"
               onClick={() => setMobileSearchOpen(true)}
-              className="p-2 text-sidebar-foreground/70 hover:text-sidebar-foreground rounded-md hover:bg-sidebar-accent transition-colors"
+              className="p-2 text-sidebar-foreground hover:text-sidebar-foreground rounded-md hover:bg-sidebar-accent transition-colors"
               aria-label="Open patient search"
             >
               <Search className="h-5 w-5" />
@@ -253,12 +257,12 @@ export default function Topbar() {
           {searchOpen && mobileSearchOpen && (
             <div className="absolute top-full left-0 right-0 mt-1.5 bg-white rounded-md shadow-2xl border border-gray-200 z-50 overflow-hidden mx-4">
               {results.length === 0 && !searchLoading ? (
-                <div className="px-4 py-6 text-center text-sm text-gray-400 font-mono">
+                <div role="status" className="px-4 py-6 text-center text-sm text-gray-500 font-mono">
                   No patients found for &ldquo;{debouncedQuery}&rdquo;
                 </div>
               ) : (
                 <>
-                  <ul className="divide-y divide-gray-100 max-h-72 overflow-y-auto">
+                  <ul id="global-patient-search-results-mobile" role="listbox" aria-label="Search results" className="divide-y divide-gray-100 max-h-72 overflow-y-auto">
                     {results.map((p) => (
                       <li key={p.id}>
                         <button
@@ -273,12 +277,12 @@ export default function Topbar() {
                             <p className="text-sm font-semibold text-gray-900 truncate">
                               {p.first_name} {p.last_name}
                             </p>
-                            <p className="text-xs text-gray-400 font-mono">
+                            <p className="text-xs text-gray-500 font-mono">
                               {p.hospital_number} · {p.gender}
                             </p>
                           </div>
                           {!p.registration_completed_at && (
-                            <span className="text-[10px] font-bold text-amber-600 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded shrink-0">
+                            <span className="text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded shrink-0">
                               DRAFT
                             </span>
                           )}
@@ -316,6 +320,10 @@ export default function Topbar() {
                 id="global-patient-search"
                 type="text"
                 autoComplete="off"
+                role="combobox"
+                aria-expanded={searchOpen}
+                aria-controls="global-patient-search-results"
+                aria-autocomplete="list"
                 className="w-full pl-9 pr-16 py-2 rounded-md bg-sidebar-accent border border-sidebar-border text-sidebar-foreground placeholder-sidebar-foreground/60 text-sm focus:outline-none focus:border-sidebar-primary focus:ring-1 focus:ring-sidebar-primary transition"
               placeholder="Search patients by name, hospital #, ID..."
               value={query}
@@ -344,12 +352,12 @@ export default function Topbar() {
           {searchOpen && (
             <div className="absolute top-full left-0 right-0 mt-1.5 bg-white rounded-md shadow-2xl border border-gray-200 z-50 overflow-hidden">
               {results.length === 0 && !searchLoading ? (
-                <div className="px-4 py-6 text-center text-sm text-gray-400 font-mono">
+                <div role="status" className="px-4 py-6 text-center text-sm text-gray-500 font-mono">
                   No patients found for &ldquo;{debouncedQuery}&rdquo;
                 </div>
               ) : (
                 <>
-                  <ul className="divide-y divide-gray-100 max-h-72 overflow-y-auto">
+                  <ul id="global-patient-search-results" role="listbox" aria-label="Search results" className="divide-y divide-gray-100 max-h-72 overflow-y-auto">
                     {results.map((p) => (
                       <li key={p.id}>
                         <button
@@ -364,12 +372,12 @@ export default function Topbar() {
                             <p className="text-sm font-semibold text-gray-900 truncate">
                               {p.first_name} {p.last_name}
                             </p>
-                            <p className="text-xs text-gray-400 font-mono">
+                            <p className="text-xs text-gray-500 font-mono">
                               {p.hospital_number} · {p.gender} · {p.patient_category}
                             </p>
                           </div>
                           {!p.registration_completed_at && (
-                            <span className="text-[10px] font-bold text-amber-600 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded shrink-0">
+                            <span className="text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded shrink-0">
                               DRAFT
                             </span>
                           )}
@@ -394,7 +402,7 @@ export default function Topbar() {
       {/* Right: Actions */}
       <div className="flex items-center gap-3 shrink-0">
         <button
-          className="text-sidebar-foreground/70 hover:text-sidebar-foreground relative p-2 rounded-full hover:bg-sidebar-accent transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
+          className="text-sidebar-foreground hover:text-sidebar-foreground relative p-2 rounded-full hover:bg-sidebar-accent transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
           aria-label="Notifications"
         >
           <Bell className="h-5 w-5" />
@@ -415,7 +423,7 @@ export default function Topbar() {
             <span className="hidden md:inline-block text-sm text-sidebar-foreground/80 font-medium max-w-[120px] truncate">
               {name}
             </span>
-            <ChevronDown className="h-4 w-4 text-sidebar-foreground/60 hidden md:block" />
+            <ChevronDown className="h-4 w-4 text-sidebar-foreground/80 hidden md:block" />
           </button>
 
           {dropdownOpen && (
@@ -423,11 +431,11 @@ export default function Topbar() {
               <div className="fixed inset-0 z-10" onClick={() => setDropdownOpen(false)} />
               <div className="absolute right-0 mt-2 w-52 rounded-md bg-white shadow-lg py-1 ring-1 ring-black ring-opacity-5 z-20" role="menu">
                 <div className="px-4 py-2 border-b border-gray-100">
-                  <p className="text-xs text-gray-400 uppercase font-bold tracking-wide">Staff Name</p>
+                  <p className="text-xs text-gray-500 uppercase font-bold tracking-wide">Staff Name</p>
                   <p className="text-xs text-gray-900 font-bold truncate">{name}</p>
                 </div>
                 <div className="px-4 py-2 border-b border-gray-100">
-                  <p className="text-xs text-gray-400 uppercase font-bold tracking-wide">Email</p>
+                  <p className="text-xs text-gray-500 uppercase font-bold tracking-wide">Email</p>
                   <p className="text-xs text-gray-900 font-medium truncate">{email}</p>
                 </div>
                 <button

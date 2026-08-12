@@ -6,6 +6,7 @@ import { useAuth } from "../../../../../store/RoleContext";
 import { api } from "../../../../../lib/api";
 import PatientBanner from "../../../../../components/ui/PatientBanner";
 import LoadingState from "../../../../../components/ui/LoadingState";
+import { usePageTitle } from "@/lib/hooks/usePageTitle";
 
 interface Patient {
   id: number;
@@ -39,6 +40,7 @@ interface Admission {
 }
 
 export default function WardRoundPage() {
+  usePageTitle("Ward Round");
   const params = useParams();
   const router = useRouter();
   const { token } = useAuth();
@@ -336,7 +338,7 @@ export default function WardRoundPage() {
             <div className="flex flex-wrap gap-3 pt-2">
               <button
                 disabled
-                className="px-5 py-2.5 bg-gray-100 text-gray-400 text-sm font-bold rounded cursor-not-allowed"
+                className="px-5 py-2.5 bg-gray-100 text-gray-500 text-sm font-bold rounded cursor-not-allowed"
               >
                 Continue Inpatient Care
               </button>

@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import EmptyState from "@/components/ui/EmptyState";
 import Modal from "@/components/ui/Modal";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import {
   Table,
   TableBody,
@@ -19,8 +20,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { usePageTitle } from "@/lib/hooks/usePageTitle";
 
 export default function RolesPage() {
+  usePageTitle("Roles");
   const { token } = useAuth();
   const [roles, setRoles] = useState<AdminRole[]>([]);
   const [loading, setLoading] = useState(true);
@@ -29,6 +32,7 @@ export default function RolesPage() {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState<AdminRole | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -43,7 +47,7 @@ export default function RolesPage() {
   }, [token]);
 
   useEffect(() => {
-    void load();
+    void load(); // eslint-disable-line react-hooks/set-state-in-effect
   }, [load]);
 
   const create = async () => {
@@ -63,12 +67,13 @@ export default function RolesPage() {
 
   const remove = async (role: AdminRole) => {
     if (role.name === "Admin") return;
-    if (!confirm(`Delete role ${role.name}?`)) return;
     try {
       await adminApi.deleteRole(token, role.id);
+      setPendingDelete(null);
       await load();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Delete failed");
+      setPendingDelete(null);
     }
   };
 
@@ -144,7 +149,7 @@ export default function RolesPage() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => void remove(role)}
+                          onClick={() => setPendingDelete(role)}
                         >
                           Delete
                         </Button>
@@ -185,6 +190,16 @@ export default function RolesPage() {
           </div>
         </div>
       </Modal>
+
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        onClose={() => setPendingDelete(null)}
+        onConfirm={() => void (pendingDelete && remove(pendingDelete))}
+        title={`Delete role ${pendingDelete?.name ?? ""}?`}
+        message="The role and its permission assignments will be permanently removed."
+        confirmLabel="Delete role"
+        variant="danger"
+      />
     </div>
   );
 }

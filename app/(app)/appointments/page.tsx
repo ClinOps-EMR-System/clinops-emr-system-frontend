@@ -8,6 +8,7 @@ import LoadingState from "@/components/ui/LoadingState";
 import EmptyState from "@/components/ui/EmptyState";
 import StatusBadge from "@/components/ui/StatusBadge";
 import { CalendarDays, Plus } from "lucide-react";
+import { usePageTitle } from "@/lib/hooks/usePageTitle";
 
 interface Appointment {
   id: number;
@@ -37,6 +38,7 @@ function getStatusVariant(status: string): "success" | "warning" | "error" | "in
 }
 
 export default function AppointmentsPage() {
+  usePageTitle("Appointments");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [showNewAppointment, setShowNewAppointment] = useState(false);
 
@@ -131,7 +133,7 @@ export default function AppointmentsPage() {
           <LoadingState message="Loading appointments..." />
         ) : filtered.length === 0 ? (
           <EmptyState
-            icon={<CalendarDays className="h-6 w-6 text-gray-400" />}
+            icon={<CalendarDays className="h-6 w-6 text-gray-500" />}
             title="No appointments"
             description={statusFilter === "all" ? "No appointments scheduled for today" : `No ${statusFilter} appointments`}
           />
@@ -158,11 +160,11 @@ export default function AppointmentsPage() {
                       <div className="text-sm font-semibold text-gray-900">
                         {appt.patient.first_name} {appt.patient.last_name}
                       </div>
-                      <div className="text-xs text-gray-400 font-mono">{appt.patient.hospital_number}</div>
+                      <div className="text-xs text-gray-500 font-mono">{appt.patient.hospital_number}</div>
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-600 hidden md:table-cell">{appt.appointment_type}</td>
                     <td className="px-6 py-4 text-sm text-gray-600 hidden lg:table-cell">
-                      {appt.provider?.name || <span className="text-gray-400 italic">Unassigned</span>}
+                      {appt.provider?.name || <span className="text-gray-500 italic">Unassigned</span>}
                     </td>
                     <td className="px-6 py-4">
                       <StatusBadge label={appt.status} variant={getStatusVariant(appt.status)} />

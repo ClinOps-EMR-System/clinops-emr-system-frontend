@@ -9,6 +9,7 @@ import EmptyState from "../../../components/ui/EmptyState";
 import LoadingState from "../../../components/ui/LoadingState";
 import Modal from "../../../components/ui/Modal";
 import { Stethoscope, Search, Plus, ArrowRight } from "lucide-react";
+import { usePageTitle } from "@/lib/hooks/usePageTitle";
 
 interface Referral {
   id: number;
@@ -33,6 +34,7 @@ interface Referral {
 }
 
 export default function ReferralsPage() {
+  usePageTitle("Referrals");
   const { token } = useAuth();
   const [referrals, setReferrals] = useState<Referral[]>([]);
   const [loading, setLoading] = useState(true);
@@ -129,7 +131,7 @@ export default function ReferralsPage() {
       <section className="bg-white rounded border border-[#becab7]/50 p-4">
         <div className="flex flex-col sm:flex-row gap-3">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
             <input
               type="text"
               placeholder="Search by patient name or hospital #..."
@@ -166,7 +168,7 @@ export default function ReferralsPage() {
           <div className="p-8 text-center text-sm text-red-600">{error}</div>
         ) : filtered.length === 0 ? (
           <EmptyState
-            icon={<Stethoscope className="h-6 w-6 text-gray-400" />}
+            icon={<Stethoscope className="h-6 w-6 text-gray-500" />}
             title="No referrals found"
             description={searchQuery || statusFilter !== "all" ? "Try adjusting your filters" : "No referrals have been created yet"}
             action={
@@ -196,7 +198,7 @@ export default function ReferralsPage() {
                       <div className="text-sm font-semibold text-gray-900">
                         {ref.patient ? `${ref.patient.first_name} ${ref.patient.last_name}` : `Patient #${ref.patient_id}`}
                       </div>
-                      <div className="text-xs text-gray-400 font-mono">{ref.patient?.hospital_number}</div>
+                      <div className="text-xs text-gray-500 font-mono">{ref.patient?.hospital_number}</div>
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-600 capitalize">{ref.referral_type}</td>
                     <td className="px-6 py-4">
@@ -204,7 +206,7 @@ export default function ReferralsPage() {
                         {ref.destination_department && <span>{ref.destination_department}</span>}
                         {ref.destination_facility && (
                           <>
-                            <ArrowRight className="h-3 w-3 text-gray-400" />
+                            <ArrowRight className="h-3 w-3 text-gray-500" />
                             <span>{ref.destination_facility}</span>
                           </>
                         )}
@@ -213,7 +215,7 @@ export default function ReferralsPage() {
                     <td className="px-6 py-4">
                       <span className={`text-xs font-bold uppercase ${
                         ref.urgency === "emergency" ? "text-red-600" :
-                        ref.urgency === "urgent" ? "text-amber-600" : "text-gray-500"
+                        ref.urgency === "urgent" ? "text-amber-700" : "text-gray-500"
                       }`}>{ref.urgency}</span>
                     </td>
                     <td className="px-6 py-4"><ReferralStatusBadge status={ref.status} /></td>

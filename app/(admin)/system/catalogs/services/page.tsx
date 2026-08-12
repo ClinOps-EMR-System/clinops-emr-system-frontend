@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import EmptyState from "@/components/ui/EmptyState";
 import Modal from "@/components/ui/Modal";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import {
   Table,
   TableBody,
@@ -19,8 +20,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { usePageTitle } from "@/lib/hooks/usePageTitle";
 
 export default function ServicesCatalogPage() {
+  usePageTitle("Billable Services");
   const { token } = useAuth();
   const { can } = usePermissions();
   const canManage = can("catalog.manage");
@@ -35,6 +38,7 @@ export default function ServicesCatalogPage() {
     category: "",
     unit_price: "",
   });
+  const [pendingDelete, setPendingDelete] = useState<BillableService | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -49,7 +53,7 @@ export default function ServicesCatalogPage() {
   }, [token]);
 
   useEffect(() => {
-    void load();
+    void load(); // eslint-disable-line react-hooks/set-state-in-effect
   }, [load]);
 
   const openCreate = () => {
@@ -87,12 +91,13 @@ export default function ServicesCatalogPage() {
   };
 
   const remove = async (s: BillableService) => {
-    if (!confirm(`Delete service ${s.name}?`)) return;
     try {
       await adminApi.deleteService(token, s.id);
+      setPendingDelete(null);
       await load();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Delete failed");
+      setPendingDelete(null);
     }
   };
 
@@ -166,7 +171,7 @@ export default function ServicesCatalogPage() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => void remove(s)}
+                          onClick={() => setPendingDelete(s)}
                         >
                           Delete
                         </Button>
@@ -213,6 +218,16 @@ export default function ServicesCatalogPage() {
           </div>
         </div>
       </Modal>
+
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        onClose={() => setPendingDelete(null)}
+        onConfirm={() => void (pendingDelete && remove(pendingDelete))}
+        title={`Delete service ${pendingDelete?.name ?? ""}?`}
+        message="This billable service will be permanently removed from the catalog."
+        confirmLabel="Delete service"
+        variant="danger"
+      />
     </div>
   );
 }

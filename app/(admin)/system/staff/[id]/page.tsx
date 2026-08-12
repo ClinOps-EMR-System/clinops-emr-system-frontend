@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import StatusBadge from "@/components/ui/StatusBadge";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
 
 export default function StaffDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -21,6 +22,7 @@ export default function StaffDetailPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   const [form, setForm] = useState({
     name: "",
     username: "",
@@ -60,7 +62,7 @@ export default function StaffDetailPage() {
   }, [token, id]);
 
   useEffect(() => {
-    void load();
+    void load(); // eslint-disable-line react-hooks/set-state-in-effect
   }, [load]);
 
   const isAdminUser = (user?.roles || []).some((r) => r.name === "Admin");
@@ -92,12 +94,12 @@ export default function StaffDetailPage() {
 
   const remove = async () => {
     if (!user || isAdminUser) return;
-    if (!confirm(`Delete ${user.name}? This cannot be undone.`)) return;
     try {
       await adminApi.deleteUser(token, user.id);
       router.push("/system/staff");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Delete failed");
+      setConfirmDeleteOpen(false);
     }
   };
 
@@ -234,11 +236,21 @@ export default function StaffDetailPage() {
           <Button disabled={saving} onClick={() => void save()}>
             {saving ? "Saving…" : "Save changes"}
           </Button>
-          <Button variant="destructive" onClick={() => void remove()}>
+          <Button variant="destructive" onClick={() => setConfirmDeleteOpen(true)}>
             Delete user
           </Button>
         </div>
       )}
+
+      <ConfirmDialog
+        open={confirmDeleteOpen}
+        onClose={() => setConfirmDeleteOpen(false)}
+        onConfirm={() => void remove()}
+        title={`Delete ${user.name}?`}
+        message="This user account will be permanently removed and cannot be undone."
+        confirmLabel="Delete user"
+        variant="danger"
+      />
     </div>
   );
 }

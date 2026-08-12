@@ -23,6 +23,7 @@ import Tabs, { TabPanel } from "@/components/ui/Tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
+import { usePageTitle } from "@/lib/hooks/usePageTitle";
 
 interface TriageSummary {
   encounter: {
@@ -100,6 +101,7 @@ export default function PatientProfilePage() {
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("vitals");
   const [checkingIn, setCheckingIn] = useState(false);
+  usePageTitle(patient ? `${patient.first_name} ${patient.last_name}` : "Patient Profile");
 
   async function fetchProfileData() {
     try {
@@ -258,11 +260,11 @@ export default function PatientProfilePage() {
         }
       />
 
-      <Card className={cn("border-l-4", statusInfo ? "border-l-primary" : "border-l-muted")}>
+      <Card>
         <CardContent className="p-4 flex items-center justify-between flex-wrap gap-3">
           <div className="flex items-center gap-4 flex-wrap">
             {statusInfo ? (
-              <StatusBadge label={statusInfo.label} variant={statusInfo.variant} pulse />
+              <StatusBadge label={statusInfo.label} variant={statusInfo.variant} pulse={statusInfo.variant === "error"} />
             ) : (
               <StatusBadge label="No Active Visit" variant="neutral" />
             )}
@@ -517,7 +519,7 @@ export default function PatientProfilePage() {
                   </div>
                 ) : (
                   <div className="rounded-lg border border-amber-200 bg-amber-50 p-6 text-center text-sm font-semibold text-amber-800 flex items-center justify-center gap-2">
-                    <TriangleAlert className="h-5 w-5 text-amber-600 animate-pulse" />
+                    <TriangleAlert className="h-5 w-5 text-amber-600" />
                     ALLERGIES UNCONFIRMED
                   </div>
                 )}

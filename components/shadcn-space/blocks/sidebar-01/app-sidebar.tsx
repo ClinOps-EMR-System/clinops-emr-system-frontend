@@ -5,7 +5,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import Logo from "@/assets/logo/logo";
 import { NavItem, NavMain } from "@/components/shadcn-space/blocks/sidebar-01/nav-main";
 import { useAuth } from "@/store/RoleContext";
-import { LayoutDashboard, Calendar, Users, Stethoscope, ClipboardList, Pill, FlaskConical, DollarSign, CreditCard, ArrowRightLeft, DoorOpen, List, Shield, Package, Bell } from "lucide-react";
+import { LayoutDashboard, Calendar, Users, Stethoscope, ClipboardList, Pill, FlaskConical, DollarSign, CreditCard, ArrowRightLeft, DoorOpen, List, Shield } from "lucide-react";
 import { usePermissions } from "@/lib/hooks/usePermissions";
 
 const ROLE_NAV_MAP: Record<string, string[]> = {
@@ -125,7 +125,7 @@ export function AppSidebar() {
 
         <SidebarFooter className="p-4 border-t shrink-0">
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <span className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
+            <span className="h-2 w-2 rounded-full bg-green-500" />
             SYSTEM ONLINE
           </div>
         </SidebarFooter>

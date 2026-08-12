@@ -74,11 +74,11 @@ export function NavMain({ items }: { items: NavItem[] }) {
         );
         if (matchingChild?.title) {
           if (item.title !== activeParent) {
-            // eslint-disable-next-line react-hooks/set-state-in-effect
+             
             setActiveParent(item.title!);
           }
           if (matchingChild.title !== activeChild) {
-            // eslint-disable-next-line react-hooks/set-state-in-effect
+             
             setActiveChild(matchingChild.title);
           }
           return;

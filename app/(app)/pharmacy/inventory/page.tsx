@@ -213,7 +213,7 @@ export default function InventoryPage() {
             <AlertTriangle className={cn("size-4", (alerts?.low_stock?.length ?? 0) > 0 ? "text-amber-500" : "text-muted-foreground/60")} />
           </CardHeader>
           <CardContent>
-            <div className={cn("text-3xl font-semibold tabular-nums tracking-tight", (alerts?.low_stock?.length ?? 0) > 0 ? "text-amber-600" : "text-foreground")}>
+            <div className={cn("text-3xl font-semibold tabular-nums tracking-tight", (alerts?.low_stock?.length ?? 0) > 0 ? "text-amber-700" : "text-foreground")}>
               {loading ? <Skeleton className="h-8 w-16" /> : alerts?.low_stock?.length ?? 0}
             </div>
           </CardContent>
@@ -352,7 +352,7 @@ export default function InventoryPage() {
                         {drug.strength || "—"}
                       </TableCell>
                       <TableCell>
-                        <span className={cn("tabular-nums font-medium", drug.current_stock <= drug.reorder_level && drug.reorder_level > 0 ? "text-amber-600" : "")}>
+                        <span className={cn("tabular-nums font-medium", drug.current_stock <= drug.reorder_level && drug.reorder_level > 0 ? "text-amber-700" : "")}>
                           {drug.current_stock}
                         </span>
                       </TableCell>

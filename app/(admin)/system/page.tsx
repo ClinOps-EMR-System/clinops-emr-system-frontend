@@ -37,7 +37,7 @@ export default function SystemOverviewPage() {
   }, [token]);
 
   useEffect(() => {
-    void load();
+    void load(); // eslint-disable-line react-hooks/set-state-in-effect
   }, [load]);
 
   return (

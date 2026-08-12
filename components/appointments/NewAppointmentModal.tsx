@@ -168,7 +168,7 @@ export function NewAppointmentModal({ open, onClose, onCreated }: NewAppointment
               <span className="text-sm font-semibold text-gray-900">
                 {selectedPatient.first_name} {selectedPatient.last_name}
               </span>
-              <span className="text-xs text-gray-400 font-mono">{selectedPatient.hospital_number}</span>
+              <span className="text-xs text-gray-500 font-mono">{selectedPatient.hospital_number}</span>
               <button type="button" onClick={() => { setSelectedPatient(null); setPatientQuery(""); }} className="ml-auto text-xs text-red-600 hover:text-red-800">
                 Change
               </button>
@@ -192,7 +192,7 @@ export function NewAppointmentModal({ open, onClose, onCreated }: NewAppointment
                       className="w-full text-left px-3 py-2 text-sm hover:bg-[#fcf9f8] flex items-center justify-between"
                     >
                       <span className="font-semibold">{p.first_name} {p.last_name}</span>
-                      <span className="text-xs text-gray-400 font-mono">{p.hospital_number}</span>
+                      <span className="text-xs text-gray-500 font-mono">{p.hospital_number}</span>
                     </button>
                   ))}
                 </div>
@@ -223,7 +223,7 @@ export function NewAppointmentModal({ open, onClose, onCreated }: NewAppointment
             <div className="mt-1 flex items-center gap-2 p-2 bg-[#fcf9f8] border border-brand-green/30 rounded">
               <span className="text-sm font-semibold text-gray-900">{selectedProvider.name}</span>
               {selectedProvider.department && (
-                <span className="text-xs text-gray-400">{selectedProvider.department.name}</span>
+                <span className="text-xs text-gray-500">{selectedProvider.department.name}</span>
               )}
               <button type="button" onClick={() => { setSelectedProvider(null); setProviderQuery(""); }} className="ml-auto text-xs text-red-600 hover:text-red-800">
                 Clear
@@ -248,7 +248,7 @@ export function NewAppointmentModal({ open, onClose, onCreated }: NewAppointment
                       className="w-full text-left px-3 py-2 text-sm hover:bg-[#fcf9f8] flex items-center justify-between"
                     >
                       <span className="font-semibold">{p.name}</span>
-                      <span className="text-xs text-gray-400">{p.department?.name ?? ""}</span>
+                      <span className="text-xs text-gray-500">{p.department?.name ?? ""}</span>
                     </button>
                   ))}
                 </div>

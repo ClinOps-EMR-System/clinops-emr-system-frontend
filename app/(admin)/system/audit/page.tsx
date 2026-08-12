@@ -18,8 +18,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { usePageTitle } from "@/lib/hooks/usePageTitle";
 
 export default function AuditPage() {
+  usePageTitle("Audit Log");
   const { token } = useAuth();
   const [logs, setLogs] = useState<AuditLogEntry[]>([]);
   const [loading, setLoading] = useState(true);

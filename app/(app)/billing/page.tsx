@@ -1,14 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { useAuth } from "../../../store/RoleContext";
 import { api } from "../../../lib/api";
+import { useRealtime } from "@/lib/hooks/useRealtime";
 import { PaymentStatusBadge } from "../../../components/ui/StatusBadge";
 import EmptyState from "../../../components/ui/EmptyState";
 import LoadingState from "../../../components/ui/LoadingState";
 import Modal from "../../../components/ui/Modal";
 import { DollarSign, Search, Receipt, AlertTriangle, CheckCircle } from "lucide-react";
+import { usePageTitle } from "@/lib/hooks/usePageTitle";
 
 interface Bill {
   id: number;
@@ -49,6 +51,7 @@ interface Service {
 }
 
 export default function BillingPage() {
+  usePageTitle("Billing");
   const { token } = useAuth();
   const [bills, setBills] = useState<Bill[]>([]);
   const [, setServices] = useState<Service[]>([]);
@@ -87,6 +90,14 @@ export default function BillingPage() {
     if (token) fetchData();
   }, [token]);
   /* eslint-enable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
+
+  const refetch = useCallback(() => {
+    if (token) fetchData();
+  }, [token]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useRealtime(["clinops_billing_invoices"], {
+    onEvent: () => refetch(),
+  });
 
   const filteredBills = bills.filter((b) => {
     const matchesSearch = !searchQuery ||
@@ -175,7 +186,7 @@ export default function BillingPage() {
       <section className="bg-white rounded border border-[#becab7]/50 p-4">
         <div className="flex flex-col sm:flex-row gap-3">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
             <input
               type="text"
               placeholder="Search by bill #, patient name, or hospital #..."
@@ -212,7 +223,7 @@ export default function BillingPage() {
           <div className="p-8 text-center text-sm text-red-600">{error}</div>
         ) : filteredBills.length === 0 ? (
           <EmptyState
-            icon={<DollarSign className="h-6 w-6 text-gray-400" />}
+            icon={<DollarSign className="h-6 w-6 text-gray-500" />}
             title="No bills found"
             description={searchQuery || statusFilter !== "all" ? "Try adjusting your filters" : "No bills have been created yet"}
           />
@@ -238,7 +249,7 @@ export default function BillingPage() {
                       <div className="text-sm font-semibold text-gray-900">
                         {bill.patient ? `${bill.patient.first_name} ${bill.patient.last_name}` : `Patient #${bill.patient_id}`}
                       </div>
-                      <div className="text-xs text-gray-400 font-mono">{bill.patient?.hospital_number}</div>
+                      <div className="text-xs text-gray-500 font-mono">{bill.patient?.hospital_number}</div>
                     </td>
                     <td className="px-6 py-4 text-sm font-bold font-mono text-gray-900">MK {bill.total_amount?.toLocaleString()}</td>
                     <td className="px-6 py-4 text-sm font-mono text-emerald-700 hidden md:table-cell">MK {bill.paid_amount?.toLocaleString()}</td>

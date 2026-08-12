@@ -7,6 +7,7 @@ import { Search, X, Stethoscope, Users } from "lucide-react";
 
 import { useAuth } from "../../../store/RoleContext";
 import { useFetch } from "../../../lib/useFetch";
+import { useRealtime } from "@/lib/hooks/useRealtime";
 import { api } from "../../../lib/api";
 import { cn } from "../../../lib/utils";
 
@@ -26,6 +27,7 @@ import { Input } from "../../../components/ui/input";
 import SelectField from "../../../components/ui/SelectField";
 import StatusBadge from "../../../components/ui/StatusBadge";
 import EmptyState from "../../../components/ui/EmptyState";
+import { usePageTitle } from "@/lib/hooks/usePageTitle";
 
 interface QueueEntry {
   id: number;
@@ -83,7 +85,7 @@ function formatWaitTime(minutes: number): string {
 
 function getWaitColor(minutes: number): string {
   if (minutes >= 30) return "text-red-600 font-bold";
-  if (minutes >= 15) return "text-amber-600 font-semibold";
+  if (minutes >= 15) return "text-amber-700 font-semibold";
   return "text-muted-foreground";
 }
 
@@ -94,9 +96,9 @@ function getEncounterStatus(encounterStatus: string): "waiting" | "in_consultati
 
 function getStatusBadge(status: "waiting" | "in_consultation") {
   if (status === "in_consultation") {
-    return { label: "In Consultation", variant: "purple" as const, pulse: true };
+    return { label: "In Consultation", variant: "purple" as const, pulse: false };
   }
-  return { label: "Waiting", variant: "info" as const };
+  return { label: "Waiting", variant: "info" as const, pulse: false };
 }
 
 function getPriorityBadge(priority: number) {
@@ -115,16 +117,21 @@ function matchesPriorityFilter(priority: number, filter: PriorityFilter): boolea
 }
 
 export default function ConsultationQueuePage() {
+  usePageTitle("Consultation Queue");
   const router = useRouter();
   const { token } = useAuth();
-  const { data: queueRaw, loading, error } = useFetch<QueueData>("/queue", { interval: 20000 });
+  const { data: queueRaw, loading, error, refetch } = useFetch<QueueData>("/queue", { interval: 20000 });
+
+  useRealtime(["clinops_consultation_queue"], {
+    onEvent: () => refetch(),
+  });
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [priorityFilter, setPriorityFilter] = useState<PriorityFilter>("all");
   const [startingId, setStartingId] = useState<number | null>(null);
 
-  const entries = queueRaw?.entries || [];
+  const entries = useMemo(() => queueRaw?.entries || [], [queueRaw]);
   const hasFilters = search !== "" || statusFilter !== "all" || priorityFilter !== "all";
 
   const filteredEntries = useMemo(() => {
@@ -274,7 +281,7 @@ export default function ConsultationQueuePage() {
           ) : filteredEntries.length === 0 ? (
             <div className="py-12">
               <EmptyState
-                icon={entries.length === 0 ? <Users className="h-6 w-6 text-gray-400" /> : <Search className="h-6 w-6 text-gray-400" />}
+                icon={entries.length === 0 ? <Users className="h-6 w-6 text-gray-500" /> : <Search className="h-6 w-6 text-gray-500" />}
                 title={entries.length === 0 ? "No patients in queue" : "No patients match your filters"}
                 description={
                   entries.length === 0

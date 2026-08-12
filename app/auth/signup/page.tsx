@@ -5,10 +5,12 @@ import Link from "next/link";
 import AuthShell from "../AuthShell";
 import { getApiBaseUrl } from "../../../lib/config";
 import { adminApi } from "@/lib/services/admin";
+import { usePageTitle } from "@/lib/hooks/usePageTitle";
 
 const API_BASE = getApiBaseUrl();
 
 export default function SignupPage() {
+  usePageTitle("Create account");
   const [signupEnabled, setSignupEnabled] = useState<boolean | null>(null);
   const [name, setName] = useState("");
   const [username, setUsername] = useState("");
@@ -81,7 +83,7 @@ export default function SignupPage() {
           credentials.
         </p>
         <div className="mt-6 text-center text-sm">
-          <Link href="/auth" className="font-medium text-[#0ea5e9] hover:text-[#0288c4]">
+          <Link href="/auth" className="font-medium text-clinical-primary hover:text-clinical-primary-hover">
             Back to sign in
           </Link>
         </div>
@@ -93,7 +95,7 @@ export default function SignupPage() {
     <AuthShell title="Create account" subtitle="Enter staff details. You can sign in with email or username." >
       <form className="space-y-6" onSubmit={handleSubmit}>
         {message ? (
-          <div className={`rounded-md px-4 py-3 text-sm ${isSuccess ? "bg-emerald-500 text-white" : "bg-red-500 text-white"}`}>
+          <div role="alert" className={`rounded-md border px-4 py-3 text-sm ${isSuccess ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-red-200 bg-red-50 text-red-800"}`}>
             {message}
           </div>
         ) : null}
@@ -106,7 +108,7 @@ export default function SignupPage() {
             id="name"
             name="name"
             type="text"
-            className="mt-1 block w-full px-3 py-3 border border-gray-300 rounded-md bg-white text-gray-900 shadow-sm placeholder-gray-400 focus:outline-none focus:border-[#00a651] focus:ring-[#00a651] sm:text-sm"
+            className="mt-1 block w-full px-3 py-3 border border-gray-300 rounded-md bg-white text-gray-900 shadow-sm placeholder-gray-400 focus:outline-none focus:border-clinical-primary focus:ring-clinical-primary sm:text-sm"
             placeholder="Enter full name"
             value={name}
             onChange={(event) => setName(event.target.value)}
@@ -123,7 +125,7 @@ export default function SignupPage() {
             id="username"
             name="username"
             type="text"
-            className="mt-1 block w-full px-3 py-3 border border-gray-300 rounded-md bg-white text-gray-900 shadow-sm placeholder-gray-400 focus:outline-none focus:border-[#00a651] focus:ring-[#00a651] sm:text-sm"
+            className="mt-1 block w-full px-3 py-3 border border-gray-300 rounded-md bg-white text-gray-900 shadow-sm placeholder-gray-400 focus:outline-none focus:border-clinical-primary focus:ring-clinical-primary sm:text-sm"
             placeholder="Choose a username"
             value={username}
             onChange={(event) => setUsername(event.target.value)}
@@ -140,7 +142,7 @@ export default function SignupPage() {
             id="email"
             name="email"
             type="email"
-            className="mt-1 block w-full px-3 py-3 border border-gray-300 rounded-md bg-white text-gray-900 shadow-sm placeholder-gray-400 focus:outline-none focus:border-[#00a651] focus:ring-[#00a651] sm:text-sm"
+            className="mt-1 block w-full px-3 py-3 border border-gray-300 rounded-md bg-white text-gray-900 shadow-sm placeholder-gray-400 focus:outline-none focus:border-clinical-primary focus:ring-clinical-primary sm:text-sm"
             placeholder="Enter email"
             value={email}
             onChange={(event) => setEmail(event.target.value)}
@@ -158,7 +160,7 @@ export default function SignupPage() {
               id="password"
               name="password"
               type={showPassword ? "text" : "password"}
-              className="block w-full px-3 py-3 border border-gray-300 rounded-md bg-white text-gray-900 shadow-sm placeholder-gray-400 focus:outline-none focus:border-[#00a651] focus:ring-[#00a651] sm:text-sm pr-10"
+              className="block w-full px-3 py-3 border border-gray-300 rounded-md bg-white text-gray-900 shadow-sm placeholder-gray-400 focus:outline-none focus:border-clinical-primary focus:ring-clinical-primary sm:text-sm pr-10"
               placeholder="Enter Password"
               value={password}
               onChange={(event) => setPassword(event.target.value)}
@@ -168,7 +170,9 @@ export default function SignupPage() {
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 focus:outline-none cursor-pointer"
+              aria-label={showPassword ? "Hide password" : "Show password"}
+              aria-pressed={showPassword}
+              className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-600 hover:text-gray-800 focus:outline-none cursor-pointer"
             >
               {showPassword ? (
                 <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -188,14 +192,14 @@ export default function SignupPage() {
         <button
           type="submit"
           disabled={submitLoading}
-          className="w-full rounded-md bg-[#00a651] px-4 py-3 text-sm font-bold text-white shadow-sm hover:bg-[#048f47] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#00a651] disabled:cursor-not-allowed disabled:opacity-70"
+          className="w-full rounded-md bg-clinical-primary px-4 py-3 text-sm font-bold text-white shadow-sm hover:bg-clinical-primary-hover focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-clinical-primary disabled:cursor-not-allowed disabled:opacity-70"
         >
           {submitLoading ? "Creating account..." : "Create account"}
         </button>
 
         <div className="text-center text-sm text-gray-500">
           Already have an account?{" "}
-          <Link href="/auth" className="font-medium text-[#0ea5e9] hover:text-[#0288c4]">
+          <Link href="/auth" className="font-medium text-clinical-primary hover:text-clinical-primary-hover">
             Sign in
           </Link>
         </div>

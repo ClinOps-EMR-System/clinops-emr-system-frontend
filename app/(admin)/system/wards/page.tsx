@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import EmptyState from "@/components/ui/EmptyState";
 import Modal from "@/components/ui/Modal";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import {
   Table,
   TableBody,
@@ -19,6 +20,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { usePageTitle } from "@/lib/hooks/usePageTitle";
 
 const WARD_TYPES = [
   "General",
@@ -34,6 +36,7 @@ const WARD_TYPES = [
 ];
 
 export default function WardsPage() {
+  usePageTitle("Wards & Beds");
   const { token } = useAuth();
   const { can } = usePermissions();
   const canEdit = can("ward.edit");
@@ -48,6 +51,7 @@ export default function WardsPage() {
     ward_type: "General",
     total_beds: "0",
   });
+  const [pendingDelete, setPendingDelete] = useState<Ward | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -62,7 +66,7 @@ export default function WardsPage() {
   }, [token]);
 
   useEffect(() => {
-    void load();
+    void load(); // eslint-disable-line react-hooks/set-state-in-effect
   }, [load]);
 
   const openCreate = () => {
@@ -100,12 +104,13 @@ export default function WardsPage() {
   };
 
   const remove = async (w: Ward) => {
-    if (!confirm(`Delete ward ${w.name}?`)) return;
     try {
       await adminApi.deleteWard(token, w.id);
+      setPendingDelete(null);
       await load();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Delete failed");
+      setPendingDelete(null);
     }
   };
 
@@ -178,7 +183,7 @@ export default function WardsPage() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => void remove(w)}
+                          onClick={() => setPendingDelete(w)}
                         >
                           Delete
                         </Button>
@@ -247,6 +252,16 @@ export default function WardsPage() {
           </div>
         </div>
       </Modal>
+
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        onClose={() => setPendingDelete(null)}
+        onConfirm={() => void (pendingDelete && remove(pendingDelete))}
+        title={`Delete ward ${pendingDelete?.name ?? ""}?`}
+        message="Admissions linked to this ward will need a new ward assignment."
+        confirmLabel="Delete ward"
+        variant="danger"
+      />
     </div>
   );
 }

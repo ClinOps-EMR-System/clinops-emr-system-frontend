@@ -49,7 +49,7 @@ export default function PatientBanner({
   } else {
     allergiesBadge = (
       <span className="inline-flex items-center gap-1 text-xs font-bold text-yellow-700 font-mono">
-        <svg className="w-4 h-4 text-yellow-600 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg className="w-4 h-4 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
         </svg>
         ALLERGIES UNCONFIRMED
@@ -59,7 +59,6 @@ export default function PatientBanner({
 
   return (
     <div className="bg-white rounded border border-[#becab7]/50 overflow-hidden shadow-sm font-sans mb-6">
-      <div className="h-1 bg-brand-green"></div>
 
       <div className="p-4 sm:p-5 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
@@ -86,12 +85,12 @@ export default function PatientBanner({
 
             <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-sm text-[#5f5e5e] font-mono text-xs">
               <div>
-                <span className="text-gray-400 uppercase font-sans font-semibold text-[10px] tracking-wider mr-1">Hospital No:</span>
+                <span className="text-gray-500 uppercase font-sans font-semibold text-[10px] tracking-wider mr-1">Hospital No:</span>
                 <span className="text-gray-900 font-bold">{patient.hospital_number}</span>
               </div>
               <div className="hidden sm:block text-gray-300">|</div>
               <div>
-                <span className="text-gray-400 uppercase font-sans font-semibold text-[10px] tracking-wider mr-1">DOB:</span>
+                <span className="text-gray-500 uppercase font-sans font-semibold text-[10px] tracking-wider mr-1">DOB:</span>
                 <span className="text-gray-900">
                   {birthDate.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })}
                 </span>
@@ -101,7 +100,7 @@ export default function PatientBanner({
                 <>
                   <div className="hidden sm:block text-gray-300">|</div>
                   <div>
-                    <span className="text-gray-400 uppercase font-sans font-semibold text-[10px] tracking-wider mr-1">Location:</span>
+                    <span className="text-gray-500 uppercase font-sans font-semibold text-[10px] tracking-wider mr-1">Location:</span>
                     <span className="text-gray-900 font-sans">{patient.village || "N/A"}, {patient.district}</span>
                   </div>
                 </>
