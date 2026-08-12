@@ -10,8 +10,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import EmptyState from "@/components/ui/EmptyState";
-import Modal from "@/components/ui/Modal";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
+import Modal from "@/components/ui/Modal";
 import {
   Table,
   TableBody,
@@ -45,13 +45,15 @@ export default function WardsPage() {
   const [error, setError] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Ward | null>(null);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState<Ward | null>(null);
   const [form, setForm] = useState({
     name: "",
     code: "",
     ward_type: "General",
     total_beds: "0",
+    daily_charge: "",
   });
-  const [pendingDelete, setPendingDelete] = useState<Ward | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -71,7 +73,13 @@ export default function WardsPage() {
 
   const openCreate = () => {
     setEditing(null);
-    setForm({ name: "", code: "", ward_type: "General", total_beds: "0" });
+    setForm({
+      name: "",
+      code: "",
+      ward_type: "General",
+      total_beds: "0",
+      daily_charge: "",
+    });
     setOpen(true);
   };
 
@@ -82,6 +90,7 @@ export default function WardsPage() {
       code: w.code,
       ward_type: w.ward_type,
       total_beds: String(w.total_beds),
+      daily_charge: w.daily_charge != null ? String(w.daily_charge) : "",
     });
     setOpen(true);
   };
@@ -92,6 +101,7 @@ export default function WardsPage() {
       code: form.code,
       ward_type: form.ward_type,
       total_beds: Number(form.total_beds) || 0,
+      daily_charge: Number(form.daily_charge) || 0,
     };
     try {
       if (editing) await adminApi.updateWard(token, editing.id, body);
@@ -104,12 +114,20 @@ export default function WardsPage() {
   };
 
   const remove = async (w: Ward) => {
+    setPendingDelete(w);
+    setDeleteOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!pendingDelete) return;
     try {
-      await adminApi.deleteWard(token, w.id);
+      await adminApi.deleteWard(token, pendingDelete.id);
+      setDeleteOpen(false);
       setPendingDelete(null);
       await load();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Delete failed");
+      setDeleteOpen(false);
       setPendingDelete(null);
     }
   };
@@ -156,6 +174,7 @@ export default function WardsPage() {
                 <TableHead>Code</TableHead>
                 <TableHead>Type</TableHead>
                 <TableHead>Beds</TableHead>
+                <TableHead>Daily charge</TableHead>
                 {canEdit && (
                   <TableHead className="text-right">Actions</TableHead>
                 )}
@@ -169,6 +188,11 @@ export default function WardsPage() {
                   <TableCell>{w.ward_type}</TableCell>
                   <TableCell className="tabular-nums">
                     {w.beds_count ?? w.total_beds}
+                  </TableCell>
+                  <TableCell className="tabular-nums">
+                    {w.daily_charge != null
+                      ? `MK ${Number(w.daily_charge).toLocaleString()}`
+                      : "—"}
                   </TableCell>
                   {canEdit && (
                     <TableCell className="text-right">
@@ -203,23 +227,26 @@ export default function WardsPage() {
         title={editing ? "Edit ward" : "New ward"}
       >
         <div className="space-y-3">
-          <label className="block space-y-1 text-sm">
+          <label htmlFor="field-ward-name" className="block space-y-1 text-sm">
             <span className="font-medium">Name</span>
             <Input
+              id="field-ward-name"
               value={form.name}
               onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
             />
           </label>
-          <label className="block space-y-1 text-sm">
+          <label htmlFor="field-ward-code" className="block space-y-1 text-sm">
             <span className="font-medium">Code</span>
             <Input
+              id="field-ward-code"
               value={form.code}
               onChange={(e) => setForm((f) => ({ ...f, code: e.target.value }))}
             />
           </label>
-          <label className="block space-y-1 text-sm">
+          <label htmlFor="field-ward-type" className="block space-y-1 text-sm">
             <span className="font-medium">Type</span>
             <select
+              id="field-ward-type"
               className="h-10 w-full rounded-md border border-input bg-white px-3 text-sm"
               value={form.ward_type}
               onChange={(e) =>
@@ -233,14 +260,28 @@ export default function WardsPage() {
               ))}
             </select>
           </label>
-          <label className="block space-y-1 text-sm">
+          <label htmlFor="field-ward-total-beds" className="block space-y-1 text-sm">
             <span className="font-medium">Total beds</span>
             <Input
+              id="field-ward-total-beds"
               type="number"
               min={0}
               value={form.total_beds}
               onChange={(e) =>
                 setForm((f) => ({ ...f, total_beds: e.target.value }))
+              }
+            />
+          </label>
+          <label htmlFor="field-ward-daily-charge" className="block space-y-1 text-sm">
+            <span className="font-medium">Daily charge (MK)</span>
+            <Input
+              id="field-ward-daily-charge"
+              type="number"
+              min={0}
+              step="0.01"
+              value={form.daily_charge}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, daily_charge: e.target.value }))
               }
             />
           </label>
@@ -254,9 +295,9 @@ export default function WardsPage() {
       </Modal>
 
       <ConfirmDialog
-        open={pendingDelete !== null}
-        onClose={() => setPendingDelete(null)}
-        onConfirm={() => void (pendingDelete && remove(pendingDelete))}
+        open={deleteOpen}
+        onClose={() => { setDeleteOpen(false); setPendingDelete(null); }}
+        onConfirm={() => void confirmDelete()}
         title={`Delete ward ${pendingDelete?.name ?? ""}?`}
         message="Admissions linked to this ward will need a new ward assignment."
         confirmLabel="Delete ward"

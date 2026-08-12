@@ -8,8 +8,37 @@ import { StatsRow } from "@/components/receptionist/StatsRow";
 import { QueuePreview } from "@/components/receptionist/QueuePreview";
 import { QuickActions } from "@/components/receptionist/QuickActions";
 import { RoleGuard } from "@/components/auth/RoleGuard";
-import LoadingState from "@/components/ui/LoadingState";
-import { CalendarDays, Users, Clock, CheckCircle, XCircle, ClipboardPlus, Search } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Card,
+  CardAction,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import StatusBadge from "@/components/ui/StatusBadge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  CalendarDays,
+  Users,
+  Clock,
+  CheckCircle,
+  XCircle,
+  ClipboardPlus,
+  Search,
+  Plus,
+  Ambulance,
+  GitMerge,
+} from "lucide-react";
 import Link from "next/link";
 
 interface DashboardData {
@@ -87,6 +116,19 @@ interface Appointment {
   appointment_type: string;
 }
 
+interface MergeCandidate {
+  id: number;
+  hospital_number: string;
+  first_name: string;
+  last_name: string;
+  date_of_birth: string | null;
+  gender: string | null;
+  phone: string | null;
+  patient_category: string | null;
+  active_encounter: string | null;
+  flagged_at: string;
+}
+
 function getTimeOfDay(): string {
   const hour = new Date().getHours();
   if (hour < 12) return "morning";
@@ -101,6 +143,19 @@ function formatDate(): string {
     month: "long",
     day: "numeric",
   });
+}
+
+function AppointmentStatusBadge({ status }: { status: string }) {
+  switch (status) {
+    case "arrived":
+      return <StatusBadge label={status} variant="success" />;
+    case "confirmed":
+      return <StatusBadge label={status} variant="info" />;
+    case "completed":
+      return <StatusBadge label={status} variant="neutral" />;
+    default:
+      return <StatusBadge label={status} variant="neutral" />;
+  }
 }
 
 export default function ReceptionistDashboard() {
@@ -119,6 +174,15 @@ export default function ReceptionistDashboard() {
   const { data: appointmentsData, loading: apptLoading, refetch: refetchAppointments } = useFetch<Appointment[]>(
     `/appointments?date=${new Date().toLocaleDateString("en-CA")}`
   );
+
+  const canMerge = (user?.permissions ?? []).includes("patient.merge");
+  const {
+    data: mergeCandidatesData,
+    loading: mergeLoading,
+    refetch: refetchMergeCandidates,
+  } = useFetch<MergeCandidate[]>("/patients/merge-candidates", { immediate: canMerge });
+
+  const mergeCandidates = mergeCandidatesData ?? [];
 
   const loading = dashLoading || queueLoading || queueDataLoading || emergencyLoading || apptLoading;
   const appointments = appointmentsData ?? [];
@@ -139,12 +203,12 @@ export default function ReceptionistDashboard() {
   const awaitingDoctorCount = queueStats?.waiting_count ?? dashboard?.queue?.waiting_for_doctor ?? 0;
 
   const stats = [
-    { label: "Appointments", value: appointments.length, icon: CalendarDays, color: "bg-sky-500", href: "/appointments" },
-    { label: "Awaiting Triage", value: awaitingTriageCount, icon: Clock, color: "bg-amber-500", href: "/triage-queue" },
-    { label: "Awaiting Doctor", value: awaitingDoctorCount, icon: Users, color: "bg-brand-green", href: "/queue" },
-    { label: "In Consultation", value: queueStats?.in_consultation_count ?? dashboard?.encounters?.in_consultation ?? 0, icon: CheckCircle, color: "bg-emerald-500", href: "/queue" },
-    { label: "Emergency", value: dashboard?.encounters?.emergency ?? 0, icon: XCircle, color: "bg-red-500", href: "/triage-queue" },
-    { label: "Registered Today", value: dashboard?.patients?.today_registrations ?? 0, icon: ClipboardPlus, color: "bg-purple-500", href: "/patients/register" },
+    { label: "Appointments", value: appointments.length, icon: CalendarDays, color: "text-sky-600", href: "/appointments" },
+    { label: "Awaiting Triage", value: awaitingTriageCount, icon: Clock, color: "text-amber-600", href: "/triage-queue" },
+    { label: "Awaiting Doctor", value: awaitingDoctorCount, icon: Users, color: "text-brand-green", href: "/queue" },
+    { label: "In Consultation", value: queueStats?.in_consultation_count ?? dashboard?.encounters?.in_consultation ?? 0, icon: CheckCircle, color: "text-emerald-600", href: "/queue" },
+    { label: "Emergency", value: dashboard?.encounters?.emergency ?? 0, icon: XCircle, color: "text-red-600", href: "/triage-queue", pulse: true },
+    { label: "Registered Today", value: dashboard?.patients?.today_registrations ?? 0, icon: ClipboardPlus, color: "text-purple-600", href: "/patients/register" },
   ];
 
   const handleCheckIn = useCallback(async (appointmentId: number) => {
@@ -176,121 +240,217 @@ export default function ReceptionistDashboard() {
   if (loading) {
     return (
       <RoleGuard allowedRoles={["receptionist", "admin"]}>
-        <LoadingState message="Loading front desk workspace..." />
+        <div className="flex flex-col gap-6">
+          <div className="flex flex-col gap-1">
+            <Skeleton className="h-3 w-24" />
+            <Skeleton className="h-8 w-64" />
+            <Skeleton className="h-4 w-48" />
+          </div>
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-6">
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <Skeleton key={i} className="h-24 rounded-xl" />
+            ))}
+          </div>
+          <Skeleton className="h-9 w-full max-w-md" />
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+            <Skeleton className="h-72 rounded-xl" />
+            <Skeleton className="h-72 rounded-xl" />
+          </div>
+        </div>
       </RoleGuard>
     );
   }
 
   return (
     <RoleGuard allowedRoles={["receptionist", "admin"]}>
-    <div className="max-w-7xl mx-auto space-y-6 font-sans">
+    <div className="flex flex-col gap-6">
       {/* Header */}
-      <section>
-        <span className="text-xs font-bold text-brand-green tracking-widest uppercase">Front Desk</span>
-        <h1 className="text-3xl font-bold text-[#1b1c1c] mt-1">
-          Good {getTimeOfDay()}, {user?.name?.split(" ")[0] || "Staff"}
-        </h1>
-        <p className="text-sm text-[#5f5e5e] mt-1 font-mono">{formatDate()}</p>
-      </section>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div className="flex flex-col gap-1">
+          <span className="text-xs font-semibold tracking-widest uppercase text-muted-foreground">
+            Front Desk
+          </span>
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+            Good {getTimeOfDay()}, {user?.name?.split(" ")[0] || "Staff"}
+          </h1>
+          <p className="text-sm text-muted-foreground">{formatDate()}</p>
+        </div>
+        <div className="flex gap-3">
+          <Button
+            nativeButton={false}
+            render={<Link href="/patients/register" />}
+          >
+            <Plus data-icon="inline-start" />
+            Register Patient
+          </Button>
+          <Button
+            variant="outline"
+            nativeButton={false}
+            render={<Link href="/patients/register?emergency=true" />}
+          >
+            <Ambulance data-icon="inline-start" />
+            Emergency
+          </Button>
+        </div>
+      </div>
 
-      {/* Stats */}
+      {/* Primary Metrics */}
       <StatsRow stats={stats} />
 
       {/* Patient Search */}
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
-        <input
+        <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+        <Input
           type="text"
           placeholder="Search today's appointments..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded text-sm focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary"
+          className="h-9 pl-9"
         />
         {searchQuery && filteredAppointments.length === 0 && appointments.length > 0 && (
-          <p className="text-xs text-gray-500 mt-1">No appointments match your search.</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            No appointments match your search.
+          </p>
         )}
       </div>
 
       {/* Queue + Actions */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <QueuePreview queue={queue} emergencyWaiting={emergencyWaiting} />
         <QuickActions />
       </div>
 
+      {/* Pending Consolidation */}
+      {canMerge && !mergeLoading && mergeCandidates.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+              <GitMerge className="size-3.5" />
+              Pending Consolidation
+            </CardTitle>
+            <CardAction>
+              <button
+                type="button"
+                onClick={refetchMergeCandidates}
+                className="text-xs font-semibold text-clinical-primary hover:text-clinical-primary-hover"
+              >
+                Refresh
+              </button>
+            </CardAction>
+          </CardHeader>
+          <CardContent className="px-0">
+            <div className="divide-y divide-border overflow-hidden rounded border border-border">
+              {mergeCandidates.slice(0, 5).map((c) => (
+                <div key={c.id} className="p-3 flex items-center justify-between gap-2 text-xs hover:bg-muted/30 transition-colors">
+                  <div className="min-w-0">
+                    <p className="font-semibold text-foreground">
+                      <Link href={`/patients/${c.id}`} className="hover:text-clinical-primary hover:underline">
+                        {c.first_name} {c.last_name}
+                      </Link>
+                    </p>
+                    <p className="text-muted-foreground font-mono mt-0.5">
+                      #{c.hospital_number}
+                      {c.date_of_birth ? ` · DOB ${new Date(c.date_of_birth).toLocaleDateString()}` : ""}
+                      {c.active_encounter ? ` · ${c.active_encounter}` : ""}
+                    </p>
+                  </div>
+                  <Link
+                    href={`/patients/${c.id}`}
+                    className="text-xs font-bold text-clinical-primary hover:text-clinical-primary-hover shrink-0 ml-2"
+                  >
+                    Review &amp; Merge
+                  </Link>
+                </div>
+              ))}
+            </div>
+            <p className="px-4 pt-2 text-[11px] text-muted-foreground">
+              Emergency rapid registrations awaiting identity confirmation. Verify the patient, then merge into their existing record.
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Check-in feedback */}
       {checkinSuccess && (
-        <div className="bg-emerald-50 border border-emerald-200 rounded px-4 py-3 flex items-center gap-2">
-          <span className="text-emerald-700 text-sm font-semibold">Patient checked in successfully</span>
+        <div className="flex items-center gap-2 rounded-lg bg-emerald-50 px-4 py-3 ring-1 ring-emerald-200">
+          <CheckCircle className="size-4 shrink-0 text-emerald-600" />
+          <span className="text-sm font-medium text-emerald-800">
+            Patient checked in successfully
+          </span>
         </div>
       )}
       {checkinError && (
-        <div className="bg-red-50 border border-red-200 rounded px-4 py-3 flex items-center gap-2">
-          <span className="text-red-700 text-sm font-semibold">{checkinError}</span>
+        <div className="flex items-center gap-2 rounded-lg bg-red-50 px-4 py-3 ring-1 ring-red-200">
+          <XCircle className="size-4 shrink-0 text-red-600" />
+          <span className="text-sm font-medium text-red-800">{checkinError}</span>
         </div>
       )}
 
       {/* Today's Appointments */}
       {appointments.length > 0 && (
-        <div className="bg-white rounded border border-[#becab7]/50 overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-            <div className="flex items-center">
-              <div className="w-1.5 h-6 bg-brand-green rounded-full mr-3"></div>
-              <h3 className="text-sm font-bold text-[#5f5e5e] uppercase tracking-wider">Today&apos;s Appointments</h3>
-            </div>
-            <a href="/appointments" className="text-xs font-bold text-clinical-primary hover:text-clinical-primary-hover uppercase tracking-wider">
-              View All
-            </a>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-[#fcf9f8] sticky top-0 z-10">
-                <tr>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-[#5f5e5e] uppercase tracking-wider">Time</th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-[#5f5e5e] uppercase tracking-wider">Patient</th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-[#5f5e5e] uppercase tracking-wider">Type</th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-[#5f5e5e] uppercase tracking-wider">Status</th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-[#5f5e5e] uppercase tracking-wider">Action</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-100">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Today&apos;s Appointments
+            </CardTitle>
+            <CardAction>
+              <Link
+                href="/appointments"
+                className="text-xs font-semibold text-clinical-primary hover:text-clinical-primary-hover"
+              >
+                View all
+              </Link>
+            </CardAction>
+          </CardHeader>
+          <CardContent className="px-0">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Time</TableHead>
+                  <TableHead>Patient</TableHead>
+                  <TableHead className="hidden md:table-cell">Type</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Action</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {filteredAppointments.slice(0, 8).map((appt) => (
-                  <tr key={appt.id} className="hover:bg-[#fcf9f8]/40 transition-colors">
-                    <td className="px-6 py-3 text-sm font-mono text-gray-600">
+                  <TableRow key={appt.id}>
+                    <TableCell className="font-mono text-xs text-muted-foreground">
                       {new Date(appt.scheduled_for).toLocaleTimeString("en-MW", { hour: "2-digit", minute: "2-digit" })}
-                    </td>
-                    <td className="px-6 py-3 text-sm font-semibold text-gray-900">
-                      <Link href={`/patients/${appt.patient.id}`} className="hover:text-clinical-primary hover:underline">
+                    </TableCell>
+                    <TableCell className="font-medium">
+                      <Link
+                        href={`/patients/${appt.patient.id}`}
+                        className="hover:text-clinical-primary hover:underline"
+                      >
                         {appt.patient.first_name} {appt.patient.last_name}
                       </Link>
-                    </td>
-                    <td className="px-6 py-3 text-sm text-gray-600">{appt.appointment_type}</td>
-                    <td className="px-6 py-3">
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-bold ${
-                        appt.status === "arrived" ? "bg-brand-green/10 text-brand-green" :
-                        appt.status === "confirmed" ? "bg-sky-100 text-sky-700" :
-                        appt.status === "completed" ? "bg-emerald-100 text-emerald-700" :
-                        "bg-gray-100 text-gray-600"
-                      }`}>
-                        {appt.status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-3">
+                    </TableCell>
+                    <TableCell className="hidden md:table-cell text-muted-foreground">
+                      {appt.appointment_type}
+                    </TableCell>
+                    <TableCell>
+                      <AppointmentStatusBadge status={appt.status} />
+                    </TableCell>
+                    <TableCell className="text-right">
                       {appt.status !== "arrived" && appt.status !== "completed" && (
-                        <button
+                        <Button
+                          size="xs"
+                          variant="ghost"
                           onClick={() => handleCheckIn(appt.id)}
                           disabled={checkingIn === appt.id}
-                          className="text-xs font-bold text-emerald-600 hover:text-emerald-800 uppercase tracking-wider disabled:opacity-50 cursor-pointer"
                         >
                           {checkingIn === appt.id ? "Checking in..." : "Check In"}
-                        </button>
+                        </Button>
                       )}
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
       )}
     </div>
     </RoleGuard>

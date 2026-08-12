@@ -107,7 +107,7 @@ export default function EmergencyTriagePage() {
       }
     } catch (err: unknown) {
       const apiError = err as { status?: number; message?: string; errors?: Record<string, string[]> };
-      if (apiError.errors) {
+      if (apiError.errors && Object.keys(apiError.errors).length > 0) {
         const firstError = Object.values(apiError.errors)[0];
         setError(firstError?.[0] || "Validation failed");
       } else {

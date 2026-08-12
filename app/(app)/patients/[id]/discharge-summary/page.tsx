@@ -6,7 +6,6 @@ import { useAuth } from "../../../../../store/RoleContext";
 import { api } from "../../../../../lib/api";
 import PatientBanner from "../../../../../components/ui/PatientBanner";
 import LoadingState from "../../../../../components/ui/LoadingState";
-import { usePageTitle } from "@/lib/hooks/usePageTitle";
 
 interface Patient {
   id: number;
@@ -33,23 +32,17 @@ interface Admission {
 
 interface Diagnosis {
   id: number;
-  code: string;
-  description: string;
-  diagnosis_type: string;
-  certainty?: string;
-  diagnosed_at?: string;
+  diagnosis_name: string;
+  icd_code?: string;
   is_primary: boolean;
 }
 
 interface VitalSign {
   recorded_at: string;
   temperature?: number;
-  pulse_rate?: number;
   heart_rate?: number;
-  blood_pressure?: string;
   systolic_bp?: number;
   diastolic_bp?: number;
-  oxygen_saturation?: number;
   spo2?: number;
   ews_score?: number;
 }
@@ -61,7 +54,6 @@ interface Encounter {
 }
 
 export default function DischargeSummaryPage() {
-  usePageTitle("Discharge Summary");
   const params = useParams();
   const router = useRouter();
   const { token } = useAuth();
@@ -93,22 +85,8 @@ export default function DischargeSummaryPage() {
 
         if (patientRes) setPatient(patientRes.data || patientRes);
         if (encounterRes?.data?.length > 0) setEncounter(encounterRes.data[0]);
-        if (diagnosisRes?.data) {
-          const list = Array.isArray(diagnosisRes.data) ? diagnosisRes.data : diagnosisRes.data.data ?? [];
-          setDiagnoses(list.map((d: Diagnosis) => ({
-            ...d,
-            is_primary: d.diagnosis_type?.toLowerCase() === "primary",
-          })));
-        }
-        if (vitalsRes?.data?.length > 0) {
-          const latest = vitalsRes.data[0];
-          setLatestVitals({
-            ...latest,
-            heart_rate: latest.pulse_rate ?? latest.heart_rate,
-            blood_pressure: latest.blood_pressure,
-            spo2: latest.oxygen_saturation ?? latest.spo2,
-          });
-        }
+        if (diagnosisRes?.data) setDiagnoses(diagnosisRes.data);
+        if (vitalsRes?.data?.length > 0) setLatestVitals(vitalsRes.data[0]);
 
         // Try to fetch active admission
         try {
@@ -209,12 +187,12 @@ export default function DischargeSummaryPage() {
       </section>
 
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded p-3 text-sm text-red-700">
+        <div role="alert" className="bg-red-50 border border-red-200 rounded p-3 text-sm text-red-700">
           {error}
         </div>
       )}
       {successMsg && (
-        <div className="bg-emerald-50 border border-emerald-200 rounded p-3 text-sm text-emerald-700">
+        <div role="status" className="bg-emerald-50 border border-emerald-200 rounded p-3 text-sm text-emerald-700">
           {successMsg}
         </div>
       )}
@@ -264,8 +242,8 @@ export default function DischargeSummaryPage() {
               {diagnoses.map((d) => (
                 <li key={d.id} className="text-sm font-semibold text-gray-900">
                   {d.is_primary && <span className="text-brand-green mr-1">●</span>}
-                  {d.description}
-                  {d.code && <span className="text-xs text-gray-500 ml-2 font-mono">{d.code}</span>}
+                  {d.diagnosis_name}
+                  {d.icd_code && <span className="text-xs text-gray-500 ml-2 font-mono">{d.icd_code}</span>}
                 </li>
               ))}
             </ul>
@@ -283,8 +261,8 @@ export default function DischargeSummaryPage() {
               {latestVitals.heart_rate != null && (
                 <span className="font-mono"><strong>{latestVitals.heart_rate}</strong> <span className="text-gray-500">HR</span></span>
               )}
-              {latestVitals.blood_pressure && (
-                <span className="font-mono"><strong>{latestVitals.blood_pressure}</strong> <span className="text-gray-500">BP</span></span>
+              {latestVitals.systolic_bp != null && latestVitals.diastolic_bp != null && (
+                <span className="font-mono"><strong>{latestVitals.systolic_bp}/{latestVitals.diastolic_bp}</strong> <span className="text-gray-500">BP</span></span>
               )}
               {latestVitals.spo2 != null && (
                 <span className="font-mono"><strong>{latestVitals.spo2}%</strong> <span className="text-gray-500">SpO2</span></span>

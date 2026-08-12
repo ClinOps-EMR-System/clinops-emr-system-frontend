@@ -1,22 +1,19 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { getRealtime, type RealtimeMessage } from "@/lib/realtime";
+import { subscribe } from "@/lib/realtime";
 
 interface UseRealtimeOptions {
   encounterIds?: number[];
-  onEvent?: (message: RealtimeMessage) => void;
+  onEvent?: (message: { channel: string; data: unknown }) => void;
 }
 
 /**
  * Subscribes the current client to the given bridge channels for as long as
  * the component is mounted, invoking onEvent for each incoming message.
- *
- * The connection is shared app-wide (singleton); unmounting only removes this
- * component's handlers and re-sends the remaining subscription set.
  */
 export function useRealtime(channels: string[], options: UseRealtimeOptions = {}) {
-  const { encounterIds = [], onEvent } = options;
+  const { onEvent } = options;
   const handlerRef = useRef(onEvent);
 
   useEffect(() => {
@@ -24,21 +21,18 @@ export function useRealtime(channels: string[], options: UseRealtimeOptions = {}
   }, [onEvent]);
 
   const channelsKey = channels.join(",");
-  const encounterKey = encounterIds.join(",");
 
   useEffect(() => {
-    const realtime = getRealtime();
-    realtime.subscribe(channels, encounterIds);
-
-    const unsubscribe = channels.map((channel) =>
-      realtime.on(channel, (message) => {
-        handlerRef.current?.(message);
+    const offs = channels.map((channel) =>
+      subscribe(channel, (data) => {
+        handlerRef.current?.({ channel, data });
       }),
     );
 
     return () => {
-      unsubscribe.forEach((off) => off());
-      realtime.unsubscribe(channels);
+      offs.forEach((off) => off());
     };
-  }, [channelsKey, encounterKey, channels, encounterIds]);
+    // channelsKey captures channel identity; `channels` is listed for exhaustive-deps.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [channelsKey]);
 }

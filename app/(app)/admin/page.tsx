@@ -1,13 +1,13 @@
-"use client";
+'use client';
 
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 
 /** Legacy /admin → dedicated System Admin shell */
 export default function LegacyAdminRedirect() {
   const router = useRouter();
   useEffect(() => {
-    router.replace("/system");
+    router.replace('/system');
   }, [router]);
 
   return (

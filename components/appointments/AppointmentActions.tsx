@@ -3,6 +3,8 @@
 import { useAuth } from "@/store/RoleContext";
 import { api } from "@/lib/api";
 import { useState, useCallback } from "react";
+import { Button } from "@/components/ui/button";
+import { CheckCircle, XCircle } from "lucide-react";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 
 interface Appointment {
@@ -20,7 +22,7 @@ export function AppointmentActions({ appointment, onAction }: AppointmentActions
   const { token } = useAuth();
   const [loading, setLoading] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
-  const [cancelOpen, setCancelOpen] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   const status = appointment.status?.toLowerCase();
   const canCheckIn = ["confirmed", "pending", "scheduled"].includes(status);
@@ -40,10 +42,14 @@ export function AppointmentActions({ appointment, onAction }: AppointmentActions
     }
   }, [appointment.id, token, onAction]);
 
-  const handleCancel = useCallback(async () => {
-    setCancelOpen(false);
+  const handleCancel = useCallback(() => {
+    setConfirmOpen(true);
+  }, []);
+
+  const confirmCancel = useCallback(async () => {
     setLoading(true);
     setActionError(null);
+    setConfirmOpen(false);
     try {
       await api.post(`/appointments/${appointment.id}/cancel`, {}, token);
       onAction();
@@ -58,30 +64,24 @@ export function AppointmentActions({ appointment, onAction }: AppointmentActions
   return (
     <div className="flex items-center gap-2">
       {canCheckIn && (
-        <button
-          onClick={handleCheckIn}
-          disabled={loading}
-          className="text-xs font-bold text-brand-green hover:text-brand-green/80 uppercase tracking-wider disabled:opacity-50"
-        >
+        <Button size="xs" variant="ghost" onClick={handleCheckIn} disabled={loading}>
+          <CheckCircle className="h-3.5 w-3.5 text-emerald-600" />
           Check In
-        </button>
+        </Button>
       )}
       {canCancel && (
-        <button
-          onClick={() => setCancelOpen(true)}
-          disabled={loading}
-          className="text-xs font-bold text-red-600 hover:text-red-800 uppercase tracking-wider disabled:opacity-50"
-        >
+        <Button size="xs" variant="ghost" onClick={handleCancel} disabled={loading}>
+          <XCircle className="h-3.5 w-3.5 text-red-600" />
           Cancel
-        </button>
+        </Button>
       )}
       {actionError && (
-        <span className="text-xs text-red-600">{actionError}</span>
+        <span className="text-xs text-destructive">{actionError}</span>
       )}
       <ConfirmDialog
-        open={cancelOpen}
-        onClose={() => setCancelOpen(false)}
-        onConfirm={() => void handleCancel()}
+        open={confirmOpen}
+        onClose={() => setConfirmOpen(false)}
+        onConfirm={confirmCancel}
         title="Cancel this appointment?"
         message="The appointment will be marked as cancelled and the slot released."
         confirmLabel="Cancel appointment"

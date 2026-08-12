@@ -2,10 +2,15 @@
 
 import React from "react";
 import Topbar from "../../components/layout/Topbar";
+import BottomNav from "../../components/layout/BottomNav";
+import Breadcrumbs from "../../components/ui/Breadcrumbs";
 import { useAuth } from "../../store/RoleContext";
 import { ToastProvider } from "../../components/ui/Toast";
+import { RealtimeProvider } from "../../store/RealtimeContext";
+import { LabResultBusProvider } from "../../store/LabResultBus";
 import { SidebarProvider } from "../../components/ui/sidebar";
 import { AppSidebar } from "../../components/shadcn-space/blocks/sidebar-01/app-sidebar";
+import ErrorBoundary from "../../components/ui/ErrorBoundary";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
@@ -29,19 +34,32 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <ToastProvider>
-      <SidebarProvider>
-        <AppSidebar />
-        <div className="flex flex-1 flex-col min-w-0">
-          <Topbar />
-          <main
-            id="main-content"
-            tabIndex={-1}
-            className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 bg-white text-clinical-text focus:outline-none"
-          >
-            {children}
-          </main>
-        </div>
-      </SidebarProvider>
+      <RealtimeProvider>
+        <LabResultBusProvider>
+          <SidebarProvider>
+            <a
+              href="#main-content"
+              className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[200] focus:rounded-md focus:bg-clinical-primary focus:px-4 focus:py-2 focus:text-white focus:shadow-lg"
+            >
+              Skip to main content
+            </a>
+            <AppSidebar />
+            <div className="flex flex-1 flex-col min-w-0">
+              <Topbar />
+              <main
+                id="main-content"
+                tabIndex={-1}
+                className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 pb-20 lg:pb-8 bg-white text-clinical-text focus:outline-none"
+              >
+                <ErrorBoundary>
+                  {children}
+                </ErrorBoundary>
+              </main>
+            </div>
+            <BottomNav />
+          </SidebarProvider>
+        </LabResultBusProvider>
+      </RealtimeProvider>
     </ToastProvider>
   );
 }

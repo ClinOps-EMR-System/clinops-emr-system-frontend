@@ -12,6 +12,7 @@ interface UseFetchOptions {
 interface UseFetchResult<T> {
   data: T | null;
   loading: boolean;
+  refreshing: boolean;
   error: string | null;
   refetch: () => void;
 }
@@ -21,19 +22,28 @@ export function useFetch<T>(endpoint: string, options: UseFetchOptions = {}): Us
   const { token } = useAuth();
   const [data, setData] = useState<T | null>(null);
   const [loading, setLoading] = useState(immediate);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fetchKey, setFetchKey] = useState(0);
   const abortRef = useRef<AbortController | null>(null);
+  const hasLoadedOnce = useRef(false);
 
   const fetchData = useCallback(async (signal?: AbortSignal) => {
     if (!token) return;
 
-    try {
+    const isBackgroundRefresh = hasLoadedOnce.current;
+    if (isBackgroundRefresh) {
+      setRefreshing(true);
+    } else {
       setLoading(true);
-      setError(null);
+    }
+    setError(null);
+
+    try {
       const res = await api.get(endpoint, token);
       if (!signal?.aborted && res) {
         setData(res.data ?? res);
+        hasLoadedOnce.current = true;
         // Cache successful responses in localStorage
         try {
           localStorage.setItem(`clinops_cache_${endpoint}`, JSON.stringify({
@@ -61,6 +71,7 @@ export function useFetch<T>(endpoint: string, options: UseFetchOptions = {}): Us
     } finally {
       if (!signal?.aborted) {
         setLoading(false);
+        setRefreshing(false);
       }
     }
   }, [endpoint, token]);
@@ -87,5 +98,5 @@ export function useFetch<T>(endpoint: string, options: UseFetchOptions = {}): Us
     setFetchKey((k) => k + 1);
   }, []);
 
-  return { data, loading, error, refetch };
+  return { data, loading, refreshing, error, refetch };
 }

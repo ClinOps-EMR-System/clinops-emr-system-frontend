@@ -28,13 +28,38 @@ export type NavItem = {
   icon?: LucideIcon;
   href?: string;
   children?: NavItem[];
+  /** Any-of permissions required to see this item. Admin and `/system` bypass via canAccessAdmin. */
+  permissions?: string[];
+  /** If set, user must have at least one of these roles AND a matching permission. */
+  roles?: string[];
 };
 
-function routeMatches(pathname: string, href?: string, exact = false): boolean {
+function routeMatches(pathname: string, href?: string, exact = false, allItems: NavItem[] = []): boolean {
   if (!href) return false;
   if (href === "/") return pathname === "/";
-  if (exact) return pathname === href;
-  return pathname === href || pathname.startsWith(href + "/");
+  if (exact || pathname === href) return pathname === href;
+  
+  if (!pathname.startsWith(href + "/")) return false;
+
+  // If another item in allItems has a longer/more specific matching href, return false
+  for (const item of allItems) {
+    if (item.href && item.href !== href && item.href.length > href.length) {
+      if (pathname === item.href || pathname.startsWith(item.href + "/")) {
+        return false;
+      }
+    }
+    if (item.children) {
+      for (const child of item.children) {
+        if (child.href && child.href !== href && child.href.length > href.length) {
+          if (pathname === child.href || pathname.startsWith(child.href + "/")) {
+            return false;
+          }
+        }
+      }
+    }
+  }
+
+  return true;
 }
 
 function anyChildMatches(pathname: string, children?: NavItem[]): boolean {
@@ -45,6 +70,7 @@ function anyChildMatches(pathname: string, children?: NavItem[]): boolean {
       anyChildMatches(pathname, child.children)
   );
 }
+
 
 export function NavMain({ items }: { items: NavItem[] }) {
   const pathname = usePathname();
@@ -57,7 +83,7 @@ export function NavMain({ items }: { items: NavItem[] }) {
   React.useEffect(() => {
     // Check top-level items without children
     const matchingItem = items.find(
-      (item) => !item.isSection && !item.children && item.href && routeMatches(pathname, item.href)
+      (item) => !item.isSection && !item.children && item.href && routeMatches(pathname, item.href, false, items)
     );
     if (matchingItem?.title && matchingItem.title !== activeParent) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -70,15 +96,13 @@ export function NavMain({ items }: { items: NavItem[] }) {
     for (const item of items) {
       if (item.children) {
         const matchingChild = item.children.find(
-          (child) => child.href && routeMatches(pathname, child.href, true)
+          (child) => child.href && routeMatches(pathname, child.href, true, items)
         );
         if (matchingChild?.title) {
           if (item.title !== activeParent) {
-             
             setActiveParent(item.title!);
           }
           if (matchingChild.title !== activeChild) {
-             
             setActiveChild(matchingChild.title);
           }
           return;
@@ -95,6 +119,7 @@ export function NavMain({ items }: { items: NavItem[] }) {
         <NavMainItem
           key={`${item.isSection ? 'section' : 'item'}-${item.title || item.label || index}`}
           item={item}
+          allItems={items}
           pathname={pathname}
           activeParent={activeParent}
           setActiveParent={setActiveParent}
@@ -108,6 +133,7 @@ export function NavMain({ items }: { items: NavItem[] }) {
 
 function NavMainItem({
   item,
+  allItems,
   pathname,
   activeParent,
   setActiveParent,
@@ -115,6 +141,7 @@ function NavMainItem({
   setActiveChild,
 }: {
   item: NavItem;
+  allItems: NavItem[];
   pathname: string;
   activeParent: string | null;
   activeChild: string | null;
@@ -123,10 +150,10 @@ function NavMainItem({
 }) {
   const hasChildren = !!item.children?.length;
   const isParentActive =
-    activeParent === item.title ||
-    (hasChildren
+    hasChildren
       ? anyChildMatches(pathname, item.children)
-      : routeMatches(pathname, item.href));
+      : routeMatches(pathname, item.href, false, allItems);
+
   const [isOpen, setIsOpen] = React.useState(isParentActive);
 
   // Sync open state when activeParent or route changes

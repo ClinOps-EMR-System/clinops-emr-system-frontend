@@ -2,10 +2,10 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { Plus, Search } from "lucide-react";
+import { Plus, Search, Activity } from "lucide-react";
 import { useAuth } from "@/store/RoleContext";
 import { adminApi } from "@/lib/services/admin";
-import type { AdminRole, AdminUser, Department } from "@/types/admin";
+import type { AdminRole, AdminUser, Cadre, Department } from "@/types/admin";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -28,6 +28,7 @@ export default function StaffPage() {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [roles, setRoles] = useState<AdminRole[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
+  const [cadres, setCadres] = useState<Cadre[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
@@ -42,14 +43,15 @@ export default function StaffPage() {
     email: "",
     password: "",
     department_id: "",
-    role: "",
+    cadre_id: "",
+    rank_id: "",
   });
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const [usersRes, rolesRes, depts] = await Promise.all([
+      const [usersRes, rolesRes, depts, cadresRes] = await Promise.all([
         adminApi.listUsers(token, {
           search: search || undefined,
           role: roleFilter || undefined,
@@ -58,10 +60,12 @@ export default function StaffPage() {
         }),
         adminApi.listRoles(token),
         adminApi.listDepartments(token),
+        adminApi.listCadres(token),
       ]);
       setUsers(usersRes.data);
       setRoles(rolesRes.filter((r) => r.name !== "Admin"));
       setDepartments(depts);
+      setCadres(cadresRes);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load staff");
     } finally {
@@ -81,7 +85,8 @@ export default function StaffPage() {
       email: "",
       password: "",
       department_id: "",
-      role: "",
+      cadre_id: "",
+      rank_id: "",
     });
     setFormError(null);
     setModalOpen(true);
@@ -99,7 +104,8 @@ export default function StaffPage() {
         department_id: form.department_id
           ? Number(form.department_id)
           : null,
-        roles: form.role ? [form.role] : [],
+        cadre_id: form.cadre_id ? Number(form.cadre_id) : null,
+        rank_id: form.rank_id ? Number(form.rank_id) : null,
         is_active: true,
       });
       setModalOpen(false);
@@ -200,7 +206,9 @@ export default function StaffPage() {
               <TableRow>
                 <TableHead>Name</TableHead>
                 <TableHead>Email</TableHead>
+                <TableHead>Cadre</TableHead>
                 <TableHead>Department</TableHead>
+                <TableHead>Supervisor</TableHead>
                 <TableHead>Roles</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
@@ -227,7 +235,16 @@ export default function StaffPage() {
                     <TableCell className="font-mono text-xs">
                       {user.email}
                     </TableCell>
+                    <TableCell>
+                      {user.cadre?.name || "—"}
+                      {user.rank?.name ? (
+                        <span className="block text-xs text-muted-foreground">
+                          {user.rank.name}
+                        </span>
+                      ) : null}
+                    </TableCell>
                     <TableCell>{user.department?.name || "—"}</TableCell>
+                    <TableCell>{user.supervisor?.name || "—"}</TableCell>
                     <TableCell>
                       {(user.roles || []).map((r) => r.name).join(", ") || "—"}
                     </TableCell>
@@ -239,6 +256,9 @@ export default function StaffPage() {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
+                        <Button variant="outline" size="sm" nativeButton={false} render={<Link href={`/system/staff/${user.id}/activity`} />}>
+                          <Activity className="h-3.5 w-3.5" />
+                        </Button>
                         <Button variant="outline" size="sm" nativeButton={false} render={<Link href={`/system/staff/${user.id}`} />}>
                           Edit
                         </Button>
@@ -309,20 +329,44 @@ export default function StaffPage() {
             </select>
           </label>
           <label className="block space-y-1 text-sm">
-            <span className="font-medium">Role</span>
+            <span className="font-medium">Cadre</span>
             <select
               className="h-10 w-full rounded-md border border-input bg-white px-3 text-sm"
-              value={form.role}
+              value={form.cadre_id}
               onChange={(e) =>
-                setForm((f) => ({ ...f, role: e.target.value }))
+                setForm((f) => ({
+                  ...f,
+                  cadre_id: e.target.value,
+                  rank_id: "",
+                }))
               }
             >
               <option value="">None</option>
-              {roles.map((r) => (
-                <option key={r.id} value={r.name}>
-                  {r.name}
+              {cadres.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
                 </option>
               ))}
+            </select>
+          </label>
+          <label className="block space-y-1 text-sm">
+            <span className="font-medium">Rank</span>
+            <select
+              className="h-10 w-full rounded-md border border-input bg-white px-3 text-sm"
+              value={form.rank_id}
+              disabled={!form.cadre_id}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, rank_id: e.target.value }))
+              }
+            >
+              <option value="">None</option>
+              {cadres
+                .find((c) => c.id === Number(form.cadre_id))
+                ?.ranks?.map((r) => (
+                  <option key={r.id} value={r.id}>
+                    {r.name}
+                  </option>
+                ))}
             </select>
           </label>
           <div className="flex justify-end gap-2 pt-2">

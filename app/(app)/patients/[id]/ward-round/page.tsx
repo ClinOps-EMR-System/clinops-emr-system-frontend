@@ -6,7 +6,8 @@ import { useAuth } from "../../../../../store/RoleContext";
 import { api } from "../../../../../lib/api";
 import PatientBanner from "../../../../../components/ui/PatientBanner";
 import LoadingState from "../../../../../components/ui/LoadingState";
-import { usePageTitle } from "@/lib/hooks/usePageTitle";
+import StatusBadge from "../../../../../components/ui/StatusBadge";
+import { Clock, Droplets, Activity } from "lucide-react";
 
 interface Patient {
   id: number;
@@ -40,7 +41,6 @@ interface Admission {
 }
 
 export default function WardRoundPage() {
-  usePageTitle("Ward Round");
   const params = useParams();
   const router = useRouter();
   const { token } = useAuth();
@@ -67,6 +67,11 @@ export default function WardRoundPage() {
   const [currentMedications, setCurrentMedications] = useState("");
   const [nursingNotes, setNursingNotes] = useState("");
 
+  // Nursing shift notes
+  const [shiftNotes, setShiftNotes] = useState<Array<{ id: number; shift_type: string; note_content: string; intake_ml: number | null; output_ml: number | null; pain_score: number | null; nurse?: { name: string }; created_at: string }>>([]);
+  const [shiftForm, setShiftForm] = useState({ shift_type: "day", note_content: "", intake_ml: "", output_ml: "", pain_score: "" });
+  const [savingShift, setSavingShift] = useState(false);
+
   useEffect(() => {
     async function fetchData() {
       try {
@@ -79,15 +84,18 @@ export default function WardRoundPage() {
         if (patientRes) setPatient(patientRes.data || patientRes);
         if (encounterRes?.data?.length > 0) {
           setEncounter(encounterRes.data[0]);
-          // Fetch admission for this encounter
           try {
             const admissionRes = await api.get(`/encounters/${encounterRes.data[0].id}/admission`, token);
             if (admissionRes?.data) {
               setAdmission(admissionRes.data);
             }
-          } catch {
-            // No admission found — patient is outpatient
-          }
+          } catch { /* No admission */ }
+          // Fetch shift notes
+          try {
+            const shiftRes = await api.get(`/nursing-shift-notes?encounter_id=${encounterRes.data[0].id}`, token);
+            const notes = shiftRes?.data?.data ?? shiftRes?.data ?? [];
+            setShiftNotes(Array.isArray(notes) ? notes : []);
+          } catch { /* No shift notes */ }
         }
       } catch (err: unknown) {
         setError(err instanceof Error ? err.message : "Failed to load patient data");
@@ -159,6 +167,35 @@ export default function WardRoundPage() {
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to discharge patient.");
       setDischarging(false);
+    }
+  };
+
+  const handleSaveShiftNote = async () => {
+    if (!encounter?.id || !shiftForm.note_content.trim()) return;
+    setSavingShift(true);
+    setError(null);
+    try {
+      await api.post("/nursing-shift-notes", {
+        patient_id: parseInt(patientId),
+        encounter_id: encounter.id,
+        admission_id: admission?.id || undefined,
+        shift_type: shiftForm.shift_type,
+        note_content: shiftForm.note_content,
+        intake_ml: shiftForm.intake_ml ? parseInt(shiftForm.intake_ml) : undefined,
+        output_ml: shiftForm.output_ml ? parseInt(shiftForm.output_ml) : undefined,
+        pain_score: shiftForm.pain_score ? parseInt(shiftForm.pain_score) : undefined,
+      }, token);
+      setShiftForm({ shift_type: "day", note_content: "", intake_ml: "", output_ml: "", pain_score: "" });
+      setSuccessMsg("Shift note saved");
+      setTimeout(() => setSuccessMsg(""), 2000);
+      // Re-fetch
+      const shiftRes = await api.get(`/nursing-shift-notes?encounter_id=${encounter.id}`, token);
+      const notes = shiftRes?.data?.data ?? shiftRes?.data ?? [];
+      setShiftNotes(Array.isArray(notes) ? notes : []);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to save shift note");
+    } finally {
+      setSavingShift(false);
     }
   };
 
@@ -323,12 +360,122 @@ export default function WardRoundPage() {
         </div>
       </section>
 
+      {/* Nursing Shift Notes */}
+      <section className="bg-white rounded border border-[#becab7]/50 p-6 space-y-4">
+        <div className="flex items-center gap-2">
+          <span className="h-2 w-2 rounded-full bg-sky-500"></span>
+          <h2 className="text-lg font-bold text-gray-900">Nursing Shift Notes</h2>
+        </div>
+
+        {/* New shift note form */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+          <div>
+            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1 block">Shift</label>
+            <select
+              value={shiftForm.shift_type}
+              onChange={(e) => setShiftForm({ ...shiftForm, shift_type: e.target.value })}
+              className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-clinical-primary"
+            >
+              <option value="day">Day Shift</option>
+              <option value="night">Night Shift</option>
+            </select>
+          </div>
+          <div>
+            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1 block">Pain Score (0-10)</label>
+            <input
+              type="number"
+              min={0}
+              max={10}
+              value={shiftForm.pain_score}
+              onChange={(e) => setShiftForm({ ...shiftForm, pain_score: e.target.value })}
+              placeholder="0-10"
+              className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-clinical-primary"
+            />
+          </div>
+          <div>
+            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1 block">Intake (mL)</label>
+            <input
+              type="number"
+              min={0}
+              value={shiftForm.intake_ml}
+              onChange={(e) => setShiftForm({ ...shiftForm, intake_ml: e.target.value })}
+              placeholder="mL"
+              className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-clinical-primary"
+            />
+          </div>
+          <div>
+            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1 block">Output (mL)</label>
+            <input
+              type="number"
+              min={0}
+              value={shiftForm.output_ml}
+              onChange={(e) => setShiftForm({ ...shiftForm, output_ml: e.target.value })}
+              placeholder="mL"
+              className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-clinical-primary"
+            />
+          </div>
+          <div className="md:col-span-2">
+            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1 block">Note Content *</label>
+            <textarea
+              rows={3}
+              value={shiftForm.note_content}
+              onChange={(e) => setShiftForm({ ...shiftForm, note_content: e.target.value })}
+              placeholder="Nursing observations, patient status, concerns..."
+              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary resize-none"
+            />
+          </div>
+          <div className="md:col-span-2 flex justify-end">
+            <button
+              onClick={handleSaveShiftNote}
+              disabled={savingShift || !shiftForm.note_content.trim()}
+              className="px-5 py-2 bg-sky-600 hover:bg-sky-700 text-white text-sm font-bold rounded shadow-sm transition-all cursor-pointer disabled:opacity-50"
+            >
+              {savingShift ? "Saving..." : "Save Shift Note"}
+            </button>
+          </div>
+        </div>
+
+        {/* Existing shift notes */}
+        {shiftNotes.length > 0 && (
+          <div className="space-y-3 pt-2">
+            <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Previous Shift Notes</h4>
+            {shiftNotes.map((note) => (
+              <div key={note.id} className="bg-gray-50 rounded-lg border border-gray-200 p-4 space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <StatusBadge label={note.shift_type === "day" ? "Day Shift" : "Night Shift"} variant={note.shift_type === "day" ? "info" : "purple"} />
+                    {note.pain_score != null && (
+                      <span className="text-xs font-mono text-gray-500 flex items-center gap-1">
+                        <Activity className="h-3 w-3" /> Pain: {note.pain_score}/10
+                      </span>
+                    )}
+                    {(note.intake_ml != null || note.output_ml != null) && (
+                      <span className="text-xs font-mono text-gray-500 flex items-center gap-1">
+                        <Droplets className="h-3 w-3" /> I: {note.intake_ml ?? "—"} / O: {note.output_ml ?? "—"} mL
+                      </span>
+                    )}
+                  </div>
+                  <span className="text-xs text-gray-500 font-mono flex items-center gap-1">
+                    <Clock className="h-3 w-3" />
+                    {new Date(note.created_at).toLocaleString()}
+                  </span>
+                </div>
+                <p className="text-sm text-gray-700 whitespace-pre-wrap">{note.note_content}</p>
+                {note.nurse && (
+                  <p className="text-xs text-gray-500">By {note.nurse.name}</p>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
       {/* Discharge Decision — only for admitted patients */}
       {admission && admission.status === "Admitted" && (
         <section className="bg-white rounded border border-[#becab7]/50 p-6 space-y-4">
           <div className="flex items-center gap-2">
             <span className="h-2 w-2 rounded-full bg-amber-500"></span>
-            <h3 className="text-lg font-bold text-gray-900">Inpatient Decision</h3>
+            <h2 className="text-lg font-bold text-gray-900">Inpatient Decision</h2>
           </div>
           <p className="text-sm text-[#5f5e5e]">
             Based on today&apos;s ward round assessment, decide the next step for this patient.

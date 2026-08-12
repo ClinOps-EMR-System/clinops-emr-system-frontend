@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useFetch } from "../../../../lib/useFetch";
 import { api } from "../../../../lib/api";
 import { useAuth } from "../../../../store/RoleContext";
+import { usePermissions } from "@/lib/hooks/usePermissions";
 import { SectionHeader } from "../../../../components/ui/PageLayout";
 import {
   Card,
@@ -27,7 +28,10 @@ import { Input } from "@/components/ui/input";
 import SelectField from "../../../../components/ui/SelectField";
 import EmptyState from "../../../../components/ui/EmptyState";
 import Modal from "../../../../components/ui/Modal";
+import BillingConfirmation from "../../../../components/billing/BillingConfirmation";
+import { parseBilling, type BillingSummary } from "../../../../types/billing";
 import { Search, X, Pill, Clock, CheckCircle, AlertTriangle, User } from "lucide-react";
+import { RoleGuard } from "@/components/auth/RoleGuard";
 
 interface Prescription {
   id: number;
@@ -58,6 +62,15 @@ interface Prescription {
   prescribedBy?: {
     name: string;
   };
+  is_student_prescription: boolean;
+  verification: {
+    id: number;
+    status: string;
+    submitted_at: string | null;
+    reviewed_by: number | null;
+    reviewed_at: string | null;
+    comments: string | null;
+  } | null;
 }
 
 interface StockBatch {
@@ -87,8 +100,16 @@ function getStatusVariant(status: string): "success" | "warning" | "error" | "in
   }
 }
 
+function getVerificationBadge(rx: Prescription): { label: string; variant: "warning" | "error" | "info" } | null {
+  if (!rx.verification) return null;
+  if (rx.verification.status === "pending") return { label: "Awaiting supervisor review", variant: "warning" };
+  if (rx.verification.status === "rejected") return { label: "Supervisor sent back", variant: "error" };
+  return { label: "Supervisor approved", variant: "info" };
+}
+
 export default function DispensingPage() {
   const { token } = useAuth();
+  const { can } = usePermissions();
   const { data: prescriptionsRaw, loading, refetch } = useFetch<Prescription[]>("/prescriptions", { interval: 30000 });
 
   const [search, setSearch] = useState("");
@@ -97,6 +118,7 @@ export default function DispensingPage() {
   const [selectedPrescription, setSelectedPrescription] = useState<Prescription | null>(null);
   const [dispensing, setDispensing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [billingSummary, setBillingSummary] = useState<BillingSummary | null>(null);
 
   const [stockBatches, setStockBatches] = useState<StockBatch[]>([]);
   const [selectedBatchId, setSelectedBatchId] = useState<number | null>(null);
@@ -167,12 +189,16 @@ export default function DispensingPage() {
       if (selectedPrescription.status?.toLowerCase() === "prescribed") {
         await api.post(`/prescriptions/${selectedPrescription.id}/verify`, {}, token);
       }
-      await api.post(`/prescriptions/${selectedPrescription.id}/dispense`, {
+      const res = await api.post(`/prescriptions/${selectedPrescription.id}/dispense`, {
         items: [{ stock_batch_id: selectedBatchId, quantity: dispenseQuantity }],
       }, token);
       setDispenseModalOpen(false);
       setSelectedPrescription(null);
       refetch();
+      const billing = parseBilling(res);
+      if (billing) {
+        setBillingSummary(billing);
+      }
     } catch (err: unknown) {
       const apiError = err as { status?: number; message?: string };
       setError(apiError.message || "Failed to dispense");
@@ -198,6 +224,7 @@ export default function DispensingPage() {
   const controlledCount = prescriptions.filter((rx) => rx.drug?.is_controlled && rx.status?.toLowerCase() !== "dispensed").length;
 
   return (
+    <RoleGuard allowedRoles={["pharmacist", "admin"]}>
     <div className="flex flex-col gap-6">
       <SectionHeader
         title="Prescription Dispensing"
@@ -370,63 +397,87 @@ export default function DispensingPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredPrescriptions.map((rx) => (
-                    <TableRow key={rx.id}>
-                      <TableCell>
-                        <Link
-                          href={`/patients/${rx.patient_id}`}
-                          className="font-medium text-foreground hover:text-primary hover:underline"
-                        >
-                          {rx.patient ? `${rx.patient.first_name} ${rx.patient.last_name}` : `Patient #${rx.patient_id}`}
-                        </Link>
-                        <div className="text-xs text-muted-foreground font-mono">
-                          {rx.patient?.hospital_number}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="font-medium">{rx.drug?.name || "—"}</div>
-                        {rx.drug?.is_controlled && (
-                          <StatusBadge label="Controlled" variant="error" />
-                        )}
-                      </TableCell>
-                      <TableCell className="hidden md:table-cell text-muted-foreground font-mono text-sm">
-                        {rx.dosage} {rx.route}
-                      </TableCell>
-                      <TableCell className="hidden lg:table-cell text-muted-foreground text-sm">
-                        {rx.frequency}
-                      </TableCell>
-                      <TableCell>
-                        <StatusBadge label={rx.status} variant={getStatusVariant(rx.status)} />
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          {rx.status?.toLowerCase() === "prescribed" && (
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => handleVerify(rx)}
-                            >
-                              Verify
-                            </Button>
-                          )}
-                          {(rx.status?.toLowerCase() === "verified" || rx.status?.toLowerCase() === "prescribed") && (
-                            <Button
-                              size="sm"
-                              onClick={() => openDispenseModal(rx)}
-                            >
-                              Dispense
-                            </Button>
-                          )}
+                  {filteredPrescriptions.map((rx) => {
+                    const verificationBadge = getVerificationBadge(rx);
+                    const locked =
+                      rx.is_student_prescription &&
+                      verificationBadge !== null &&
+                      verificationBadge.variant !== "info";
+                    return (
+                      <TableRow key={rx.id}>
+                        <TableCell>
                           <Link
                             href={`/patients/${rx.patient_id}`}
-                            className="text-sm font-medium text-primary hover:underline"
+                            className="font-medium text-foreground hover:text-primary hover:underline"
                           >
-                            <User className="h-4 w-4" />
+                            {rx.patient ? `${rx.patient.first_name} ${rx.patient.last_name}` : `Patient #${rx.patient_id}`}
                           </Link>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                          <div className="text-xs text-muted-foreground font-mono">
+                            {rx.patient?.hospital_number}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="font-medium">{rx.drug?.name || "—"}</div>
+                          {rx.drug?.is_controlled && (
+                            <StatusBadge label="Controlled" variant="error" />
+                          )}
+                          {rx.is_student_prescription && (
+                            <div className="text-xs text-muted-foreground mt-1">
+                              Prescribed by {rx.prescribedBy?.name ?? "student"} (student)
+                            </div>
+                          )}
+                        </TableCell>
+                        <TableCell className="hidden md:table-cell text-muted-foreground font-mono text-sm">
+                          {rx.dosage} {rx.route}
+                        </TableCell>
+                        <TableCell className="hidden lg:table-cell text-muted-foreground text-sm">
+                          {rx.frequency}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex flex-col items-start gap-1">
+                            <StatusBadge label={rx.status} variant={getStatusVariant(rx.status)} />
+                            {verificationBadge && (
+                              <StatusBadge label={verificationBadge.label} variant={verificationBadge.variant} />
+                            )}
+                            {rx.verification?.status === "rejected" && rx.verification.comments && (
+                              <div className="text-xs text-muted-foreground max-w-[220px]">
+                                {rx.verification.comments}
+                              </div>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            {rx.status?.toLowerCase() === "prescribed" && can("pharmacy.verify") && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => handleVerify(rx)}
+                                disabled={locked}
+                              >
+                                Verify
+                              </Button>
+                            )}
+                            {(rx.status?.toLowerCase() === "verified" || rx.status?.toLowerCase() === "prescribed") && can("pharmacy.dispense") && (
+                              <Button
+                                size="sm"
+                                onClick={() => openDispenseModal(rx)}
+                                disabled={locked}
+                              >
+                                Dispense
+                              </Button>
+                            )}
+                            <Link
+                              href={`/patients/${rx.patient_id}`}
+                              className="text-sm font-medium text-primary hover:underline"
+                            >
+                              <User className="h-4 w-4" />
+                            </Link>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
               <div className="px-6 py-3 border-t text-xs text-muted-foreground font-mono">
@@ -451,12 +502,14 @@ export default function DispensingPage() {
             >
               Cancel
             </Button>
-            <Button
-              onClick={handleDispense}
-              disabled={dispensing || !selectedBatchId || dispenseQuantity < 1}
-            >
-              {dispensing ? "Dispensing..." : "Confirm Dispense"}
-            </Button>
+            {can("pharmacy.dispense") && (
+              <Button
+                onClick={handleDispense}
+                disabled={dispensing || !selectedBatchId || dispenseQuantity < 1}
+              >
+                {dispensing ? "Dispensing..." : "Confirm Dispense"}
+              </Button>
+            )}
           </>
         }
       >
@@ -533,7 +586,16 @@ export default function DispensingPage() {
           </div>
         )}
       </Modal>
+
+      {billingSummary && (
+        <BillingConfirmation
+          billing={billingSummary}
+          onDone={() => setBillingSummary(null)}
+          onClose={() => setBillingSummary(null)}
+        />
+      )}
     </div>
+    </RoleGuard>
   );
 }
 

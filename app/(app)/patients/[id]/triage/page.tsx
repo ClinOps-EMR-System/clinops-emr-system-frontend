@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/store/RoleContext";
+import { RoleGuard } from "@/components/auth/RoleGuard";
 import { api } from "@/lib/api";
 import { calculateNEWS2, type AVPU, type SpO2Scale, type NEWS2Result } from "@/lib/ews";
 import { friendlyError } from "@/lib/errors";
@@ -18,6 +19,8 @@ import { Separator } from "@/components/ui/separator";
 import { SectionHeader } from "@/components/ui/PageLayout";
 import TriageSidebar from "@/components/triage/TriageSidebar";
 import TriageProgressCard from "@/components/triage/TriageProgressCard";
+import { useToast } from "@/components/ui/Toast";
+import { usePermissions } from "@/lib/hooks/usePermissions";
 import { cn } from "@/lib/utils";
 import {
   ArrowLeft, Loader2, Check, TriangleAlert, Stethoscope,
@@ -112,6 +115,8 @@ export default function NurseTriageWorkbench() {
   const params = useParams();
   const router = useRouter();
   const { token } = useAuth();
+  const { success } = useToast();
+  const { can } = usePermissions();
   const patientId = params.id as string;
 
   const [activeTab, setActiveTab] = useState<"complaint" | "vitals" | "allergies" | "pregnancy" | "infection" | "trends">("complaint");
@@ -122,7 +127,6 @@ export default function NurseTriageWorkbench() {
   const [loading, setLoading] = useState(true);
   const [submitLoading, setSubmitLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [formErrors, setFormErrors] = useState<Record<string, string[]>>({});
 
   const [temperature, setTemperature] = useState("");
@@ -146,6 +150,16 @@ export default function NurseTriageWorkbench() {
   const [allergyType, setAllergyType] = useState("Drug");
   const [reaction, setReaction] = useState("");
   const [severity, setSeverity] = useState<"mild" | "moderate" | "severe">("mild");
+  const [allergyDrugQuery, setAllergyDrugQuery] = useState("");
+  const [allergyDrugResults, setAllergyDrugResults] = useState<{
+    id: number;
+    name: string;
+    generic_name: string | null;
+    atc_code: string | null;
+    formulation: string | null;
+    strength: string | null;
+  }[]>([]);
+  const [allergyAtcCode, setAllergyAtcCode] = useState("");
 
   const [chiefComplaint, setChiefComplaint] = useState("");
   const [hpi, setHpi] = useState("");
@@ -245,7 +259,6 @@ export default function NurseTriageWorkbench() {
         e.preventDefault();
         setActiveTab(tab);
         setError(null);
-        setSuccessMsg(null);
       }
     };
     window.addEventListener("keydown", handleKeyDown);
@@ -265,10 +278,6 @@ export default function NurseTriageWorkbench() {
         const s = triageRes.data as TriageSummary;
         setSummary(s);
         if (s.encounter) {
-          if ((s.encounter as unknown as { status?: string }).status === "Emergency" || (s.encounter as unknown as { status?: string }).status === "awaiting_triage") {
-            router.replace(`/patients/${patientId}/emergency-triage`);
-            return;
-          }
           setChiefComplaint(s.encounter.chief_complaint || "");
           setHpi(s.encounter.history_of_present_illness || "");
         }
@@ -291,6 +300,22 @@ export default function NurseTriageWorkbench() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, patientId]);
 
+  useEffect(() => {
+    if (allergyType !== "Drug" || allergyDrugQuery.trim().length < 2) {
+      setAllergyDrugResults([]);
+      return;
+    }
+    const delayDebounceFn = setTimeout(async () => {
+      try {
+        const res = await api.get(`/drugs/search?q=${encodeURIComponent(allergyDrugQuery)}`, token);
+        setAllergyDrugResults(Array.isArray(res) ? res : []);
+      } catch {
+        setAllergyDrugResults([]);
+      }
+    }, 400);
+    return () => clearTimeout(delayDebounceFn);
+  }, [allergyDrugQuery, allergyType, token]);
+
   const currentVitalsPayload = {
     respirationRate: respiratoryRate ? parseInt(respiratoryRate) : undefined,
     spo2: oxygenSaturation ? parseInt(oxygenSaturation) : undefined,
@@ -311,7 +336,6 @@ export default function NurseTriageWorkbench() {
     e.preventDefault();
     setSubmitLoading(true);
     setError(null);
-    setSuccessMsg(null);
     setFormErrors({});
     let dbConsciousness = "alert";
     if (consciousness === "C") dbConsciousness = "new_confusion";
@@ -338,7 +362,7 @@ export default function NurseTriageWorkbench() {
     };
     try {
       await api.post(`/patients/${patientId}/triage/vital-signs`, payload, token);
-      setSuccessMsg("Vital signs and clinical NEWS2 score logged successfully.");
+      success("Vital signs and clinical NEWS2 score logged successfully.");
       setTemperature("");
       setBloodPressure("");
       setPulseRate("");
@@ -368,12 +392,14 @@ export default function NurseTriageWorkbench() {
     if (!allergen.trim()) return;
     setSubmitLoading(true);
     setError(null);
-    setSuccessMsg(null);
     try {
-      await api.post(`/patients/${patientId}/triage/allergies`, { allergen, allergy_type: allergyType, reaction: reaction || null, severity }, token);
-      setSuccessMsg("Allergy noted successfully.");
+      await api.post(`/patients/${patientId}/triage/allergies`, { allergen, allergy_type: allergyType, reaction: reaction || null, severity, atc_code: allergyAtcCode || null }, token);
+      success("Allergy noted successfully.");
       setAllergen("");
       setReaction("");
+      setAllergyDrugQuery("");
+      setAllergyAtcCode("");
+      setAllergyDrugResults([]);
       fetchSummaryData();
     } catch (err: unknown) {
       setError(friendlyError(err, "record allergy"));
@@ -385,10 +411,9 @@ export default function NurseTriageWorkbench() {
   const handleConfirmNKA = async () => {
     setSubmitLoading(true);
     setError(null);
-    setSuccessMsg(null);
     try {
       await api.post(`/patients/${patientId}/triage/confirm-allergies`, {}, token);
-      setSuccessMsg("No Known Allergies (NKA) status confirmed.");
+      success("No Known Allergies (NKA) status confirmed.");
       fetchSummaryData();
     } catch (err: unknown) {
       setError(friendlyError(err, "confirm allergies"));
@@ -402,10 +427,9 @@ export default function NurseTriageWorkbench() {
     if (!chiefComplaint.trim()) { setError("Chief Complaint is mandatory."); return; }
     setSubmitLoading(true);
     setError(null);
-    setSuccessMsg(null);
     try {
       await api.post(`/patients/${patientId}/triage/presenting-complaint`, { chief_complaint: chiefComplaint, history_of_present_illness: hpi || null }, token);
-      setSuccessMsg("Presenting complaints recorded successfully.");
+      success("Presenting complaints recorded successfully.");
       fetchSummaryData();
     } catch (err: unknown) {
       setError(friendlyError(err, "save complaints"));
@@ -418,12 +442,11 @@ export default function NurseTriageWorkbench() {
     e.preventDefault();
     setSubmitLoading(true);
     setError(null);
-    setSuccessMsg(null);
     try {
       await api.post(`/patients/${patientId}/triage/pregnancy-status`, {
         is_pregnant: isPregnant, last_menstrual_period: lmp || null, gestational_age_weeks: gestationalWeeks ? parseInt(gestationalWeeks) : null,
       }, token);
-      setSuccessMsg("Pregnancy status successfully updated.");
+      success("Pregnancy status successfully updated.");
       fetchSummaryData();
     } catch (err: unknown) {
       setError(friendlyError(err, "update pregnancy status"));
@@ -436,13 +459,12 @@ export default function NurseTriageWorkbench() {
     e.preventDefault();
     setSubmitLoading(true);
     setError(null);
-    setSuccessMsg(null);
     try {
       await api.post(`/patients/${patientId}/triage/infection-screening`, {
         has_fever: hasFever, has_cough: hasCough, has_contact_history: hasContactHistory,
         has_travel_history: hasTravelHistory, suspected_infection_type: suspectedInfectionType || null,
       }, token);
-      setSuccessMsg("Infectious screening log saved. Precautions updated.");
+      success("Infectious screening log saved. Precautions updated.");
       fetchSummaryData();
     } catch (err: unknown) {
       setError(friendlyError(err, "save screening"));
@@ -454,11 +476,19 @@ export default function NurseTriageWorkbench() {
   const [completing, setCompleting] = useState(false);
   const [showCompletionSummary, setShowCompletionSummary] = useState(false);
 
+  useEffect(() => {
+    if (!showCompletionSummary) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setShowCompletionSummary(false);
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [showCompletionSummary]);
+
   const handleCompleteTriage = async () => {
     if (!token || completing) return;
     setCompleting(true);
     setError(null);
-    setSuccessMsg(null);
     try {
       await api.post(`/patients/${patientId}/triage/complete`, {}, token);
       setShowCompletionSummary(true);
@@ -472,10 +502,9 @@ export default function NurseTriageWorkbench() {
     if (!token || undoingVitals) return;
     setUndoingVitals(true);
     setError(null);
-    setSuccessMsg(null);
     try {
       await api.delete(`/patients/${patientId}/triage/vital-signs/last`, token);
-      setSuccessMsg("Last vital signs entry removed. You can re-enter them.");
+      success("Last vital signs entry removed. You can re-enter them.");
       fetchSummaryData();
     } catch (err: unknown) {
       setError(friendlyError(err, "undo vitals"));
@@ -521,10 +550,10 @@ export default function NurseTriageWorkbench() {
   const handleTabChange = (key: string) => {
     setActiveTab(key as typeof activeTab);
     setError(null);
-    setSuccessMsg(null);
   };
 
   return (
+    <RoleGuard allowedRoles={["nurse", "clinical officer", "admin"]}>
     <div className="max-w-7xl mx-auto space-y-6">
       <SectionHeader
         title="Triage Clinical Workbench"
@@ -573,11 +602,6 @@ export default function NurseTriageWorkbench() {
         <div className="lg:col-span-3">
           <Card>
             <CardContent className="p-6 space-y-6">
-          {successMsg && (
-            <div className="rounded-lg bg-emerald-50 border border-emerald-200 px-4 py-3 text-sm text-emerald-800 font-semibold flex items-center gap-2">
-              <Check className="h-4 w-4 text-emerald-600 shrink-0" /> {successMsg}
-            </div>
-          )}
 
           {error && (
             <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-800 font-semibold flex items-center gap-2">
@@ -610,7 +634,7 @@ export default function NurseTriageWorkbench() {
                           : "bg-muted border-border"
                   )}>
                     <div>
-                      <h4 className="text-sm font-bold uppercase tracking-wider">Automated NEWS2 Score</h4>
+                      <h2 className="text-sm font-bold uppercase tracking-wider">Automated NEWS2 Score</h2>
                       <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{news2.frequencyText}</p>
                     </div>
                     <div className="flex items-baseline gap-2.5">
@@ -679,8 +703,9 @@ export default function NurseTriageWorkbench() {
                       {formErrors.oxygen_saturation && <p className="text-xs text-destructive">{formErrors.oxygen_saturation.join(" ")}</p>}
                     </div>
                     <div className="space-y-1.5">
-                      <label className="text-xs font-semibold text-foreground uppercase tracking-wide">Oxygen Scale (NEWS2)</label>
+                      <label htmlFor="field-o2-scale" className="text-xs font-semibold text-foreground uppercase tracking-wide">Oxygen Scale (NEWS2)</label>
                       <select
+                        id="field-o2-scale"
                         className="mt-1 block w-full px-3 py-2 border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus-visible:ring-ring text-sm"
                         value={spo2Scale}
                         onChange={(e) => setSpo2Scale(parseInt(e.target.value) as SpO2Scale)}
@@ -701,8 +726,9 @@ export default function NurseTriageWorkbench() {
                       </label>
                     </div>
                     <div className="space-y-1.5">
-                      <label className="text-xs font-semibold text-foreground uppercase tracking-wide">Consciousness (AVPU)</label>
+                      <label htmlFor="field-avpu" className="text-xs font-semibold text-foreground uppercase tracking-wide">Consciousness (AVPU)</label>
                       <select
+                        id="field-avpu"
                         className="mt-1 block w-full px-3 py-2 border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus-visible:ring-ring text-sm"
                         value={consciousness}
                         onChange={(e) => setConsciousness(e.target.value as AVPU)}
@@ -731,8 +757,9 @@ export default function NurseTriageWorkbench() {
                   {showAdditionalVitals && (
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
                       <div className="space-y-1.5">
-                        <label className="text-xs font-semibold text-foreground uppercase tracking-wide">Triage Priority Category</label>
+                        <label htmlFor="field-triage-priority" className="text-xs font-semibold text-foreground uppercase tracking-wide">Triage Priority Category</label>
                         <select
+                          id="field-triage-priority"
                           className="mt-1 block w-full px-3 py-2 border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus-visible:ring-ring text-sm"
                           value={triageCategory}
                           onChange={(e) => setTriageCategory(e.target.value)}
@@ -745,8 +772,9 @@ export default function NurseTriageWorkbench() {
                         </select>
                       </div>
                       <div className="space-y-1.5">
-                        <label className="text-xs font-semibold text-foreground uppercase tracking-wide">Weight (kg)</label>
+                        <label htmlFor="field-weight" className="text-xs font-semibold text-foreground uppercase tracking-wide">Weight (kg)</label>
                         <Input
+                          id="field-weight"
                           type="text" inputMode="decimal" maxLength={5} placeholder="e.g. 70.0"
                           value={weight} onChange={(e) => setWeight(decimalOnly(e.target.value))}
                           className="font-mono"
@@ -793,7 +821,7 @@ export default function NurseTriageWorkbench() {
                   {showAdditionalVitals && (
                     <div className="space-y-4 pt-2">
                       <Separator />
-                      <h4 className="text-xs font-semibold text-foreground uppercase tracking-widest">Glasgow Coma Scale (GCS)</h4>
+                      <h2 className="text-xs font-semibold text-foreground uppercase tracking-widest">Glasgow Coma Scale (GCS)</h2>
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div className="space-y-1.5">
                           <label className="text-xs font-semibold text-foreground uppercase tracking-wide">GCS Eye (1-4)</label>
@@ -841,7 +869,7 @@ export default function NurseTriageWorkbench() {
                   <Separator />
 
                   <div className="flex items-center justify-between">
-                    {hasVitals && (
+                    {hasVitals && can("triage.edit") && (
                       <Button type="button" variant="ghost" size="sm" onClick={handleUndoLastVitals} disabled={undoingVitals}>
                         <Undo2 className="h-4 w-4" />
                         {undoingVitals ? "Removing..." : "Undo Last Vitals Entry"}
@@ -870,7 +898,7 @@ export default function NurseTriageWorkbench() {
                 </CardHeader>
                 <CardContent className="space-y-6">
                   <div className="bg-muted/30 p-4 rounded-lg border">
-                    <h4 className="text-xs font-semibold text-foreground uppercase tracking-widest mb-3">Noted Allergies</h4>
+                    <h2 className="text-xs font-semibold text-foreground uppercase tracking-widest mb-3">Noted Allergies</h2>
                     {summary?.allergies && summary.allergies.length > 0 ? (
                       <div className="divide-y divide-border bg-card rounded-lg border overflow-hidden">
                         {summary.allergies.map((a) => (
@@ -899,18 +927,20 @@ export default function NurseTriageWorkbench() {
                   <Separator />
 
                   <form onSubmit={handleSaveAllergy} className="space-y-6">
-                    <h4 className="text-xs font-semibold text-foreground uppercase tracking-widest">Add New Patient Allergy</h4>
+                    <h2 className="text-xs font-semibold text-foreground uppercase tracking-widest">Add New Patient Allergy</h2>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="space-y-1.5">
-                        <label className="text-xs font-semibold text-foreground uppercase tracking-wide">Allergen</label>
+                        <label htmlFor="field-allergen" className="text-xs font-semibold text-foreground uppercase tracking-wide">Allergen</label>
                         <Input
+                          id="field-allergen"
                           required placeholder="e.g. Penicillin, Peanuts"
-                          value={allergen} onChange={(e) => setAllergen(e.target.value)}
+                          value={allergen} onChange={(e) => { setAllergen(e.target.value); setAllergyAtcCode(""); }}
                         />
                       </div>
                       <div className="space-y-1.5">
-                        <label className="text-xs font-semibold text-foreground uppercase tracking-wide">Allergen Type</label>
+                        <label htmlFor="field-allergen-type" className="text-xs font-semibold text-foreground uppercase tracking-wide">Allergen Type</label>
                         <select
+                          id="field-allergen-type"
                           className="block w-full px-3 py-2 border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus-visible:ring-ring text-sm"
                           value={allergyType} onChange={(e) => setAllergyType(e.target.value)}
                         >
@@ -920,6 +950,49 @@ export default function NurseTriageWorkbench() {
                           <option value="Other">Other</option>
                         </select>
                       </div>
+                      {allergyType === "Drug" && (
+                        <div className="relative space-y-1.5 md:col-span-2">
+                          <label htmlFor="field-atc" className="text-xs font-semibold text-foreground uppercase tracking-wide">
+                            Drug Class (ATC) — optional catalog search
+                          </label>
+                          <Input
+                            id="field-atc"
+                            placeholder="Search the drug catalog to auto-capture the drug class (e.g. Amoxicillin)..."
+                            value={allergyDrugQuery}
+                            onChange={(e) => {
+                              setAllergyDrugQuery(e.target.value);
+                              setAllergyAtcCode("");
+                            }}
+                          />
+                          {allergyDrugResults.length > 0 && (
+                            <ul className="absolute left-0 right-0 mt-1 bg-card border rounded-lg shadow-lg max-h-48 overflow-y-auto z-30 divide-y text-sm">
+                              {allergyDrugResults.map((d) => (
+                                <li key={d.id}>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setAllergen(d.name);
+                                      setAllergyAtcCode(d.atc_code ?? "");
+                                      setAllergyDrugResults([]);
+                                    }}
+                                    className="w-full text-left px-4 py-2.5 hover:bg-muted/50 flex items-baseline justify-between transition-colors"
+                                  >
+                                    <span className="font-medium text-foreground">{d.name}</span>
+                                    <span className="text-xs text-muted-foreground">
+                                      {d.formulation} {d.strength}{d.atc_code ? ` — ATC ${d.atc_code}` : ""}
+                                    </span>
+                                  </button>
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                          {allergyAtcCode && (
+                            <p className="text-xs text-muted-foreground">
+                              Captured ATC class: <span className="font-mono font-semibold text-foreground">{allergyAtcCode}</span> — prescribing will block same-class drugs.
+                            </p>
+                          )}
+                        </div>
+                      )}
                       <div className="space-y-1.5">
                         <label className="text-xs font-semibold text-foreground uppercase tracking-wide">Reaction Details (Optional)</label>
                         <Input
@@ -1022,12 +1095,13 @@ export default function NurseTriageWorkbench() {
                     {isPregnant && (
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-border">
                         <div className="space-y-1.5">
-                          <label className="text-xs font-semibold text-foreground uppercase tracking-wide">Last Menstrual Period (LMP)</label>
-                          <Input type="date" value={lmp} onChange={(e) => setLmp(e.target.value)} className="font-mono" />
+                          <label htmlFor="field-lmp" className="text-xs font-semibold text-foreground uppercase tracking-wide">Last Menstrual Period (LMP)</label>
+                          <Input id="field-lmp" type="date" value={lmp} onChange={(e) => setLmp(e.target.value)} className="font-mono" />
                         </div>
                         <div className="space-y-1.5">
-                          <label className="text-xs font-semibold text-foreground uppercase tracking-wide">Gestational Age (weeks)</label>
+                          <label htmlFor="field-gestational-age" className="text-xs font-semibold text-foreground uppercase tracking-wide">Gestational Age (weeks)</label>
                           <Input
+                            id="field-gestational-age"
                             type="text" inputMode="numeric" maxLength={2} placeholder="e.g. 24"
                             value={gestationalWeeks}
                             onChange={(e) => {
@@ -1065,7 +1139,7 @@ export default function NurseTriageWorkbench() {
                 </CardHeader>
                 <CardContent className="space-y-6">
                   <div className="bg-muted/30 p-4 rounded-lg border space-y-4">
-                    <h4 className="text-xs font-semibold text-foreground uppercase tracking-widest">Infectious Risk Checklist</h4>
+                    <h2 className="text-xs font-semibold text-foreground uppercase tracking-widest">Infectious Risk Checklist</h2>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       {[
                         { label: "Presence of Active Fever", checked: hasFever, set: setHasFever },
@@ -1122,7 +1196,7 @@ export default function NurseTriageWorkbench() {
                   <div className="space-y-8">
                     {trends.temperature && trends.temperature.length > 0 && (
                       <div className="bg-card p-4 rounded-lg border">
-                        <h4 className="text-xs font-semibold text-foreground uppercase tracking-widest mb-3">Temperature Graph (°C)</h4>
+                        <h2 className="text-xs font-semibold text-foreground uppercase tracking-widest mb-3">Temperature Graph (°C)</h2>
                         <div className="h-40 flex items-end gap-1.5 pt-6 border-b border-l border-border px-3 relative">
                           {trends.temperature.map((point, index) => {
                             const val = point.value;
@@ -1145,7 +1219,7 @@ export default function NurseTriageWorkbench() {
                     )}
                     {trends.pulse_rate && trends.pulse_rate.length > 0 && (
                       <div className="bg-card p-4 rounded-lg border">
-                        <h4 className="text-xs font-semibold text-foreground uppercase tracking-widest mb-3">Heart Pulse Trend (bpm)</h4>
+                        <h2 className="text-xs font-semibold text-foreground uppercase tracking-widest mb-3">Heart Pulse Trend (bpm)</h2>
                         <div className="h-40 flex items-end gap-1.5 pt-6 border-b border-l border-border px-3 relative">
                           {trends.pulse_rate.map((point, index) => {
                             const val = point.value; const minVal = 40; const maxVal = 160;
@@ -1165,7 +1239,7 @@ export default function NurseTriageWorkbench() {
                     )}
                     {trends.oxygen_saturation && trends.oxygen_saturation.length > 0 && (
                       <div className="bg-card p-4 rounded-lg border">
-                        <h4 className="text-xs font-semibold text-foreground uppercase tracking-widest mb-3">Oxygen Saturation (%)</h4>
+                        <h2 className="text-xs font-semibold text-foreground uppercase tracking-widest mb-3">Oxygen Saturation (%)</h2>
                         <div className="h-40 flex items-end gap-1.5 pt-6 border-b border-l border-border px-3 relative">
                           {trends.oxygen_saturation.map((point, index) => {
                             const val = point.value; const minVal = 70; const maxVal = 100;
@@ -1185,7 +1259,7 @@ export default function NurseTriageWorkbench() {
                     )}
                     {trends.ews_score && trends.ews_score.length > 0 && (
                       <div className="bg-card p-4 rounded-lg border">
-                        <h4 className="text-xs font-semibold text-foreground uppercase tracking-widest mb-3">Early Warning Score (NEWS2)</h4>
+                        <h2 className="text-xs font-semibold text-foreground uppercase tracking-widest mb-3">Early Warning Score (NEWS2)</h2>
                         <div className="h-40 flex items-end gap-1.5 pt-6 border-b border-l border-border px-3 relative">
                           {trends.ews_score.map((point, index) => {
                             const val = point.value; const minVal = 0; const maxVal = 15;
@@ -1219,13 +1293,13 @@ export default function NurseTriageWorkbench() {
         hasVitals={hasVitals}
         hasAllergies={hasAllergies}
         completing={completing}
-        onComplete={handleCompleteTriage}
+        onComplete={can("triage.create") ? handleCompleteTriage : () => {}}
       />
 
       {/* Completion Modal */}
       {showCompletionSummary && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" role="dialog" aria-modal="true">
-          <Card className="max-w-md w-full mx-4 shadow-xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" role="dialog" aria-modal="true" aria-label="Triage completion summary" onClick={() => setShowCompletionSummary(false)}>
+          <Card className="max-w-md w-full mx-4 shadow-xl" onClick={(e) => e.stopPropagation()}>
             <CardContent className="text-center space-y-4 pt-6">
               <div className="h-16 w-16 rounded-full bg-emerald-100 flex items-center justify-center mx-auto">
                 <Check className="h-8 w-8 text-emerald-600" />
@@ -1249,5 +1323,6 @@ export default function NurseTriageWorkbench() {
         </div>
       )}
     </div>
+    </RoleGuard>
   );
 }

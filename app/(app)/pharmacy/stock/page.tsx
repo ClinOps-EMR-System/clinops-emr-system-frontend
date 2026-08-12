@@ -3,6 +3,7 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
 import { api } from "../../../../lib/api";
 import { useAuth } from "../../../../store/RoleContext";
+import { usePermissions } from "@/lib/hooks/usePermissions";
 import { SectionHeader } from "../../../../components/ui/PageLayout";
 import {
   Card,
@@ -26,6 +27,7 @@ import SelectField from "../../../../components/ui/SelectField";
 import EmptyState from "../../../../components/ui/EmptyState";
 import Modal from "../../../../components/ui/Modal";
 import { Plus, Package, AlertTriangle, ArrowDownCircle, ArrowUpCircle, Trash2 } from "lucide-react";
+import { RoleGuard } from "@/components/auth/RoleGuard";
 
 interface StockBatch {
   id: number;
@@ -63,6 +65,7 @@ type ModalType = "receive" | "adjust" | "waste" | null;
 
 export default function StockPage() {
   const { token } = useAuth();
+  const { can } = usePermissions();
   const [page, setPage] = useState(1);
   const [expiryFilter, setExpiryFilter] = useState<ExpiryFilter>("all");
   const [modalType, setModalType] = useState<ModalType>(null);
@@ -262,15 +265,18 @@ export default function StockPage() {
   };
 
   return (
+    <RoleGuard allowedRoles={["pharmacist", "admin"]}>
     <div className="flex flex-col gap-6">
       <SectionHeader
         title="Stock Management"
         description="Manage drug stock batches, receive new stock, and record adjustments"
         action={
-          <Button onClick={openReceive}>
-            <Plus className="size-4" data-icon="inline-start" />
-            Receive Stock
-          </Button>
+          can("pharmacy.stock.manage") ? (
+            <Button onClick={openReceive}>
+              <Plus className="size-4" data-icon="inline-start" />
+              Receive Stock
+            </Button>
+          ) : undefined
         }
       />
 
@@ -326,16 +332,18 @@ export default function StockPage() {
       </div>
 
       {/* Quick Actions */}
-      <div className="flex gap-3">
-        <Button onClick={openReceive}>
-          <ArrowDownCircle className="size-4" data-icon="inline-start" />
-          Receive Stock
-        </Button>
-        <Button variant="outline" onClick={() => openAdjust()}>
-          <ArrowUpCircle className="size-4" data-icon="inline-start" />
-          Adjust Stock
-        </Button>
-      </div>
+      {can("pharmacy.stock.manage") && (
+        <div className="flex gap-3">
+          <Button onClick={openReceive}>
+            <ArrowDownCircle className="size-4" data-icon="inline-start" />
+            Receive Stock
+          </Button>
+          <Button variant="outline" onClick={() => openAdjust()}>
+            <ArrowUpCircle className="size-4" data-icon="inline-start" />
+            Adjust Stock
+          </Button>
+        </div>
+      )}
 
       {/* Filter Toolbar */}
       <Card>
@@ -397,10 +405,12 @@ export default function StockPage() {
                 title="No stock batches"
                 description="Receive stock to get started"
                 action={
-                  <Button onClick={openReceive}>
-                    <Plus className="size-4" data-icon="inline-start" />
-                    Receive Stock
-                  </Button>
+                  can("pharmacy.stock.manage") ? (
+                    <Button onClick={openReceive}>
+                      <Plus className="size-4" data-icon="inline-start" />
+                      Receive Stock
+                    </Button>
+                  ) : undefined
                 }
               />
             </div>
@@ -442,13 +452,17 @@ export default function StockPage() {
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-1">
-                            <Button size="sm" variant="ghost" onClick={() => openAdjust(batch)}>
-                              Adjust
-                            </Button>
-                            {batch.quantity_remaining > 0 && (
-                              <Button size="sm" variant="ghost" onClick={() => openWaste(batch)}>
-                                <Trash2 className="h-3.5 w-3.5" />
-                              </Button>
+                            {can("pharmacy.stock.manage") && (
+                              <>
+                                <Button size="sm" variant="ghost" onClick={() => openAdjust(batch)}>
+                                  Adjust
+                                </Button>
+                                {batch.quantity_remaining > 0 && (
+                                  <Button size="sm" variant="ghost" onClick={() => openWaste(batch)}>
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  </Button>
+                                )}
+                              </>
                             )}
                           </div>
                         </TableCell>
@@ -616,6 +630,7 @@ export default function StockPage() {
         </div>
       </Modal>
     </div>
+    </RoleGuard>
   );
 }
 

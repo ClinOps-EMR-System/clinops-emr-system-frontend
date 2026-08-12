@@ -6,11 +6,18 @@ import Link from "next/link";
 import {
   Edit, Stethoscope, MessageSquare, ArrowLeft, Check, TriangleAlert,
   Phone, Shield, Users, HeartPulse, CalendarClock, ClipboardList,
-  FileText, Plus, Loader2,
+  FileText, Plus, Loader2, GitMerge, Search, Activity, CreditCard,
 } from "lucide-react";
 import { useAuth } from "@/store/RoleContext";
+import { usePermissions } from "@/lib/hooks/usePermissions";
 import { api } from "@/lib/api";
-import type { Patient, Allergy, Encounter } from "@/types/patient";
+import Modal from "@/components/ui/Modal";
+import HospitalCard from "@/components/patients/HospitalCard";
+import { adminApi } from "@/lib/services/admin";
+import type { AuditLogEntry } from "@/types/admin";
+import type { Patient, Allergy, Encounter, DuplicatePatient } from "@/types/patient";
+import { admissionsApi } from "@/lib/admissions";
+import type { Admission } from "@/types/admission";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import StatusBadge from "@/components/ui/StatusBadge";
@@ -23,6 +30,9 @@ import Tabs, { TabPanel } from "@/components/ui/Tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
+import { useToast } from "@/components/ui/Toast";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
+import ClinicalTimeline from "@/components/audit/ClinicalTimeline";
 import { usePageTitle } from "@/lib/hooks/usePageTitle";
 
 interface TriageSummary {
@@ -90,8 +100,14 @@ function InfoRow({ label, value, mono }: { label: string; value: string | number
 export default function PatientProfilePage() {
   const params = useParams();
   const router = useRouter();
-  const { token } = useAuth();
+  const { token, user } = useAuth();
+  const { success, error: toastError } = useToast();
   const patientId = params.id as string;
+
+  const canMerge = (user?.permissions ?? []).includes("patient.merge");
+  const { roles } = usePermissions();
+  const isClinical = roles.some(r => ["nurse", "doctor", "clinical officer", "clinical admin", "admin"].includes(r));
+  const isReceptionist = roles.includes("receptionist");
 
   const [patient, setPatient] = useState<Patient | null>(null);
   const [summary, setSummary] = useState<TriageSummary | null>(null);
@@ -99,9 +115,76 @@ export default function PatientProfilePage() {
   const [encounters, setEncounters] = useState<Encounter[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState("vitals");
+
   const [checkingIn, setCheckingIn] = useState(false);
+  const [admissions, setAdmissions] = useState<Admission[]>([]);
+  const [dupMatches, setDupMatches] = useState<DuplicatePatient[]>([]);
+  const [dupChecking, setDupChecking] = useState(false);
+  const [dupLoading, setDupLoading] = useState(false);
+  const [dupError, setDupError] = useState<string | null>(null);
+  const [mergeTarget, setMergeTarget] = useState<DuplicatePatient | null>(null);
+  const [clinicalActivity, setClinicalActivity] = useState<AuditLogEntry[]>([]);
+  const [clinicalActivityLoading, setClinicalActivityLoading] = useState(false);
+  const [tabOverride, setTabOverride] = useState<string | null>(null);
+  const [showCardModal, setShowCardModal] = useState(false);
+
   usePageTitle(patient ? `${patient.first_name} ${patient.last_name}` : "Patient Profile");
+
+  const activeTab = tabOverride ?? (isClinical ? "vitals" : "consents");
+
+  const confidenceStyles: Record<string, string> = {
+    High: "bg-red-100 text-red-800 border-red-200",
+    Medium: "bg-amber-100 text-amber-800 border-amber-200",
+    Low: "bg-slate-100 text-slate-700 border-slate-200",
+  };
+
+  async function runDuplicateCheck() {
+    if (!token || dupChecking || !patient) return;
+    setDupChecking(true);
+    setDupError(null);
+    try {
+      const payload = {
+        first_name: patient.first_name,
+        last_name: patient.last_name,
+        gender: patient.gender,
+        date_of_birth: patient.date_of_birth || null,
+        phone: patient.phone || null,
+        national_id: patient.national_id || null,
+        health_passport_number: patient.health_passport_number || null,
+        village: patient.village || null,
+        district: patient.district || null,
+        exclude_id: patient.id,
+      };
+      const response = await api.post("/patients/check-duplicates", payload, token);
+      setDupMatches(response?.data?.matches ?? []);
+    } catch (err: unknown) {
+      setDupError(err instanceof Error ? err.message : "Failed to search for duplicates.");
+    } finally {
+      setDupChecking(false);
+    }
+  }
+
+  async function handleMerge() {
+    if (!token || !mergeTarget || dupLoading) return;
+    setDupLoading(true);
+    try {
+      await api.post(
+        "/patients/merge",
+        { primary_id: patient?.id, duplicate_id: mergeTarget.id },
+        token
+      );
+      setMergeTarget(null);
+      setDupMatches((prev) => prev.filter((m) => m.id !== mergeTarget.id));
+      success(`Merged patient #${mergeTarget.hospital_number} into this record.`);
+      await fetchProfileData();
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Failed to merge records.";
+      setDupError(message);
+      toastError(message);
+    } finally {
+      setDupLoading(false);
+    }
+  }
 
   async function fetchProfileData() {
     try {
@@ -131,6 +214,21 @@ export default function PatientProfilePage() {
         const list = Array.isArray(encounterRes.data) ? encounterRes.data : encounterRes.data.data ?? [];
         setEncounters(list);
       }
+
+      const admissionsRes = await admissionsApi.getByPatient(parseInt(patientId));
+      if (admissionsRes) {
+        setAdmissions(Array.isArray(admissionsRes) ? admissionsRes : []);
+      }
+
+      setClinicalActivityLoading(true);
+      try {
+        const activityRes = await adminApi.patientTimeline(token, patientId, { per_page: 50 });
+        setClinicalActivity(activityRes.data);
+      } catch {
+        // Silently fail — audit data is non-critical
+      } finally {
+        setClinicalActivityLoading(false);
+      }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to load patient profile data.");
     } finally {
@@ -139,7 +237,7 @@ export default function PatientProfilePage() {
   }
 
   useEffect(() => {
-    if (token && patientId) fetchProfileData(); // eslint-disable-line react-hooks/set-state-in-effect
+    if (token && patientId) fetchProfileData();
   }, [token, patientId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function handleStartNewVisit() {
@@ -224,35 +322,45 @@ export default function PatientProfilePage() {
         description={`Hospital #${patient.hospital_number} · ${patient.patient_category ?? "No category"} · ${encounters.length} visit${encounters.length !== 1 ? "s" : ""} on record`}
         action={
           <div className="flex gap-2">
-            <Button variant="outline" nativeButton={false} render={<Link href={`/patients/register?edit=${patientId}`} />}>
-              <Edit className="h-4 w-4" />
-              Edit Profile
-            </Button>
-            {encounterStatus === "Checked-in" || encounterStatus === "In Triage" || encounterStatus === "awaiting_triage" || encounterStatus === "resuscitation" ? (
-              <Button nativeButton={false} render={<Link href={`/patients/${patientId}/triage`} />}>
-                <Stethoscope className="h-4 w-4" />
-                Continue Triage
-              </Button>
-            ) : encounterStatus === "Triage Complete" || encounterStatus === "waiting_for_clinician" || encounterStatus === "In Consultation" || encounterStatus === "in_consultation" ? (
-              <Button nativeButton={false} render={<Link href={`/patients/${patientId}/consultation`} />}>
-                <MessageSquare className="h-4 w-4" />
-                {encounterStatus === "In Consultation" || encounterStatus === "in_consultation" ? "Continue Consult" : "Consult"}
-              </Button>
-            ) : encounterStatus === "Emergency" ? (
-              <Button nativeButton={false} render={<Link href={`/patients/${patientId}/emergency-triage`} />}>
-                <TriangleAlert className="h-4 w-4" />
-                Emergency Triage
-              </Button>
-            ) : (
-              <Button onClick={handleStartNewVisit} disabled={checkingIn}>
-                {checkingIn ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Plus className="h-4 w-4" />
-                )}
-                Start New Visit
+            {isReceptionist && (
+              <Button variant="outline" nativeButton={false} render={<Link href={`/patients/register?edit=${patientId}`} />}>
+                <Edit className="h-4 w-4" />
+                Edit Profile
               </Button>
             )}
+            {isClinical && (
+              <>
+                {encounterStatus === "Checked-in" || encounterStatus === "In Triage" || encounterStatus === "awaiting_triage" || encounterStatus === "resuscitation" ? (
+                  <Button nativeButton={false} render={<Link href={`/patients/${patientId}/triage`} />}>
+                    <Stethoscope className="h-4 w-4" />
+                    Continue Triage
+                  </Button>
+                ) : encounterStatus === "Triage Complete" || encounterStatus === "waiting_for_clinician" || encounterStatus === "In Consultation" || encounterStatus === "in_consultation" ? (
+                  <Button nativeButton={false} render={<Link href={`/patients/${patientId}/consultation`} />}>
+                    <MessageSquare className="h-4 w-4" />
+                    {encounterStatus === "In Consultation" || encounterStatus === "in_consultation" ? "Continue Consult" : "Consult"}
+                  </Button>
+                ) : encounterStatus === "Emergency" ? (
+                  <Button nativeButton={false} render={<Link href={`/patients/${patientId}/emergency-triage`} />}>
+                    <TriangleAlert className="h-4 w-4" />
+                    Emergency Triage
+                  </Button>
+                ) : (
+                  <Button onClick={handleStartNewVisit} disabled={checkingIn}>
+                    {checkingIn ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Plus className="h-4 w-4" />
+                    )}
+                    Start New Visit
+                  </Button>
+                )}
+              </>
+            )}
+            <Button variant="outline" onClick={() => setShowCardModal(true)}>
+              <CreditCard className="h-4 w-4" />
+              Hospital Card
+            </Button>
             <Button variant="ghost" onClick={() => router.push("/patients")}>
               <ArrowLeft className="h-4 w-4" />
             </Button>
@@ -260,15 +368,15 @@ export default function PatientProfilePage() {
         }
       />
 
-      <Card>
+      <Card className={cn("border-l-4", statusInfo ? "border-l-primary" : "border-l-muted")}>
         <CardContent className="p-4 flex items-center justify-between flex-wrap gap-3">
           <div className="flex items-center gap-4 flex-wrap">
             {statusInfo ? (
-              <StatusBadge label={statusInfo.label} variant={statusInfo.variant} pulse={statusInfo.variant === "error"} />
+              <StatusBadge label={statusInfo.label} variant={statusInfo.variant} pulse />
             ) : (
               <StatusBadge label="No Active Visit" variant="neutral" />
             )}
-            {latestTriageCategory && (
+            {isClinical && latestTriageCategory && (
               <Badge variant={latestTriageCategory >= 3 ? "destructive" : "secondary"}>
                 Triage Category {latestTriageCategory}
               </Badge>
@@ -276,7 +384,7 @@ export default function PatientProfilePage() {
             {patient.patient_category && (
               <Badge variant="outline">{patient.patient_category}</Badge>
             )}
-            {summary?.pregnancy_status && patient.gender === "Female" && (
+            {isClinical && summary?.pregnancy_status && patient.gender === "Female" && (
               <Badge variant="secondary" className="bg-purple-100 text-purple-800 border-purple-200 hover:bg-purple-100">
                 Active Pregnancy
               </Badge>
@@ -287,7 +395,7 @@ export default function PatientProfilePage() {
               </span>
             )}
           </div>
-          {summary?.encounter?.chief_complaint && (
+          {isClinical && summary?.encounter?.chief_complaint && (
             <div className="text-sm text-muted-foreground max-w-md text-right">
               <span className="font-semibold text-foreground">Chief Complaint:</span>{" "}
               {summary.encounter.chief_complaint}
@@ -301,6 +409,82 @@ export default function PatientProfilePage() {
         </CardContent>
       </Card>
 
+      {canMerge && (
+        <Card className="border-border">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between flex-wrap gap-3">
+              <div className="flex items-center gap-2">
+                <GitMerge className="h-4 w-4 text-muted-foreground" />
+                <div>
+                  <p className="text-sm font-semibold text-foreground">Duplicate Resolution</p>
+                  <p className="text-xs text-muted-foreground">
+                    {dupMatches.length > 0
+                      ? `${dupMatches.length} possible duplicate${dupMatches.length !== 1 ? "s" : ""} found.`
+                      : "Search other patient cards for possible duplicates to merge into this record."}
+                  </p>
+                </div>
+              </div>
+              <Button variant="outline" size="sm" onClick={runDuplicateCheck} disabled={dupChecking || dupLoading}>
+                {dupChecking ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                {dupChecking ? "Checking..." : dupMatches.length > 0 ? "Re-check" : "Find Duplicates"}
+              </Button>
+            </div>
+
+            {dupError && (
+              <p className="mt-3 text-xs font-semibold text-destructive" role="alert">{dupError}</p>
+            )}
+
+            {dupMatches.length > 0 && (
+              <div className="mt-4 divide-y divide-border rounded border border-border overflow-hidden">
+                {dupMatches.map((dup) => {
+                  const conf = dup.confidence ?? "Low";
+                  return (
+                    <div key={dup.id} className="p-3 flex items-center justify-between gap-2 text-xs hover:bg-muted/30 transition-colors">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold text-foreground">{dup.first_name} {dup.last_name}</span>
+                          {dup.score !== undefined && (
+                            <span className={`px-1.5 py-0.5 rounded border text-[10px] font-bold ${confidenceStyles[conf] ?? confidenceStyles.Low}`}>
+                              {conf} · {dup.score}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-muted-foreground font-mono mt-0.5">
+                          #{dup.hospital_number} · DOB: {dup.date_of_birth ? new Date(dup.date_of_birth).toLocaleDateString() : "N/A"}
+                        </p>
+                        {dup.match_reasons && dup.match_reasons.length > 0 && (
+                          <p className="text-muted-foreground/70 mt-0.5 capitalize">{dup.match_reasons.join(", ")}</p>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0 ml-2">
+                        <Button variant="ghost" size="sm" nativeButton={false} render={<Link href={`/patients/${dup.id}`} />}>
+                          Open
+                        </Button>
+                        <Button size="sm" onClick={() => setMergeTarget(dup)} disabled={dupLoading}>
+                          Merge Here
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      <ConfirmDialog
+        open={mergeTarget !== null}
+        onClose={() => setMergeTarget(null)}
+        onConfirm={handleMerge}
+        title="Merge Duplicate Record?"
+        message={`All clinical history from ${mergeTarget?.first_name ?? "the duplicate"} (Hospital #${mergeTarget?.hospital_number ?? "?"}) will be moved into ${patient.first_name} ${patient.last_name}'s record. The duplicate card will be retired. This cannot be undone.`}
+        confirmLabel={dupLoading ? "Merging..." : "Merge Records"}
+        cancelLabel="Cancel"
+        variant="warning"
+        loading={dupLoading}
+      />
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-1 space-y-6">
           <Card>
@@ -311,8 +495,7 @@ export default function PatientProfilePage() {
                   Demographics
                 </CardTitle>
               </div>
-            </CardHeader>
-            <CardContent className="space-y-3">
+            </CardHeader>            <CardContent className="space-y-3">
               <div className="flex items-center gap-3 pb-2 border-b border-border/50">
                 <div className={cn(
                   "w-10 h-10 rounded-lg flex items-center justify-center text-white font-extrabold text-sm shrink-0",
@@ -400,14 +583,18 @@ export default function PatientProfilePage() {
           <Card>
             <Tabs
               tabs={[
-                { key: "vitals", label: "Vitals", icon: <HeartPulse className="h-3.5 w-3.5" />, count: summary?.vital_signs?.length },
-                { key: "diagnoses", label: "Diagnoses", icon: <ClipboardList className="h-3.5 w-3.5" />, count: diagnoses.length },
-                { key: "allergies", label: "Allergies", icon: <TriangleAlert className="h-3.5 w-3.5" />, count: summary?.allergies?.length },
-                { key: "encounters", label: "Visits", icon: <CalendarClock className="h-3.5 w-3.5" />, count: encounters.length },
+                ...(isClinical ? [
+                  { key: "vitals", label: "Vitals", icon: <HeartPulse className="h-3.5 w-3.5" />, count: summary?.vital_signs?.length },
+                  { key: "diagnoses", label: "Diagnoses", icon: <ClipboardList className="h-3.5 w-3.5" />, count: diagnoses.length },
+                  { key: "allergies", label: "Allergies", icon: <TriangleAlert className="h-3.5 w-3.5" />, count: summary?.allergies?.length },
+                  { key: "admissions", label: "Admissions", icon: <FileText className="h-3.5 w-3.5" />, count: admissions.length },
+                  { key: "encounters", label: "Visits", icon: <CalendarClock className="h-3.5 w-3.5" />, count: encounters.length },
+                  { key: "clinical-activity", label: "Activity", icon: <Activity className="h-3.5 w-3.5" />, count: clinicalActivity.length },
+                ] : []),
                 { key: "consents", label: "Consents", icon: <FileText className="h-3.5 w-3.5" /> },
               ]}
               activeKey={activeTab}
-              onChange={setActiveTab}
+              onChange={setTabOverride}
               size="sm"
             />
 
@@ -519,8 +706,75 @@ export default function PatientProfilePage() {
                   </div>
                 ) : (
                   <div className="rounded-lg border border-amber-200 bg-amber-50 p-6 text-center text-sm font-semibold text-amber-800 flex items-center justify-center gap-2">
-                    <TriangleAlert className="h-5 w-5 text-amber-600" />
+                    <TriangleAlert className="h-5 w-5 text-amber-600 animate-pulse" />
                     ALLERGIES UNCONFIRMED
+                  </div>
+                )}
+              </TabPanel>
+
+              <TabPanel tabKey="admissions" activeKey={activeTab} tablistId="profile-tabs">
+                {admissions.length > 0 ? (
+                  <div className="divide-y divide-border rounded border border-border overflow-hidden">
+                    {admissions.map((adm) => (
+                      <div key={adm.id} className="p-4 flex flex-col gap-2 hover:bg-muted/30 transition-colors">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <span className="font-medium text-sm text-foreground">
+                              {adm.admission_type} Admission
+                            </span>
+                            <StatusBadge
+                              label={adm.status}
+                              variant={
+                                adm.status === "Admitted"
+                                  ? "info"
+                                  : adm.status === "Discharged"
+                                    ? "success"
+                                    : "warning"
+                              }
+                              size="sm"
+                            />
+                          </div>
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <span className="font-mono">
+                              {new Date(adm.admission_date).toLocaleDateString()}
+                            </span>
+                            {adm.discharge_date && (
+                              <span className="font-mono">
+                                \u2192 {new Date(adm.discharge_date).toLocaleDateString()}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-4 text-xs text-muted-foreground ml-5">
+                          <span>
+                            {adm.ward?.name}
+                            {adm.bed?.bed_number ? ` / Bed ${adm.bed.bed_number}` : ""}
+                          </span>
+                          <span className="font-mono">
+                            {adm.length_of_stay_days !== null
+                              ? `${adm.length_of_stay_days}d`
+                              : adm.status === "Admitted"
+                                ? `${Math.floor((new Date().getTime() - new Date(adm.admission_date).getTime()) / (1000 * 60 * 60 * 24))}d`
+                                : "—"}
+                          </span>
+                          {adm.isolation_required && (
+                            <StatusBadge label="Isolation" variant="error" size="sm" />
+                          )}
+                        </div>
+                        {adm.admission_diagnosis && (
+                          <p className="text-xs text-muted-foreground ml-5">{adm.admission_diagnosis}</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-12 text-muted-foreground">
+                    <div className="h-8 w-8 mx-auto mb-2 opacity-40">
+                      <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-full h-full">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3v11.25A2.25 2.25 0 0 0 6 16.5h2.25M3.75 3h-1.5m1.5 0h16.5m-1.5 0h1.5m-1.5 0v11.25A2.25 2.25 0 0 1 18 16.5h-2.25m-15 0l-1.5 1.5m1.5-1.5l1.5 1.5m15-1.5l1.5 1.5m-1.5-1.5l-1.5 1.5" />
+                      </svg>
+                    </div>
+                    <p>No admission history for this patient.</p>
                   </div>
                 )}
               </TabPanel>
@@ -566,6 +820,10 @@ export default function PatientProfilePage() {
                 )}
               </TabPanel>
 
+              <TabPanel tabKey="clinical-activity" activeKey={activeTab} tablistId="profile-tabs">
+                <ClinicalTimeline events={clinicalActivity} loading={clinicalActivityLoading} />
+              </TabPanel>
+
               <TabPanel tabKey="consents" activeKey={activeTab} tablistId="profile-tabs">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   {([
@@ -595,6 +853,15 @@ export default function PatientProfilePage() {
           </Card>
         </div>
       </div>
+      <Modal
+        open={showCardModal}
+        onClose={() => setShowCardModal(false)}
+        title="Hospital Identification Card"
+        subtitle="Verification & attendance identity card. Print or preview front/back."
+        size="md"
+      >
+        <HospitalCard patient={patient} onClose={() => setShowCardModal(false)} />
+      </Modal>
     </div>
   );
 }

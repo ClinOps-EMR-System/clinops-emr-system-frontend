@@ -1,3 +1,23 @@
+export interface Cadre {
+  id: number;
+  name: string;
+  code: string;
+  default_role?: string | null;
+  description?: string | null;
+  is_active: boolean;
+  ranks?: Rank[];
+}
+
+export interface Rank {
+  id: number;
+  cadre_id: number;
+  name: string;
+  code: string;
+  grade: number;
+  can_sign_off: boolean;
+  is_supervisor: boolean;
+}
+
 export interface AdminUser {
   id: number;
   name: string;
@@ -7,6 +27,9 @@ export interface AdminUser {
   last_login?: string | null;
   roles?: { id: number; name: string }[];
   department?: { id: number; name: string } | null;
+  cadre?: { id: number; name: string; code?: string; default_role?: string } | null;
+  rank?: { id: number; name: string; grade?: number } | null;
+  supervisor?: { id: number; name: string; email?: string } | null;
   created_at?: string;
 }
 
@@ -36,6 +59,7 @@ export interface Ward {
   code: string;
   ward_type: string;
   total_beds: number;
+  daily_charge?: string | number;
   beds_count?: number;
   available_beds?: number;
 }
@@ -53,20 +77,52 @@ export interface BillableService {
   code: string;
   name: string;
   category?: string | null;
+  billing_unit?: string | null;
   unit_price: string | number;
+}
+
+export interface LoincCodeUnit {
+  unit_id: number;
+  unit_name: string;
+  primary: boolean;
+}
+
+export interface LoincCode {
+  id: number;
+  code: string;
+  display_name: string;
+  component_name?: string | null;
+  long_common_name?: string | null;
+  short_name?: string | null;
+  system?: string | null;
+  order_obs?: string | null;
+  status?: string | null;
+  units?: LoincCodeUnit[];
 }
 
 export interface AuditLogEntry {
   id: number;
   user_id?: number | null;
   action: string;
-  resource_type: string;
-  resource_id?: string | null;
-  details?: Record<string, unknown> | null;
+  event?: string | null;
+  auditable_type: string;
+  auditable_id?: string | number | null;
+  old_values?: Record<string, unknown> | null;
+  new_values?: Record<string, unknown> | null;
+  context?: Record<string, unknown> | null;
+  patient_id?: number | null;
+  encounter_id?: number | null;
   ip_address?: string | null;
   user_agent?: string | null;
   created_at: string;
-  user?: { id: number; name: string; email: string; username?: string } | null;
+  user?: { id: number; name: string; email: string; role?: string | null } | null;
+}
+
+export interface PaginationMeta {
+  current_page: number;
+  last_page: number;
+  per_page: number;
+  total: number;
 }
 
 export interface HospitalSettings {
@@ -76,6 +132,42 @@ export interface HospitalSettings {
   timezone: string;
   logo_url: string;
   signup_enabled: boolean;
+}
+
+export interface Drug {
+  id: number;
+  name: string;
+  generic_name?: string | null;
+  atc_code?: string | null;
+  formulation?: string | null;
+  strength?: string | null;
+  unit?: string | null;
+  route?: string | null;
+  is_controlled: boolean;
+  current_stock: number;
+  reorder_level: number;
+  sell_price?: string | number;
+}
+
+export interface ControlledSubstanceLog {
+  id: number;
+  drug_id: number;
+  prescription_id?: number | null;
+  patient_id?: number | null;
+  action: string;
+  quantity: number;
+  batch_number?: string | null;
+  performed_by: number;
+  witnessed_by?: number | null;
+  justification?: string | null;
+  stock_before?: number | null;
+  stock_after?: number | null;
+  performed_at: string;
+  drug?: Drug;
+  prescription?: { id: number; rx_number?: string } | null;
+  patient?: { id: number; hospital_number?: string; first_name?: string; last_name?: string } | null;
+  performedBy?: { id: number; name: string } | null;
+  witnessedBy?: { id: number; name: string } | null;
 }
 
 export interface AdminOverview {

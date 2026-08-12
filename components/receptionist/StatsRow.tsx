@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { type LucideIcon } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 
 interface Stat {
   label: string;
@@ -9,26 +11,38 @@ interface Stat {
   icon: LucideIcon;
   color?: string;
   href?: string;
+  pulse?: boolean;
 }
 
 export function StatsRow({ stats }: { stats: Stat[] }) {
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+    <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-6">
       {stats.map((stat) => {
         const inner = (
-          <div className="bg-white rounded border border-[#becab7]/50 p-4 hover:border-[#3e4a3b]/30 hover:shadow-sm transition-all h-full">
-            <div className="flex items-center gap-3">
-              <div className={`h-9 w-9 rounded flex items-center justify-center ${stat.color || "bg-gray-100"}`}>
-                <stat.icon className={`h-4 w-4 ${stat.color ? "text-white" : "text-gray-500"}`} />
+          <Card className="h-full transition-all hover:shadow-sm">
+            <CardHeader className="flex-row items-center justify-between gap-2">
+              <CardTitle className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                {stat.pulse && (
+                  <span className="size-1.5 shrink-0 rounded-full bg-red-500 animate-pulse" />
+                )}
+                {stat.label}
+              </CardTitle>
+              <stat.icon className={cn("size-4 shrink-0", stat.color ?? "text-muted-foreground/60")} />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-semibold tabular-nums tracking-tight text-foreground">
+                {stat.value}
               </div>
-              <div>
-                <p className="text-2xl font-extrabold text-[#1b1c1c] font-mono">{stat.value}</p>
-                <p className="text-[10px] font-bold text-[#5f5e5e] uppercase tracking-wider">{stat.label}</p>
-              </div>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
         );
-        return stat.href ? <Link key={stat.label} href={stat.href}>{inner}</Link> : <div key={stat.label}>{inner}</div>;
+        return stat.href ? (
+          <Link key={stat.label} href={stat.href} className="block">
+            {inner}
+          </Link>
+        ) : (
+          <div key={stat.label}>{inner}</div>
+        );
       })}
     </div>
   );

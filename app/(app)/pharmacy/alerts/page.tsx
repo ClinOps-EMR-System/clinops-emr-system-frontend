@@ -22,6 +22,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import EmptyState from "../../../../components/ui/EmptyState";
 import { AlertTriangle, TrendingDown, Package, ArrowRight } from "lucide-react";
+import { RoleGuard } from "@/components/auth/RoleGuard";
 
 interface StockAlert {
   low_stock: Array<{
@@ -59,6 +60,7 @@ export default function AlertsPage() {
   );
 
   return (
+    <RoleGuard allowedRoles={["pharmacist", "admin"]}>
     <div className="flex flex-col gap-6">
       <SectionHeader
         title="Stock Alerts"
@@ -279,6 +281,7 @@ export default function AlertsPage() {
         </CardContent>
       </Card>
     </div>
+    </RoleGuard>
   );
 }
 

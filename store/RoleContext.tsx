@@ -15,8 +15,28 @@ export interface User {
     id: number;
     name: string;
   };
+  cadre?: {
+    id: number;
+    name: string;
+    code?: string;
+  } | null;
+  rank?: {
+    id: number;
+    name: string;
+    grade?: number;
+  } | null;
   roles?: string[];
   permissions?: string[];
+}
+
+async function fetchUser(token: string): Promise<User | null> {
+  try {
+    const res = await api.get("/user", token);
+    if (res && res.data) return res.data as User;
+    return null;
+  } catch {
+    return null;
+  }
 }
 
 interface AuthContextType {
@@ -42,16 +62,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const storedToken = localStorage.getItem("clinops_token");
     const storedUser = localStorage.getItem("clinops_user");
 
-    if (storedToken && storedUser) {
-      setToken(storedToken);
-      try {
-        setUser(JSON.parse(storedUser));
-      } catch {
-        localStorage.removeItem("clinops_token");
-        localStorage.removeItem("clinops_user");
-      }
+    if (!storedToken || !storedUser) {
+      setIsLoading(false);
+      return;
     }
-    setIsLoading(false);
+
+    setToken(storedToken);
+
+    try {
+      setUser(JSON.parse(storedUser));
+    } catch {
+      localStorage.removeItem("clinops_token");
+      localStorage.removeItem("clinops_user");
+      setIsLoading(false);
+      return;
+    }
+
+    // Re-validate the profile so stale/role-less sessions self-heal before the
+    // role-gated UI renders. Ignore the result if the session changed meanwhile.
+    void fetchUser(storedToken).then((freshUser) => {
+      if (freshUser && localStorage.getItem("clinops_token") === storedToken) {
+        localStorage.setItem("clinops_user", JSON.stringify(freshUser));
+        setUser(freshUser);
+      }
+      setIsLoading(false);
+    });
   }, []);
 
   useEffect(() => {
@@ -104,6 +139,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     if (roles.includes("receptionist") || dept.includes("registration") || dept.includes("reception")) return "/receptionist";
     if (roles.includes("nurse") || dept.includes("nurse") || dept.includes("triage")) return "/nurse-station";
+    if (roles.includes("doctor") || roles.includes("clinical officer")) return "/dashboard/doctor";
     if (roles.includes("pharmacist") || dept.includes("pharm")) return "/pharmacy";
     if (roles.includes("lab technician") || roles.includes("lab") || dept.includes("lab")) return "/lab";
     if (roles.includes("billing officer") || roles.includes("billing") || dept.includes("bill") || dept.includes("finance")) return "/billing";
@@ -116,14 +152,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     let finalUser: User = newUser;
 
-    try {
-      const res = await api.get("/user", newToken);
-      if (res && res.data) {
-        finalUser = res.data as User;
-        localStorage.setItem("clinops_user", JSON.stringify(finalUser));
-        setUser(finalUser);
-      }
-    } catch {
+    const freshUser = await fetchUser(newToken);
+    if (freshUser) {
+      finalUser = freshUser;
+      localStorage.setItem("clinops_user", JSON.stringify(freshUser));
+      setUser(freshUser);
+    } else {
       localStorage.setItem("clinops_user", JSON.stringify(newUser));
       setUser(newUser);
     }

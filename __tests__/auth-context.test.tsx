@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen, act } from "@testing-library/react";
+import { render, screen, act, waitFor } from "@testing-library/react";
 import { vi, describe, it, expect, beforeEach } from "vitest";
 import { AuthProvider, useAuth } from "../store/RoleContext";
 
@@ -153,4 +153,94 @@ describe("AuthContext Session Store", () => {
     expect(localStorage.getItem("clinops_token")).toBeNull();
     expect(mockPush).toHaveBeenCalledWith("/auth");
   });
+
+  it("should refresh the stored profile from /user on mount, healing a stale/role-less session", async () => {
+    localStorage.setItem("clinops_token", "saved-token");
+    localStorage.setItem(
+      "clinops_user",
+      JSON.stringify({ id: 1, name: "Admin User", email: "admin@test.com", is_active: true })
+    );
+
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          data: {
+            id: 1,
+            username: "admin",
+            name: "Admin User",
+            email: "admin@test.com",
+            is_active: true,
+            department: null,
+            roles: ["Admin"],
+            permissions: ["user.manage", "audit.view"],
+          },
+        }),
+    });
+
+    render(
+      <AuthProvider>
+        <ProfileProbe />
+      </AuthProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("user-roles")).toHaveTextContent(JSON.stringify(["Admin"]));
+    });
+
+    const stored = JSON.parse(localStorage.getItem("clinops_user") || "{}");
+    expect(stored.roles).toEqual(["Admin"]);
+
+    expect(mockFetch).toHaveBeenCalledWith(
+      expect.stringContaining("/user"),
+      expect.objectContaining({
+        headers: expect.any(Headers),
+      })
+    );
+    const userCall = mockFetch.mock.calls.find(
+      ([url]) => typeof url === "string" && url.includes("/user")
+    );
+    expect(userCall?.[1]?.headers?.get("Authorization")).toBe("Bearer saved-token");
+  });
+
+  it("should preserve the stored session when the /user refresh fails", async () => {
+    localStorage.setItem("clinops_token", "saved-token");
+    localStorage.setItem(
+      "clinops_user",
+      JSON.stringify({
+        id: 1,
+        name: "Stored User",
+        email: "stored@test.com",
+        is_active: true,
+        roles: ["Doctor"],
+      })
+    );
+
+    mockFetch.mockRejectedValueOnce(new Error("offline"));
+
+    render(
+      <AuthProvider>
+        <ProfileProbe />
+      </AuthProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("auth-status")).toHaveTextContent("Authenticated");
+    });
+
+    expect(screen.getByTestId("user-val")).toHaveTextContent("Stored User");
+    expect(screen.getByTestId("user-roles")).toHaveTextContent(JSON.stringify(["Doctor"]));
+  });
 });
+
+function ProfileProbe() {
+  const { user, isAuthenticated } = useAuth();
+  return (
+    <div>
+      <div data-testid="auth-status">{isAuthenticated ? "Authenticated" : "Guest"}</div>
+      <div data-testid="user-val">{user?.name ?? "No User"}</div>
+      <div data-testid="user-roles">{JSON.stringify(user?.roles ?? null)}</div>
+    </div>
+  );
+}
+

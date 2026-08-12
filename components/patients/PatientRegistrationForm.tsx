@@ -7,6 +7,9 @@ import { useAuth } from "../../store/RoleContext";
 import { api } from "../../lib/api";
 import { DuplicatePatient } from "../../types/patient";
 import ConfirmDialog from "../ui/ConfirmDialog";
+import BillingConfirmation from "../billing/BillingConfirmation";
+import RegistrationPaymentModal from "../billing/RegistrationPaymentModal";
+import { parseBilling, type BillingSummary } from "../../types/billing";
 import { SectionHeader, PageCard } from "../ui/PageLayout";
 import { useToast } from "../ui/Toast";
 import { Button } from "../ui/button";
@@ -66,6 +69,12 @@ export default function PatientRegistrationForm() {
   const [errors, setErrors] = useState<Record<string, string[]>>({});
   const [duplicates, setDuplicates] = useState<DuplicatePatient[]>([]);
   const [showDuplicateDialog, setShowDuplicateDialog] = useState(false);
+  const [billingSummary, setBillingSummary] = useState<BillingSummary | null>(null);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [paymentBillId, setPaymentBillId] = useState<number | null>(null);
+  const [paymentBillNumber, setPaymentBillNumber] = useState("");
+  const [paymentAmount, setPaymentAmount] = useState(0);
+  const [pendingNav, setPendingNav] = useState<string | null>(null);
 
   const [currentStep, setCurrentStep] = useState(0);
 
@@ -189,27 +198,41 @@ export default function PatientRegistrationForm() {
   const checkDuplicates = async (): Promise<boolean> => {
     if (!firstName.trim() || !lastName.trim()) return false;
     try {
-      const response = await api.get(
-        `/patients?search=${encodeURIComponent(firstName + " " + lastName)}`,
-        token
-      );
-      if (response && response.data && response.data.length > 0) {
-        setDuplicates(response.data);
+      const payload: Record<string, unknown> = {
+        first_name: firstName.trim(),
+        last_name: lastName.trim(),
+        gender,
+        date_of_birth: dob || null,
+        phone: phone ? `+265${phone}` : null,
+        national_id: nationalId || null,
+        health_passport_number: alphaNumOnly(healthPassport) || null,
+        village: village || null,
+        district: district || null,
+        approximate_age: isEmergency && approximateAge ? parseInt(approximateAge) : null,
+      };
+      const response = await api.post("/patients/check-duplicates", payload, token);
+      const matches = response?.data?.matches ?? [];
+      if (matches.length > 0) {
+        setDuplicates(matches);
         setShowDuplicateDialog(true);
         return true;
       }
     } catch {
-      // Ignore check errors
+      // Ignore check errors — registration must not be blocked by the checker.
     }
     return false;
   };
 
-  const handleSave = async (bypassDuplicate = false) => {
+  const handleSave = async (
+    bypassDuplicate = false,
+    linkOptions?: { existingPatientId?: number; flagForReview?: boolean }
+  ) => {
     setError(null);
     setErrors({});
     setLoading(true);
+    const linkedToExisting = isEmergency && !!linkOptions?.existingPatientId;
 
-    if (!bypassDuplicate && !completeId && !isEmergency) {
+    if (!bypassDuplicate && !completeId && !linkOptions?.existingPatientId) {
       const foundDuplicates = await checkDuplicates();
       if (foundDuplicates) {
         setLoading(false);
@@ -217,7 +240,7 @@ export default function PatientRegistrationForm() {
       }
     }
 
-    const payload = isEmergency
+    const emergencyPayload = isEmergency
       ? {
           first_name: firstName,
           last_name: lastName,
@@ -226,7 +249,13 @@ export default function PatientRegistrationForm() {
           approximate_age: approximateAge ? parseInt(approximateAge) : null,
           presenting_complaint: presentingComplaint,
           consent_care: consentCare,
+          ...(linkOptions?.existingPatientId ? { existing_patient_id: linkOptions.existingPatientId } : {}),
+          ...(linkOptions?.flagForReview ? { flag_for_review: true } : {}),
         }
+      : null;
+
+    const payload = emergencyPayload
+      ? emergencyPayload
       : {
           first_name: firstName,
           last_name: lastName,
@@ -268,13 +297,26 @@ export default function PatientRegistrationForm() {
 
       if (response) {
         const patientId = response?.data?.id ?? response?.data?.patient?.id;
-        success(editId ? "Patient record updated successfully." : "Patient registered successfully.");
+        const billing = parseBilling(response);
+
+        if (!editId && !completeId && billing) {
+          setBillingSummary(billing);
+          setPaymentBillId(billing.bill_id);
+          setPaymentBillNumber(billing.bill_number);
+          const feeItem = billing.items_added[0];
+          setPaymentAmount(feeItem ? parseFloat(feeItem.total) : 0);
+          setShowPaymentModal(true);
+          setPendingNav(isEmergency ? "/patients" : patientId ? `/patients/${patientId}` : "/patients");
+          return;
+        }
+
+        success(editId ? "Patient record updated successfully." : linkedToExisting ? "Emergency visit linked to existing patient record." : "Patient registered successfully.");
         if (editId) {
           router.push(`/patients/${editId}`);
         } else if (completeId) {
           router.push(`/patients/${completeId}`);
         } else if (isEmergency) {
-          router.push("/patients");
+          router.push(linkedToExisting && patientId ? `/patients/${patientId}` : "/patients");
         } else {
           router.push(patientId ? `/patients/${patientId}` : "/patients");
         }
@@ -417,32 +459,115 @@ export default function PatientRegistrationForm() {
       <ConfirmDialog
         open={showDuplicateDialog}
         onClose={() => { setShowDuplicateDialog(false); setDuplicates([]); }}
-        onConfirm={() => { setShowDuplicateDialog(false); handleSave(true); }}
-        title="Duplicate Records Detected"
-        message={`The system flagged ${duplicates.length} existing patient registration${duplicates.length > 1 ? "s" : ""} matching this name. Review below to avoid creating duplicate cards.`}
-        confirmLabel="Yes, Save as New Patient"
+        onConfirm={() => {
+          setShowDuplicateDialog(false);
+          if (isEmergency) {
+            handleSave(true, { flagForReview: true });
+          } else {
+            handleSave(true);
+          }
+        }}
+        title={isEmergency ? "Patient May Already Be Registered" : "Duplicate Records Detected"}
+        message={isEmergency
+          ? "This patient appears to already have a medical record. Link this emergency visit to the existing record so all care stays on one card, or register a new card flagged for later consolidation."
+          : `The system flagged ${duplicates.length} existing patient registration${duplicates.length > 1 ? "s" : ""} matching this profile. Review below to avoid creating duplicate cards.`}
+        confirmLabel={isEmergency ? "Register as New (Flag for Review)" : "Yes, Save as New Patient"}
         cancelLabel="Go Back & Edit"
         variant="warning"
       >
-        <div className="border border-border rounded divide-y divide-border max-h-48 overflow-y-auto">
-          {duplicates.map((dup) => (
-            <div key={dup.id} className="p-3 flex justify-between items-center text-xs">
-              <div>
-                <p className="font-semibold text-foreground">{dup.first_name} {dup.last_name}</p>
-                <p className="text-muted-foreground font-mono">Hospital #: {dup.hospital_number} · DOB: {new Date(dup.date_of_birth).toLocaleDateString()}</p>
-                <p className="text-muted-foreground/60">Village: {dup.village || "N/A"}, TA: {dup.district || "N/A"}</p>
+        <div className="border border-border rounded divide-y divide-border max-h-64 overflow-y-auto">
+          {duplicates.map((dup) => {
+            const conf = dup.confidence ?? "Low";
+            const confStyles =
+              conf === "High"
+                ? "bg-red-100 text-red-800 border-red-200"
+                : conf === "Medium"
+                  ? "bg-amber-100 text-amber-800 border-amber-200"
+                  : "bg-slate-100 text-slate-700 border-slate-200";
+            return (
+              <div key={dup.id} className="p-3 flex justify-between items-start gap-2 text-xs">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold text-foreground">{dup.first_name} {dup.last_name}</span>
+                    {dup.score !== undefined && (
+                      <span className={`px-1.5 py-0.5 rounded border text-[10px] font-bold ${confStyles}`}>
+                        {conf} · {dup.score}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-muted-foreground font-mono mt-0.5">
+                    Hospital #: {dup.hospital_number} · DOB: {dup.date_of_birth ? new Date(dup.date_of_birth).toLocaleDateString() : "N/A"}
+                  </p>
+                  {dup.match_reasons && dup.match_reasons.length > 0 && (
+                    <p className="text-muted-foreground/70 mt-0.5 capitalize">
+                      {dup.match_reasons.join(", ")}
+                    </p>
+                  )}
+                </div>
+                <div className="flex items-center gap-2 shrink-0 ml-2">
+                  {isEmergency && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        setShowDuplicateDialog(false);
+                        setDuplicates([]);
+                        handleSave(true, { existingPatientId: dup.id });
+                      }}
+                    >
+                      Link to This Record
+                    </Button>
+                  )}
+                  <Link
+                    href="/patients"
+                    onClick={() => setShowDuplicateDialog(false)}
+                    className="text-xs font-bold text-primary hover:text-primary/80 shrink-0"
+                  >
+                    Open Card
+                  </Link>
+                </div>
               </div>
-              <Link
-                href="/patients"
-                onClick={() => setShowDuplicateDialog(false)}
-                className="text-xs font-bold text-primary hover:text-primary/80"
-              >
-                Open Card
-              </Link>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </ConfirmDialog>
+
+      {billingSummary && (
+        <BillingConfirmation
+          billing={billingSummary}
+          onDone={() => {
+            const to = pendingNav;
+            setBillingSummary(null);
+            setPendingNav(null);
+            if (to) router.push(to);
+          }}
+          onClose={() => {
+            setBillingSummary(null);
+            setPendingNav(null);
+          }}
+        />
+      )}
+
+      {showPaymentModal && paymentBillId && (
+        <RegistrationPaymentModal
+          billId={paymentBillId}
+          billNumber={paymentBillNumber}
+          amountDue={paymentAmount}
+          onPaid={() => {
+            setShowPaymentModal(false);
+            success("Registration fee paid.");
+            const to = pendingNav;
+            setPendingNav(null);
+            if (to) router.push(to);
+          }}
+          onClose={() => {
+            setShowPaymentModal(false);
+            const to = pendingNav;
+            setPendingNav(null);
+            if (to) router.push(to);
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -6,7 +6,7 @@ import { useAuth } from "../../../store/RoleContext";
 import { api } from "../../../lib/api";
 import { ReferralStatusBadge } from "../../../components/ui/StatusBadge";
 import EmptyState from "../../../components/ui/EmptyState";
-import LoadingState from "../../../components/ui/LoadingState";
+import { Skeleton } from "@/components/ui/skeleton";
 import Modal from "../../../components/ui/Modal";
 import { Stethoscope, Search, Plus, ArrowRight } from "lucide-react";
 import { usePageTitle } from "@/lib/hooks/usePageTitle";
@@ -163,7 +163,18 @@ export default function ReferralsPage() {
         </div>
 
         {loading ? (
-          <LoadingState message="Loading referrals..." />
+          <div className="space-y-3 p-4">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <div key={i} className="flex items-center gap-4">
+                <Skeleton className="h-5 w-32" />
+                <Skeleton className="h-5 w-20" />
+                <Skeleton className="h-5 w-28" />
+                <Skeleton className="h-5 w-16" />
+                <Skeleton className="h-5 w-20 rounded-full" />
+                <Skeleton className="h-5 w-24" />
+              </div>
+            ))}
+          </div>
         ) : error ? (
           <div className="p-8 text-center text-sm text-red-600">{error}</div>
         ) : filtered.length === 0 ? (
@@ -182,13 +193,13 @@ export default function ReferralsPage() {
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-[#fcf9f8] sticky top-0 z-10">
                 <tr className="divide-x divide-gray-200/50">
-                  <th className="px-6 py-3 text-left text-xs font-bold text-[#5f5e5e] uppercase tracking-wider">Patient</th>
-                  <th className="px-6 py-3 text-left text-xs font-bold text-[#5f5e5e] uppercase tracking-wider">Type</th>
-                  <th className="px-6 py-3 text-left text-xs font-bold text-[#5f5e5e] uppercase tracking-wider">Destination</th>
-                  <th className="px-6 py-3 text-left text-xs font-bold text-[#5f5e5e] uppercase tracking-wider">Urgency</th>
-                  <th className="px-6 py-3 text-left text-xs font-bold text-[#5f5e5e] uppercase tracking-wider">Status</th>
-                  <th className="px-6 py-3 text-left text-xs font-bold text-[#5f5e5e] uppercase tracking-wider">Date</th>
-                  <th className="px-6 py-3 text-left text-xs font-bold text-[#5f5e5e] uppercase tracking-wider">Actions</th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-[#5f5e5e] uppercase tracking-wider">Patient</th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-[#5f5e5e] uppercase tracking-wider">Type</th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-[#5f5e5e] uppercase tracking-wider">Destination</th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-[#5f5e5e] uppercase tracking-wider">Urgency</th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-[#5f5e5e] uppercase tracking-wider">Status</th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-[#5f5e5e] uppercase tracking-wider">Date</th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-[#5f5e5e] uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-100">
@@ -252,26 +263,26 @@ export default function ReferralsPage() {
         <form onSubmit={handleCreate} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">Patient ID *</label>
-              <input type="number" required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary" value={form.patient_id} onChange={(e) => setForm({ ...form, patient_id: e.target.value })} placeholder="Enter patient ID" />
+              <label htmlFor="field-referral-patient-id" className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">Patient ID *</label>
+              <input id="field-referral-patient-id" type="number" required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary" value={form.patient_id} onChange={(e) => setForm({ ...form, patient_id: e.target.value })} placeholder="Enter patient ID" />
             </div>
             <div>
-              <label className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">Encounter ID *</label>
-              <input type="number" required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary" value={form.encounter_id} onChange={(e) => setForm({ ...form, encounter_id: e.target.value })} placeholder="Enter encounter ID" />
+              <label htmlFor="field-referral-encounter-id" className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">Encounter ID *</label>
+              <input id="field-referral-encounter-id" type="number" required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary" value={form.encounter_id} onChange={(e) => setForm({ ...form, encounter_id: e.target.value })} placeholder="Enter encounter ID" />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">Referral Type</label>
-              <select className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded bg-white text-sm focus:outline-none focus:border-clinical-primary" value={form.referral_type} onChange={(e) => setForm({ ...form, referral_type: e.target.value })}>
+              <label htmlFor="field-referral-type" className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">Referral Type</label>
+              <select id="field-referral-type" className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded bg-white text-sm focus:outline-none focus:border-clinical-primary" value={form.referral_type} onChange={(e) => setForm({ ...form, referral_type: e.target.value })}>
                 <option value="Consultation">Consultation</option>
                 <option value="Transfer of Care">Transfer of Care</option>
                 <option value="Emergency Transfer">Emergency Transfer</option>
               </select>
             </div>
             <div>
-              <label className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">Urgency</label>
-              <select className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded bg-white text-sm focus:outline-none focus:border-clinical-primary" value={form.urgency} onChange={(e) => setForm({ ...form, urgency: e.target.value })}>
+              <label htmlFor="field-referral-urgency" className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">Urgency</label>
+              <select id="field-referral-urgency" className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded bg-white text-sm focus:outline-none focus:border-clinical-primary" value={form.urgency} onChange={(e) => setForm({ ...form, urgency: e.target.value })}>
                 <option value="Routine">Routine</option>
                 <option value="Urgent">Urgent</option>
                 <option value="Emergency">Emergency</option>
@@ -279,16 +290,16 @@ export default function ReferralsPage() {
             </div>
           </div>
           <div>
-            <label className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">Destination Facility *</label>
-            <input type="text" required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary" value={form.destination_facility} onChange={(e) => setForm({ ...form, destination_facility: e.target.value })} placeholder="Facility name" />
+            <label htmlFor="field-referral-dest-facility" className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">Destination Facility *</label>
+            <input id="field-referral-dest-facility" type="text" required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary" value={form.destination_facility} onChange={(e) => setForm({ ...form, destination_facility: e.target.value })} placeholder="Facility name" />
           </div>
           <div>
-            <label className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">Destination Department</label>
-            <input type="text" className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary" value={form.destination_department} onChange={(e) => setForm({ ...form, destination_department: e.target.value })} placeholder="Optional" />
+            <label htmlFor="field-referral-dest-dept" className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">Destination Department</label>
+            <input id="field-referral-dest-dept" type="text" className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary" value={form.destination_department} onChange={(e) => setForm({ ...form, destination_department: e.target.value })} placeholder="Optional" />
           </div>
           <div>
-            <label className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">Clinical Summary *</label>
-            <textarea rows={3} required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary" value={form.clinical_summary} onChange={(e) => setForm({ ...form, clinical_summary: e.target.value })} placeholder="Key clinical findings, diagnoses, and treatment to date" />
+            <label htmlFor="field-referral-clinical-summary" className="block text-xs font-bold text-[#3e4a3b] uppercase tracking-wide">Clinical Summary *</label>
+            <textarea id="field-referral-clinical-summary" rows={3} required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-clinical-primary focus:ring-1 focus:ring-clinical-primary" value={form.clinical_summary} onChange={(e) => setForm({ ...form, clinical_summary: e.target.value })} placeholder="Key clinical findings, diagnoses, and treatment to date" />
           </div>
         </form>
       </Modal>

@@ -2,205 +2,156 @@
 
 import { getRealtimeUrl } from "./config";
 
-/**
- * Realtime client for the ClinOps WebSocketBridge.
- *
- * Protocol (see backend/WebSocketBridge/server.js):
- *   Client → Server:  { type: "subscribe", channels: string[], encounter_ids?: number[] }
- *                     { type: "unsubscribe", channels?: string[] }
- *                     { type: "ping" }
- *   Server → Client:  { type: "connected" | "subscribed" | "unsubscribed" | "pong" | "error" }
- *                     { channel: string, data: payload }
- *
- * Payloads carry an `event_type` (e.g. "lab_result.verified") plus contextual
- * ids. Encounter-scoped channels (lab requests/results, radiology, billing)
- * are only delivered when the client subscribes with the relevant encounter_ids.
- */
+export type RealtimeStatus = "connecting" | "connected" | "offline";
 
-export interface RealtimeMessage {
-  channel: string;
-  data: Record<string, unknown>;
+export const EMR_CHANNELS = [
+  "clinops_lab_results",
+  "clinops_lab_requests",
+  "clinops_vital_signs",
+  "clinops_consultation_queue",
+  "clinops_chart_edited",
+  "clinops_pharmacy_queue",
+  "clinops_billing_invoices",
+  "clinops_radiology_requests",
+  "clinops_radiology_results",
+  "clinops_notifications",
+] as const;
+
+const handlers = new Map<string, Set<(data: unknown) => void>>();
+const statusListeners = new Set<(s: RealtimeStatus) => void>();
+
+let socket: WebSocket | null = null;
+let status: RealtimeStatus = "offline";
+let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+let reconnectDelay = 1000;
+let manuallyClosed = false;
+
+function setStatus(next: RealtimeStatus) {
+  if (status === next) return;
+  status = next;
+  statusListeners.forEach((cb) => cb(status));
 }
 
-export type RealtimeHandler = (message: RealtimeMessage) => void;
+export function getStatus() {
+  return status;
+}
 
-const RECONNECT_BASE_DELAY_MS = 1000;
-const RECONNECT_MAX_DELAY_MS = 30000;
-const HEARTBEAT_INTERVAL_MS = 30000;
+export function onStatusChange(cb: (s: RealtimeStatus) => void) {
+  statusListeners.add(cb);
+  return () => {
+    statusListeners.delete(cb);
+  };
+}
 
-class RealtimeClient {
-  private ws: WebSocket | null = null;
-
-  private url: string;
-
-  private handlers = new Map<string, Set<RealtimeHandler>>();
-
-  private subscriptions = new Set<string>();
-
-  private encounterIds = new Set<number>();
-
-  private reconnectAttempts = 0;
-
-  private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
-
-  private heartbeatTimer: ReturnType<typeof setInterval> | null = null;
-
-  private manuallyClosed = false;
-
-  constructor(url: string) {
-    this.url = url;
+export function routeMessage(raw: string) {
+  let msg: { channel?: string; data?: unknown };
+  try {
+    msg = JSON.parse(raw);
+  } catch {
+    return;
   }
+  const channel = msg?.channel;
+  if (!channel) return;
+  const set = handlers.get(channel);
+  if (!set) return;
+  set.forEach((handler) => handler(msg.data));
+}
 
-  connect() {
-    if (typeof window === "undefined") return;
-    if (
-      this.ws &&
-      (this.ws.readyState === WebSocket.OPEN || this.ws.readyState === WebSocket.CONNECTING)
-    ) {
-      return;
-    }
+function scheduleReconnect() {
+  if (reconnectTimer || manuallyClosed) return;
+  if (typeof navigator !== "undefined" && !navigator.onLine) return;
+  reconnectTimer = setTimeout(() => {
+    reconnectTimer = null;
+    connect();
+  }, reconnectDelay);
+  reconnectDelay = Math.min(reconnectDelay * 2, 5000);
+}
 
-    this.manuallyClosed = false;
+function connect() {
+  if (typeof window === "undefined" || socket || manuallyClosed) return;
+  setStatus("connecting");
+  const ws = new WebSocket(getRealtimeUrl());
+  socket = ws;
 
-    try {
-      this.ws = new WebSocket(this.url);
-    } catch {
-      this.scheduleReconnect();
-      return;
-    }
+  ws.onopen = () => {
+    reconnectDelay = 1000;
+    setStatus("connected");
+    syncSubscriptions();
+  };
 
-    this.ws.onopen = () => {
-      this.reconnectAttempts = 0;
-      this.resubscribe();
-      this.startHeartbeat();
-    };
+  ws.onmessage = (event: MessageEvent) => routeMessage(String(event.data));
 
-    this.ws.onmessage = (event: MessageEvent<string>) => {
-      let msg: Record<string, unknown>;
-      try {
-        msg = JSON.parse(event.data);
-      } catch {
-        return;
-      }
+  ws.onclose = () => {
+    if (socket === ws) socket = null;
+    setStatus("offline");
+    if (!manuallyClosed) scheduleReconnect();
+  };
 
-      if (msg.type === "pong" || msg.type === "connected" || msg.type === "subscribed") return;
+  ws.onerror = () => {};
+}
 
-      const channel = msg.channel as string | undefined;
-      if (!channel || !this.handlers.has(channel)) return;
-
-      const data = (msg.data ?? {}) as Record<string, unknown>;
-      this.handlers.get(channel)?.forEach((handler) => handler({ channel, data }));
-    };
-
-    this.ws.onclose = () => {
-      this.stopHeartbeat();
-      if (!this.manuallyClosed) this.scheduleReconnect();
-    };
-
-    this.ws.onerror = () => {
-      this.ws?.close();
-    };
-  }
-
-  subscribe(channels: string[], encounterIds: number[] = []) {
-    const hadNewChannels = channels.some((c) => !this.subscriptions.has(c));
-    channels.forEach((c) => this.subscriptions.add(c));
-    encounterIds.forEach((id) => this.encounterIds.add(id));
-
-    if (hadNewChannels || encounterIds.length > 0) {
-      this.sendSubscribe();
-    }
-
-    this.connect();
-  }
-
-  unsubscribe(channels: string[]) {
-    channels.forEach((c) => this.subscriptions.delete(c));
-
-    if (this.ws?.readyState === WebSocket.OPEN) {
-      this.ws.send(JSON.stringify({ type: "unsubscribe", channels }));
+function syncSubscriptions() {
+  if (socket && socket.readyState === WebSocket.OPEN) {
+    const channels = Array.from(handlers.keys());
+    if (channels.length > 0) {
+      socket.send(
+        JSON.stringify({
+          type: "subscribe",
+          channels,
+        })
+      );
     }
   }
+}
 
-  on(channel: string, handler: RealtimeHandler): () => void {
-    if (!this.handlers.has(channel)) {
-      this.handlers.set(channel, new Set());
-    }
-    this.handlers.get(channel)?.add(handler);
+export function subscribe(channel: string, handler: (data: unknown) => void) {
+  if (!handlers.has(channel)) handlers.set(channel, new Set());
+  handlers.get(channel)!.add(handler);
+  manuallyClosed = false;
 
-    return () => {
-      this.handlers.get(channel)?.delete(handler);
-    };
-  }
-
-  disconnect() {
-    this.manuallyClosed = true;
-    this.stopHeartbeat();
-
-    if (this.reconnectTimer) {
-      clearTimeout(this.reconnectTimer);
-      this.reconnectTimer = null;
-    }
-
-    this.ws?.close();
-    this.ws = null;
-  }
-
-  private sendSubscribe() {
-    if (this.ws?.readyState !== WebSocket.OPEN) return;
-
-    this.ws.send(
+  if (socket && socket.readyState === WebSocket.OPEN) {
+    socket.send(
       JSON.stringify({
         type: "subscribe",
-        channels: Array.from(this.subscriptions),
-        encounter_ids: Array.from(this.encounterIds),
-      }),
+        channels: [channel],
+      })
     );
+  } else {
+    connect();
   }
 
-  private resubscribe() {
-    if (this.subscriptions.size === 0) return;
-    this.sendSubscribe();
-  }
-
-  private startHeartbeat() {
-    this.stopHeartbeat();
-    this.heartbeatTimer = setInterval(() => {
-      if (this.ws?.readyState === WebSocket.OPEN) {
-        this.ws.send(JSON.stringify({ type: "ping" }));
+  return () => {
+    const set = handlers.get(channel);
+    if (set) {
+      set.delete(handler);
+      if (set.size === 0) {
+        handlers.delete(channel);
+        if (socket && socket.readyState === WebSocket.OPEN) {
+          socket.send(
+            JSON.stringify({
+              type: "unsubscribe",
+              channels: [channel],
+            })
+          );
+        }
       }
-    }, HEARTBEAT_INTERVAL_MS);
-  }
-
-  private stopHeartbeat() {
-    if (this.heartbeatTimer) {
-      clearInterval(this.heartbeatTimer);
-      this.heartbeatTimer = null;
     }
-  }
-
-  private scheduleReconnect() {
-    if (this.reconnectTimer || this.manuallyClosed) return;
-
-    const delay = Math.min(
-      RECONNECT_BASE_DELAY_MS * 2 ** this.reconnectAttempts,
-      RECONNECT_MAX_DELAY_MS,
-    );
-    this.reconnectAttempts += 1;
-
-    this.reconnectTimer = setTimeout(() => {
-      this.reconnectTimer = null;
-      this.connect();
-    }, delay);
-  }
+  };
 }
 
-let realtime: RealtimeClient | null = null;
-
-/** Returns the shared singleton connection (created lazily in the browser). */
-export function getRealtime(): RealtimeClient {
-  if (!realtime) {
-    realtime = new RealtimeClient(getRealtimeUrl());
+export function closeRealtime() {
+  manuallyClosed = true;
+  if (reconnectTimer) {
+    clearTimeout(reconnectTimer);
+    reconnectTimer = null;
   }
-  return realtime;
+  if (socket) {
+    socket.close();
+    socket = null;
+  }
+  handlers.clear();
+  statusListeners.clear();
+  reconnectDelay = 1000;
+  setStatus("offline");
 }
+

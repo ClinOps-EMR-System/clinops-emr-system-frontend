@@ -1,68 +1,61 @@
 "use client";
 
 import Link from "next/link";
+import { UserPlus, CalendarPlus, Search, Ambulance } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 const actions = [
   {
     label: "Register Patient",
     href: "/patients/register",
-    icon: (
-      <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
-      </svg>
-    ),
-    color: "bg-brand-green/10 text-brand-green",
+    icon: UserPlus,
+    color: "text-brand-green",
   },
   {
     label: "New Appointment",
     href: "/appointments?new=true",
-    icon: (
-      <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-      </svg>
-    ),
-    color: "bg-sky-100 text-sky-600",
+    icon: CalendarPlus,
+    color: "text-sky-600",
   },
   {
     label: "Search Patient",
     href: "/patients",
-    icon: (
-      <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-      </svg>
-    ),
-    color: "bg-purple-100 text-purple-600",
+    icon: Search,
+    color: "text-purple-600",
   },
   {
     label: "Emergency Reg.",
     href: "/patients/register?emergency=true",
-    icon: (
-      <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-      </svg>
-    ),
-    color: "bg-red-100 text-red-600",
+    icon: Ambulance,
+    color: "text-red-600",
   },
 ];
 
 export function QuickActions() {
   return (
-    <div className="bg-white rounded border border-[#becab7]/50 p-6">
-      <h3 className="text-sm font-bold text-[#5f5e5e] uppercase tracking-wider mb-4">Quick Actions</h3>
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
-        {actions.map((action) => (
-          <Link
-            key={action.label}
-            href={action.href}
-            className="flex flex-col items-center gap-2 p-3 rounded border border-gray-200 hover:border-brand-green hover:bg-[#fcf9f8] transition-all overflow-hidden text-center"
-          >
-            <div className={`h-9 w-9 rounded flex items-center justify-center ${action.color} shrink-0`}>
-              {action.icon}
-            </div>
-            <span className="text-xs font-bold text-gray-700 leading-tight break-words">{action.label}</span>
-          </Link>
-        ))}
-      </div>
-    </div>
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          Quick Actions
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {actions.map((action) => (
+            <Button
+              key={action.label}
+              variant="outline"
+              nativeButton={false}
+              className="h-auto flex-col gap-1.5 p-4"
+              render={<Link href={action.href} />}
+            >
+              <action.icon className={`size-5 ${action.color}`} />
+              <span className="text-xs font-medium">{action.label}</span>
+            </Button>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
   );
 }

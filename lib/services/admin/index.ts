@@ -7,10 +7,51 @@ import type {
   AdminUser,
   AuditLogEntry,
   BillableService,
+  Cadre,
+  ControlledSubstanceLog,
   Department,
+  Drug,
   HospitalSettings,
+  LoincCode,
+  PaginationMeta,
+  Rank,
   Ward,
 } from "@/types/admin";
+
+export interface PayChanguOperator {
+  id: number;
+  name: string;
+  ref_id: string;
+  short_code: string;
+}
+
+export interface PayChanguChargeBody {
+  mobile: string;
+  operator_ref_id: string;
+  amount: number;
+  email?: string;
+  first_name?: string;
+  last_name?: string;
+}
+
+export interface PayChanguChargeResult {
+  charge_id: string;
+  trans_id: string;
+  status: string;
+  currency: string;
+  amount: number;
+  mobile: string;
+  operator: string;
+  payment_id: number;
+}
+
+export interface PayChanguVerifyResult {
+  status: string;
+  amount: number | null;
+  completed_at: string | null;
+  operator: string | null;
+  currency: string;
+}
 
 function unwrap<T>(res: unknown): T {
   if (res && typeof res === "object" && "data" in res) {
@@ -83,6 +124,28 @@ export const adminApi = {
       await api.put(`/users/${id}/roles`, { roles }, token),
     ),
 
+  listCadres: async (token: string | null) =>
+    unwrap<Cadre[]>(await api.get("/cadres", token)) ?? [],
+
+  listCadreRanks: async (token: string | null, cadreId: number | string) =>
+    unwrap<Rank[]>(await api.get(`/cadres/${cadreId}/ranks`, token)) ?? [],
+
+  assignSupervisor: async (
+    token: string | null,
+    userId: number | string,
+    supervisorId: number | null,
+  ) =>
+    unwrap<AdminUser>(
+      await api.put(`/users/${userId}/supervisor`, {
+        supervisor_id: supervisorId,
+      }, token),
+    ),
+
+  getSupervision: async (token: string | null, userId: number | string) =>
+    unwrap<{ supervisor: AdminUser | null; supervisees: AdminUser[] }>(
+      await api.get(`/users/${userId}/supervision`, token),
+    ),
+
   listRoles: async (token: string | null) =>
     unwrap<AdminRole[]>(await api.get("/roles", token)) ?? [],
 
@@ -138,6 +201,56 @@ export const adminApi = {
     );
   },
 
+  patientTimeline: async (
+    token: string | null,
+    patientId: number | string,
+    params: Record<string, string | number | undefined> = {},
+  ) => {
+    const qs = new URLSearchParams();
+    Object.entries(params).forEach(([k, v]) => {
+      if (v !== undefined && v !== "") qs.set(k, String(v));
+    });
+    const q = qs.toString();
+    const res = await api.get(`/audit-logs/patient/${patientId}${q ? `?${q}` : ""}`, token);
+    return {
+      data: unwrap<AuditLogEntry[]>(res) ?? [],
+      meta: (res as { meta?: PaginationMeta }).meta,
+    };
+  },
+
+  userActivity: async (
+    token: string | null,
+    userId: number | string,
+    params: Record<string, string | number | undefined> = {},
+  ) => {
+    const qs = new URLSearchParams();
+    Object.entries(params).forEach(([k, v]) => {
+      if (v !== undefined && v !== "") qs.set(k, String(v));
+    });
+    const q = qs.toString();
+    const res = await api.get(`/audit-logs/user/${userId}${q ? `?${q}` : ""}`, token);
+    return {
+      data: unwrap<AuditLogEntry[]>(res) ?? [],
+      meta: (res as { meta?: PaginationMeta }).meta,
+    };
+  },
+
+  timeline: async (
+    token: string | null,
+    params: Record<string, string | number | undefined> = {},
+  ) => {
+    const qs = new URLSearchParams();
+    Object.entries(params).forEach(([k, v]) => {
+      if (v !== undefined && v !== "") qs.set(k, String(v));
+    });
+    const q = qs.toString();
+    const res = await api.get(`/audit-logs/timeline${q ? `?${q}` : ""}`, token);
+    return {
+      data: unwrap<AuditLogEntry[]>(res) ?? [],
+      meta: (res as { meta?: PaginationMeta }).meta,
+    };
+  },
+
   listDepartments: async (token: string | null) =>
     unwrap<Department[]>(await api.get("/departments", token)) ?? [],
 
@@ -168,8 +281,21 @@ export const adminApi = {
   deleteWard: async (token: string | null, id: number | string) =>
     api.delete(`/wards/${id}`, token),
 
-  listServices: async (token: string | null) =>
-    unwrap<BillableService[]>(await api.get("/services", token)) ?? [],
+  listServices: async (
+    token: string | null,
+    params: Record<string, string | number | undefined> = {},
+  ) => {
+    const qs = new URLSearchParams();
+    Object.entries(params).forEach(([k, v]) => {
+      if (v !== undefined && v !== "") qs.set(k, String(v));
+    });
+    const q = qs.toString();
+    const res = await api.get(`/services${q ? `?${q}` : ""}`, token);
+    return {
+      data: unwrap<BillableService[]>(res) ?? [],
+      meta: (res as { meta?: Record<string, number> }).meta,
+    };
+  },
 
   createService: async (token: string | null, body: Record<string, unknown>) =>
     unwrap<BillableService>(await api.post("/services", body, token)),
@@ -182,6 +308,9 @@ export const adminApi = {
 
   deleteService: async (token: string | null, id: number | string) =>
     api.delete(`/services/${id}`, token),
+
+  searchLoinc: async (token: string | null, q: string) =>
+    unwrap<LoincCode[]>(await api.get(`/loinc/search?q=${encodeURIComponent(q)}`, token)),
 
   getSettings: async (token: string | null) =>
     unwrap<HospitalSettings>(await api.get("/settings", token)),
@@ -196,6 +325,129 @@ export const adminApi = {
 
   logout: async (token: string | null) => api.post("/logout", {}, token),
 
+  // Controlled Substance Audit Trail
+  csLogs: async (
+    token: string | null,
+    params: Record<string, string | number | undefined> = {},
+  ) => {
+    const qs = new URLSearchParams();
+    Object.entries(params).forEach(([k, v]) => {
+      if (v !== undefined && v !== "") qs.set(k, String(v));
+    });
+    const q = qs.toString();
+    const res = await api.get(`/controlled-substances/logs${q ? `?${q}` : ""}`, token);
+    return {
+      data: unwrap<ControlledSubstanceLog[]>(res) ?? [],
+      meta: (res as { meta?: PaginationMeta }).meta,
+    };
+  },
+
+  csDrugTrail: async (
+    token: string | null,
+    drugId: number | string,
+    params: Record<string, string | number | undefined> = {},
+  ) => {
+    const qs = new URLSearchParams();
+    Object.entries(params).forEach(([k, v]) => {
+      if (v !== undefined && v !== "") qs.set(k, String(v));
+    });
+    const q = qs.toString();
+    const res = await api.get(`/controlled-substances/drug/${drugId}${q ? `?${q}` : ""}`, token);
+    return {
+      data: unwrap<ControlledSubstanceLog[]>(res) ?? [],
+      meta: (res as { meta?: PaginationMeta }).meta,
+    };
+  },
+
+  csPatientHistory: async (
+    token: string | null,
+    patientId: number | string,
+  ) => {
+    const res = await api.get(`/controlled-substances/patient/${patientId}`, token);
+    return {
+      data: unwrap<ControlledSubstanceLog[]>(res) ?? [],
+      meta: (res as { meta?: PaginationMeta }).meta,
+    };
+  },
+
+  csLogEvent: async (token: string | null, body: Record<string, unknown>) =>
+    unwrap<ControlledSubstanceLog>(
+      await api.post("/controlled-substances/logs", body, token),
+    ),
+
+  csReconcile: async (token: string | null, body: { drug_id: number; physical_count: number; notes: string }) =>
+    unwrap<ControlledSubstanceLog>(
+      await api.post("/controlled-substances/reconcile", body, token),
+    ),
+
+  csDiscrepancies: async (token: string | null) => {
+    const res = await api.get("/controlled-substances/discrepancies", token);
+    return unwrap<ControlledSubstanceLog[]>(res) ?? [];
+  },
+
+  csReport: async (token: string | null, from: string, to: string) => {
+    const res = await api.get(`/controlled-substances/report?from=${from}&to=${to}`, token);
+    return unwrap<ControlledSubstanceLog[]>(res) ?? [];
+  },
+
+  // Drugs
+  listDrugs: async (
+    token: string | null,
+    params: Record<string, string | number | undefined> = {},
+  ) => {
+    const qs = new URLSearchParams();
+    Object.entries(params).forEach(([k, v]) => {
+      if (v !== undefined && v !== "") qs.set(k, String(v));
+    });
+    const q = qs.toString();
+    const res = await api.get(`/drugs${q ? `?${q}` : ""}`, token);
+    return {
+      data: unwrap<Drug[]>(res) ?? [],
+      meta: (res as { meta?: PaginationMeta }).meta,
+    };
+  },
+
+  searchDrugs: async (token: string | null, q: string) =>
+    unwrap<Drug[]>(await api.get(`/drugs/search?q=${encodeURIComponent(q)}`, token)) ?? [],
+
+  // Research Data Export
+  exportResearchData: async (
+    token: string | null,
+    body: {
+      format: "csv" | "json";
+      fields: string[];
+      filters?: {
+        date_from?: string;
+        date_to?: string;
+        department?: string;
+        patient_category?: string;
+      };
+    },
+  ) => {
+    const headers: HeadersInit = {};
+    if (token) headers.Authorization = `Bearer ${token}`;
+    const res = await fetch(`${getApiBaseUrl()}/research/export`, {
+      method: "POST",
+      headers: { ...headers, "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => null);
+      throw new Error(err?.message || "Export failed");
+    }
+    if (body.format === "csv") {
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `research_export_${new Date().toISOString().slice(0, 10)}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+      return null;
+    }
+    return res.json();
+  },
+
   exportStaffRoster: (token: string | null) =>
     downloadAuthenticated(
       "/admin/reports/staff-roster",
@@ -208,5 +460,28 @@ export const adminApi = {
       "/admin/reports/audit-summary",
       token,
       "audit-summary.csv",
+    ),
+
+  getPayChanguOperators: async (token: string | null) =>
+    unwrap<{ operators: PayChanguOperator[] }>(
+      await api.get("/paychangu/operators", token),
+    ),
+
+  initializePayChanguPayment: async (
+    token: string | null,
+    billId: number | string,
+    body: PayChanguChargeBody,
+  ) =>
+    unwrap<PayChanguChargeResult>(
+      await api.post(`/bills/${billId}/pay/charge`, body, token),
+    ),
+
+  verifyPayChanguPayment: async (
+    token: string | null,
+    billId: number | string,
+    chargeId: string,
+  ) =>
+    unwrap<PayChanguVerifyResult>(
+      await api.get(`/bills/${billId}/pay/${chargeId}/status`, token),
     ),
 };

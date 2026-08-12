@@ -32,7 +32,8 @@ export default function RolesPage() {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [pendingDelete, setPendingDelete] = useState<AdminRole | null>(null);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [pendingRole, setPendingRole] = useState<AdminRole | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -67,13 +68,20 @@ export default function RolesPage() {
 
   const remove = async (role: AdminRole) => {
     if (role.name === "Admin") return;
+    setPendingRole(role);
+    setDeleteConfirmOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!pendingRole) return;
+    setDeleteConfirmOpen(false);
     try {
-      await adminApi.deleteRole(token, role.id);
-      setPendingDelete(null);
+      await adminApi.deleteRole(token, pendingRole.id);
       await load();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Delete failed");
-      setPendingDelete(null);
+    } finally {
+      setPendingRole(null);
     }
   };
 
@@ -149,7 +157,7 @@ export default function RolesPage() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => setPendingDelete(role)}
+                          onClick={() => void remove(role)}
                         >
                           Delete
                         </Button>
@@ -192,10 +200,10 @@ export default function RolesPage() {
       </Modal>
 
       <ConfirmDialog
-        open={pendingDelete !== null}
-        onClose={() => setPendingDelete(null)}
-        onConfirm={() => void (pendingDelete && remove(pendingDelete))}
-        title={`Delete role ${pendingDelete?.name ?? ""}?`}
+        open={deleteConfirmOpen}
+        onClose={() => { setDeleteConfirmOpen(false); setPendingRole(null); }}
+        onConfirm={() => void confirmDelete()}
+        title={`Delete role ${pendingRole?.name ?? ""}?`}
         message="The role and its permission assignments will be permanently removed."
         confirmLabel="Delete role"
         variant="danger"
