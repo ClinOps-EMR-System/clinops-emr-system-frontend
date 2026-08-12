@@ -76,6 +76,7 @@ function connect() {
   ws.onopen = () => {
     reconnectDelay = 1000;
     setStatus("connected");
+    syncSubscriptions();
   };
 
   ws.onmessage = (event: MessageEvent) => routeMessage(String(event.data));
@@ -89,13 +90,52 @@ function connect() {
   ws.onerror = () => {};
 }
 
+function syncSubscriptions() {
+  if (socket && socket.readyState === WebSocket.OPEN) {
+    const channels = Array.from(handlers.keys());
+    if (channels.length > 0) {
+      socket.send(
+        JSON.stringify({
+          type: "subscribe",
+          channels,
+        })
+      );
+    }
+  }
+}
+
 export function subscribe(channel: string, handler: (data: unknown) => void) {
   if (!handlers.has(channel)) handlers.set(channel, new Set());
   handlers.get(channel)!.add(handler);
   manuallyClosed = false;
-  connect();
+
+  if (socket && socket.readyState === WebSocket.OPEN) {
+    socket.send(
+      JSON.stringify({
+        type: "subscribe",
+        channels: [channel],
+      })
+    );
+  } else {
+    connect();
+  }
+
   return () => {
-    handlers.get(channel)?.delete(handler);
+    const set = handlers.get(channel);
+    if (set) {
+      set.delete(handler);
+      if (set.size === 0) {
+        handlers.delete(channel);
+        if (socket && socket.readyState === WebSocket.OPEN) {
+          socket.send(
+            JSON.stringify({
+              type: "unsubscribe",
+              channels: [channel],
+            })
+          );
+        }
+      }
+    }
   };
 }
 
@@ -114,3 +154,4 @@ export function closeRealtime() {
   reconnectDelay = 1000;
   setStatus("offline");
 }
+

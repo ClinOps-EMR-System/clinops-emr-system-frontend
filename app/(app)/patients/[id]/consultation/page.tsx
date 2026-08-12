@@ -21,7 +21,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
 import BillingConfirmation from "@/components/billing/BillingConfirmation";
-import LabResultsPanel from "@/components/consultation/LabResultsPanel";
 import ImagingPanel from "@/components/consultation/ImagingPanel";
 import type { BillingSummary } from "@/types/billing";
 import { friendlyError } from "@/lib/errors";
@@ -151,7 +150,7 @@ interface BillLine {
   total: number;
 }
 
-type SubTab = "subjective" | "objective" | "assessment" | "plan" | "orders" | "results" | "radiology" | "prescriptions" | "timeline" | "billing";
+type SubTab = "subjective" | "objective" | "assessment" | "plan" | "orders" | "radiology" | "prescriptions" | "timeline" | "billing";
 
 const subTabs: { key: SubTab; label: string; icon: React.ReactNode }[] = [
   { key: "subjective", label: "Subjective (S)", icon: <ClipboardPen className="h-4 w-4" /> },
@@ -159,7 +158,6 @@ const subTabs: { key: SubTab; label: string; icon: React.ReactNode }[] = [
   { key: "assessment", label: "Assessment (A)", icon: <ClipboardList className="h-4 w-4" /> },
   { key: "plan", label: "Plan (P)", icon: <ClipboardPen className="h-4 w-4" /> },
   { key: "orders", label: "Orders", icon: <FlaskConical className="h-4 w-4" /> },
-  { key: "results", label: "Results", icon: <FlaskConical className="h-4 w-4" /> },
   { key: "radiology", label: "Radiology", icon: <ScanLine className="h-4 w-4" /> },
   { key: "prescriptions", label: "Rx", icon: <Pill className="h-4 w-4" /> },
   { key: "timeline", label: "Case Timeline", icon: <History className="h-4 w-4" /> },
@@ -406,6 +404,20 @@ export default function ClinicianSOAPConsultation() {
     return off;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [subscribe, token, summary?.encounter?.id]);
+
+  useEffect(() => {
+    if (!token) return;
+    const off = subscribe("clinops_lab_requests", (raw: unknown) => {
+      const ev = raw as { encounter_id?: number; patient_id?: number; lab_request_id?: number };
+      if (typeof ev?.lab_request_id !== "number") return;
+      if (ev.encounter_id !== undefined && ev.encounter_id !== summary?.encounter?.id) return;
+      if (ev.encounter_id === undefined && ev.patient_id !== undefined && ev.patient_id !== Number(patientId)) return;
+      void fetchConsultationData();
+    });
+    return off;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [subscribe, token, summary?.encounter?.id]);
+
 
   useEffect(() => {
     if (!token) return;
@@ -885,11 +897,6 @@ export default function ClinicianSOAPConsultation() {
     } catch {}
   }
 
-  const pendingLabCount = orders.filter(
-    (o) =>
-      o.order_type?.toLowerCase() === "lab" &&
-      !["completed", "cancelled"].includes(o.status?.toLowerCase() ?? "")
-  ).length;
 
   const primaryUnit = selectedLoinc?.units?.find((u) => u.primary);
 
@@ -1585,14 +1592,6 @@ export default function ClinicianSOAPConsultation() {
                   </div>
                 )}
 
-                {activeSubTab === "results" && (
-                  <LabResultsPanel
-                    encounterId={activeEncounterId ?? null}
-                    token={token}
-                    pendingCount={pendingLabCount}
-                    refreshSignal={resultsRefreshKey}
-                  />
-                )}
 
                 {activeSubTab === "radiology" && (
                   <ImagingPanel

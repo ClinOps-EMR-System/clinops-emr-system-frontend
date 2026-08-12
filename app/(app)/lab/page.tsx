@@ -160,10 +160,16 @@ export default function LabPage() {
 
   useEffect(() => {
     if (!token) return;
-    const off = subscribe("clinops_lab_requests", () => {
+    const offRequests = subscribe("clinops_lab_requests", () => {
       void fetchData(true);
     });
-    return off;
+    const offResults = subscribe("clinops_lab_results", () => {
+      void fetchData(true);
+    });
+    return () => {
+      offRequests();
+      offResults();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [subscribe, token]);
 
