@@ -20,8 +20,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { usePageTitle } from "@/lib/hooks/usePageTitle";
 
 export default function RolesPage() {
+  usePageTitle("Roles");
   const { token } = useAuth();
   const [roles, setRoles] = useState<AdminRole[]>([]);
   const [loading, setLoading] = useState(true);
@@ -200,9 +202,9 @@ export default function RolesPage() {
       <ConfirmDialog
         open={deleteConfirmOpen}
         onClose={() => { setDeleteConfirmOpen(false); setPendingRole(null); }}
-        onConfirm={confirmDelete}
-        title="Delete Role"
-        message={pendingRole ? `Delete role ${pendingRole.name}?` : ""}
+        onConfirm={() => void confirmDelete()}
+        title={`Delete role ${pendingRole?.name ?? ""}?`}
+        message="The role and its permission assignments will be permanently removed."
         confirmLabel="Delete role"
         variant="danger"
       />

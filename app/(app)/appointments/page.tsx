@@ -23,6 +23,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { Plus } from "lucide-react";
+import { usePageTitle } from "@/lib/hooks/usePageTitle";
 
 interface Appointment {
   id: number;
@@ -70,6 +71,7 @@ function getStatusVariant(status: string): "success" | "warning" | "error" | "in
 }
 
 export default function AppointmentsPage() {
+  usePageTitle("Appointments");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [showNewAppointment, setShowNewAppointment] = useState(false);
 

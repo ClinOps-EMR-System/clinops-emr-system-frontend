@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useId } from "react";
 import { AlertTriangle, Trash2, Info } from "lucide-react";
 import Modal from "./Modal";
 import clsx from "clsx";
@@ -49,16 +49,17 @@ export default function ConfirmDialog({
   children,
 }: ConfirmDialogProps) {
   const config = variantConfig[variant];
+  const headingId = useId();
 
   return (
-    <Modal open={open} onClose={onClose} title="" size="sm">
+    <Modal open={open} onClose={onClose} title="" size="sm" labelledById={headingId}>
       <div className="space-y-4">
         <div className="flex items-start gap-3">
           <div className={clsx("h-10 w-10 rounded-full flex items-center justify-center shrink-0", config.iconBg)}>
             {config.icon}
           </div>
           <div>
-            <h3 className="text-lg font-bold text-gray-900">{title}</h3>
+            <h3 id={headingId} className="text-lg font-bold text-gray-900">{title}</h3>
             <p className="text-sm text-gray-600 mt-1">{message}</p>
           </div>
         </div>

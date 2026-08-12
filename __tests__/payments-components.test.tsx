@@ -84,7 +84,7 @@ describe("BillPreview", () => {
     render(<BillPreview bill={bill} loading={false} />);
     expect(screen.getByText("Consultation")).toBeInTheDocument();
     expect(screen.getAllByText("MK 10,000").length).toBeGreaterThan(0);
-    expect(screen.getByText("Balance")).toBeInTheDocument();
+    expect(screen.getByText("Balance due")).toBeInTheDocument();
     expect(screen.getByText("MK 6,000")).toBeInTheDocument();
   });
 

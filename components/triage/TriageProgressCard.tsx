@@ -34,7 +34,7 @@ export default function TriageProgressCard({
             </span>
             <span className={cn(
               "text-xs font-bold font-mono",
-              mandatoryDone ? "text-emerald-600" : "text-amber-600"
+              mandatoryDone ? "text-emerald-600" : "text-amber-700"
             )}>
               {mandatoryDone ? "100%" : `${progressPct}%`}
             </span>

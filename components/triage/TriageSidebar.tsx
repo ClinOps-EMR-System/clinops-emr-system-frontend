@@ -47,7 +47,7 @@ export default function TriageSidebar({
               key={tab.key}
               onClick={() => onTabChange(tab.key)}
               className={cn(
-                "flex-shrink-0 px-3 py-2 text-xs font-bold rounded transition-all min-h-[40px] whitespace-nowrap flex items-center gap-1.5",
+                "flex-shrink-0 px-3 py-2 text-xs font-bold rounded transition-all min-h-[44px] whitespace-nowrap flex items-center gap-1.5",
                 activeTab === tab.key
                   ? "bg-primary text-primary-foreground"
                   : "text-gray-600 hover:bg-gray-50 bg-gray-50"
@@ -71,7 +71,7 @@ export default function TriageSidebar({
               key={tab.key}
               onClick={() => onTabChange(tab.key)}
               className={cn(
-                "w-full flex items-center gap-2.5 px-4 py-2.5 text-sm rounded-lg font-bold transition-all text-left",
+                "w-full flex items-center gap-2.5 px-4 py-2.5 text-sm rounded-lg font-bold transition-all text-left min-h-[44px]",
                 isActive
                   ? "bg-primary text-primary-foreground shadow-sm"
                   : "text-muted-foreground hover:bg-muted hover:text-foreground"

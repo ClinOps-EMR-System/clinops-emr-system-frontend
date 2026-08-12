@@ -20,6 +20,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { BedDouble, Plus } from "lucide-react";
 import type { Admission, AdmissionFormData, AdmissionStats as AdmissionStatsType, WardSummary as Ward } from "@/types/admission";
+import { usePageTitle } from "@/lib/hooks/usePageTitle";
 
 const TABS = [
   { key: "active" as const, label: "Active Admissions" },
@@ -28,6 +29,7 @@ const TABS = [
 ];
 
 export default function AdmissionsPage() {
+  usePageTitle("Admissions");
   const router = useRouter();
   const { token } = useAuth();
   const { can } = usePermissions();

@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/store/RoleContext";
 import { api } from "@/lib/api";
 import { AlertTriangle, Heart, Wind, Activity } from "lucide-react";
+import { usePageTitle } from "@/lib/hooks/usePageTitle";
 
 interface Patient {
   id: number;
@@ -25,6 +26,7 @@ interface WaitingPatient {
 }
 
 export default function EmergencyTriagePage() {
+  usePageTitle("Emergency Triage");
   const params = useParams();
   const router = useRouter();
   const { token } = useAuth();

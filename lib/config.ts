@@ -58,3 +58,17 @@ export function getAppEnv() {
 
   return "development";
 }
+
+export function getRealtimeUrl() {
+  const configuredWsUrl = process.env.NEXT_PUBLIC_WS_URL?.trim();
+
+  if (configuredWsUrl) {
+    return configuredWsUrl;
+  }
+
+  if (isProductionEnvironment()) {
+    return "wss://clinops.dpdns.org:6001";
+  }
+
+  return "ws://localhost:6001";
+}

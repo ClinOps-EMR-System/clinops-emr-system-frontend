@@ -3,22 +3,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import { getApiBaseUrl } from "../lib/config";
-
-const API_BASE_URL = getApiBaseUrl();
-
-async function fetchUser(token: string): Promise<User | null> {
-  try {
-    const res = await fetch(`${API_BASE_URL}/user`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    if (!res.ok) return null;
-    const { data } = await res.json();
-    return data as User;
-  } catch {
-    return null;
-  }
-}
+import { api } from "@/lib/api";
 
 export interface User {
   id: number;
@@ -42,6 +27,16 @@ export interface User {
   } | null;
   roles?: string[];
   permissions?: string[];
+}
+
+async function fetchUser(token: string): Promise<User | null> {
+  try {
+    const res = await api.get("/user", token);
+    if (res && res.data) return res.data as User;
+    return null;
+  } catch {
+    return null;
+  }
 }
 
 interface AuthContextType {

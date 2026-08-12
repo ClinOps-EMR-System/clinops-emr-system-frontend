@@ -1,11 +1,13 @@
 "use client";
 
 import { useFetch } from "@/lib/useFetch";
+import { useRealtime } from "@/lib/hooks/useRealtime";
 import { QueueStatsBar } from "@/components/queue/QueueStatsBar";
 import { QueueSection } from "@/components/queue/QueueSection";
 import LoadingState from "@/components/ui/LoadingState";
 import EmptyState from "@/components/ui/EmptyState";
 import { ListOrdered } from "lucide-react";
+import { usePageTitle } from "@/lib/hooks/usePageTitle";
 
 interface QueueEntry {
   id?: number;
@@ -41,8 +43,16 @@ interface QueueResponse {
 }
 
 export default function QueuePage() {
-  const { data: queueData, loading: queueLoading } = useFetch<QueueResponse>("/queue", { interval: 30000 });
-  const { data: stats, loading: statsLoading } = useFetch<QueueStats>("/queue/stats", { interval: 30000 });
+  usePageTitle("Queue");
+  const { data: queueData, loading: queueLoading, refetch: refetchQueue } = useFetch<QueueResponse>("/queue", { interval: 30000 });
+  const { data: stats, loading: statsLoading, refetch: refetchStats } = useFetch<QueueStats>("/queue/stats", { interval: 30000 });
+
+  useRealtime(["clinops_consultation_queue"], {
+    onEvent: () => {
+      refetchQueue();
+      refetchStats();
+    },
+  });
 
   const loading = queueLoading || statsLoading;
   const entries = queueData?.entries ?? [];

@@ -1,6 +1,6 @@
 "use client";
 
-import { getWsUrl } from "./config";
+import { getRealtimeUrl } from "./config";
 
 export type RealtimeStatus = "connecting" | "connected" | "offline";
 
@@ -70,7 +70,7 @@ function scheduleReconnect() {
 function connect() {
   if (typeof window === "undefined" || socket || manuallyClosed) return;
   setStatus("connecting");
-  const ws = new WebSocket(getWsUrl());
+  const ws = new WebSocket(getRealtimeUrl());
   socket = ws;
 
   ws.onopen = () => {

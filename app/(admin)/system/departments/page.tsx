@@ -20,8 +20,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { usePageTitle } from "@/lib/hooks/usePageTitle";
 
 export default function DepartmentsPage() {
+  usePageTitle("Departments");
   const { token } = useAuth();
   const [items, setItems] = useState<Department[]>([]);
   const [loading, setLoading] = useState(true);
@@ -93,9 +95,13 @@ export default function DepartmentsPage() {
     if (!pendingDelete) return;
     try {
       await adminApi.deleteDepartment(token, pendingDelete.id);
+      setDeleteOpen(false);
+      setPendingDelete(null);
       await load();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Delete failed");
+      setDeleteOpen(false);
+      setPendingDelete(null);
     }
   };
 
@@ -169,7 +175,7 @@ export default function DepartmentsPage() {
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => void remove(d)}
+                        onClick={() => setPendingDelete(d)}
                       >
                         Delete
                       </Button>
@@ -238,10 +244,10 @@ export default function DepartmentsPage() {
         open={deleteOpen}
         onClose={() => { setDeleteOpen(false); setPendingDelete(null); }}
         onConfirm={() => void confirmDelete()}
-        title="Delete department?"
-        message={`This will permanently delete ${pendingDelete?.name ?? "this department"}. This action cannot be undone.`}
-        variant="danger"
+        title={`Delete department ${pendingDelete?.name ?? ""}?`}
+        message="Staff assigned to this department will no longer be linked to it."
         confirmLabel="Delete department"
+        variant="danger"
       />
     </div>
   );

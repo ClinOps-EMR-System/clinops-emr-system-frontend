@@ -39,10 +39,24 @@ describe("NewLabRequestPage", () => {
           ],
         });
       }
-      if (endpoint.startsWith("/loinc/search")) {
-        return Promise.resolve([
-          { code: "718-7", display_name: "Hemoglobin", component_name: "Hemoglobin", system: "Bld" },
-        ]);
+      if (endpoint.startsWith("/lab-tests")) {
+        return Promise.resolve({
+          data: [
+            {
+              id: 9,
+              code: "718-7",
+              name: "Hemoglobin",
+              category_id: 1,
+              specimen_type_id: null,
+              description: null,
+              result_type: "SINGLE",
+              is_panel: false,
+              loinc_code: "718-7",
+              active: true,
+              category: { id: 1, name: "Haematology", code: "HAEM", display_order: 1, active: true },
+            },
+          ],
+        });
       }
       return Promise.resolve({ data: [] });
     });
@@ -87,7 +101,7 @@ describe("NewLabRequestPage", () => {
 
     const resultButton = await screen.findByRole("button", { name: /Hemoglobin/ });
     fireEvent.click(resultButton);
-    expect(screen.getByText(/718-7/)).toBeInTheDocument();
+    expect(screen.getByText("Haematology")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: /Create Lab Request/ }));
 
@@ -96,7 +110,7 @@ describe("NewLabRequestPage", () => {
         "/lab-requests",
         expect.objectContaining({
           encounter_id: 2,
-          loinc_code: "718-7",
+          lab_test_id: 9,
           priority: "Routine",
         }),
         "test-token"

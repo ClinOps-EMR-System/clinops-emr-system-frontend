@@ -12,6 +12,9 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Third-party tooling and vendored files:
+    ".github/**",
+    ".impeccable/**",
   ]),
 ]);
 

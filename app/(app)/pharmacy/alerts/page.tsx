@@ -77,7 +77,7 @@ export default function AlertsPage() {
             <TrendingDown className={cn("size-4", lowStock.length > 0 ? "text-amber-500" : "text-muted-foreground/60")} />
           </CardHeader>
           <CardContent>
-            <div className={cn("text-3xl font-semibold tabular-nums tracking-tight", lowStock.length > 0 ? "text-amber-600" : "text-foreground")}>
+            <div className={cn("text-3xl font-semibold tabular-nums tracking-tight", lowStock.length > 0 ? "text-amber-700" : "text-foreground")}>
               {loading ? <Skeleton className="h-8 w-16" /> : lowStock.length}
             </div>
           </CardContent>
@@ -162,7 +162,7 @@ export default function AlertsPage() {
                       {drug.generic_name || "—"}
                     </TableCell>
                     <TableCell>
-                      <span className={cn("tabular-nums font-medium", drug.current_stock === 0 ? "text-red-600" : "text-amber-600")}>
+                      <span className={cn("tabular-nums font-medium", drug.current_stock === 0 ? "text-red-600" : "text-amber-700")}>
                         {drug.current_stock}
                       </span>
                     </TableCell>

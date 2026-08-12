@@ -19,6 +19,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { usePageTitle } from "@/lib/hooks/usePageTitle";
 
 const EVENT_CATEGORIES = [
   { value: "", label: "All events" },
@@ -58,6 +59,7 @@ function getEventBadgeClass(event: string | null | undefined): string {
 }
 
 export default function AuditPage() {
+  usePageTitle("Audit Log");
   const { token } = useAuth();
   const [logs, setLogs] = useState<AuditLogEntry[]>([]);
   const [loading, setLoading] = useState(true);

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import AuthShell from "../AuthShell";
 import { getApiBaseUrl } from "../../../lib/config";
+import { usePageTitle } from "@/lib/hooks/usePageTitle";
 
 const API_BASE = getApiBaseUrl();
 
@@ -63,7 +64,7 @@ function ResetPasswordForm() {
   return (
     <form className="space-y-6" onSubmit={handleSubmit}>
       {message ? (
-        <div className={`rounded-md px-4 py-3 text-sm ${isSuccess ? "bg-emerald-500 text-white" : "bg-red-500 text-white"}`}>
+        <div role="alert" className={`rounded-md border px-4 py-3 text-sm ${isSuccess ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-red-200 bg-red-50 text-red-800"}`}>
           {message}
         </div>
       ) : null}
@@ -76,7 +77,7 @@ function ResetPasswordForm() {
           id="email"
           name="email"
           type="email"
-          className="mt-1 block w-full px-3 py-3 border border-gray-300 rounded-md bg-white text-gray-900 shadow-sm placeholder-gray-400 focus:outline-none focus:border-[#00a651] focus:ring-[#00a651] sm:text-sm"
+          className="mt-1 block w-full px-3 py-3 border border-gray-300 rounded-md bg-white text-gray-900 shadow-sm placeholder-gray-400 focus:outline-none focus:border-clinical-primary focus:ring-clinical-primary sm:text-sm"
           placeholder="Enter your email"
           value={email}
           onChange={(event) => setEmail(event.target.value)}
@@ -93,7 +94,7 @@ function ResetPasswordForm() {
           id="token"
           name="token"
           type="text"
-          className="mt-1 block w-full px-3 py-3 border border-gray-300 rounded-md bg-white text-gray-900 shadow-sm placeholder-gray-400 focus:outline-none focus:border-[#00a651] focus:ring-[#00a651] sm:text-sm"
+          className="mt-1 block w-full px-3 py-3 border border-gray-300 rounded-md bg-white text-gray-900 shadow-sm placeholder-gray-400 focus:outline-none focus:border-clinical-primary focus:ring-clinical-primary sm:text-sm"
           placeholder="Enter reset token"
           value={token}
           onChange={(event) => setToken(event.target.value)}
@@ -110,7 +111,7 @@ function ResetPasswordForm() {
           id="password"
           name="password"
           type="password"
-          className="mt-1 block w-full px-3 py-3 border border-gray-300 rounded-md bg-white text-gray-900 shadow-sm placeholder-gray-400 focus:outline-none focus:border-[#00a651] focus:ring-[#00a651] sm:text-sm"
+          className="mt-1 block w-full px-3 py-3 border border-gray-300 rounded-md bg-white text-gray-900 shadow-sm placeholder-gray-400 focus:outline-none focus:border-clinical-primary focus:ring-clinical-primary sm:text-sm"
           placeholder="Enter new password"
           value={password}
           onChange={(event) => setPassword(event.target.value)}
@@ -128,7 +129,7 @@ function ResetPasswordForm() {
           id="confirmPassword"
           name="confirmPassword"
           type="password"
-          className="mt-1 block w-full px-3 py-3 border border-gray-300 rounded-md bg-white text-gray-900 shadow-sm placeholder-gray-400 focus:outline-none focus:border-[#00a651] focus:ring-[#00a651] sm:text-sm"
+          className="mt-1 block w-full px-3 py-3 border border-gray-300 rounded-md bg-white text-gray-900 shadow-sm placeholder-gray-400 focus:outline-none focus:border-clinical-primary focus:ring-clinical-primary sm:text-sm"
           placeholder="Confirm new password"
           value={confirmPassword}
           onChange={(event) => setConfirmPassword(event.target.value)}
@@ -141,14 +142,14 @@ function ResetPasswordForm() {
       <button
         type="submit"
         disabled={submitLoading}
-        className="w-full rounded-md bg-[#00a651] px-4 py-3 text-sm font-bold text-white shadow-sm hover:bg-[#048f47] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#00a651] disabled:cursor-not-allowed disabled:opacity-70"
+        className="w-full rounded-md bg-clinical-primary px-4 py-3 text-sm font-bold text-white shadow-sm hover:bg-clinical-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-clinical-primary disabled:cursor-not-allowed disabled:opacity-70"
       >
         {submitLoading ? "Resetting password..." : "Reset password"}
       </button>
 
       <div className="text-center text-sm text-gray-500">
         Back to{' '}
-        <Link href="/" className="font-medium text-[#0ea5e9] hover:text-[#0288c4]">
+        <Link href="/" className="font-medium text-clinical-primary hover:text-clinical-primary-hover">
           Sign in
         </Link>
       </div>
@@ -157,6 +158,7 @@ function ResetPasswordForm() {
 }
 
 export default function ResetPasswordPage() {
+  usePageTitle("Reset password");
   return (
     <AuthShell title="Reset Password" subtitle="Enter your new password to restore access." >
       <Suspense fallback={<div className="text-center text-sm text-gray-500">Loading form parameters...</div>}>

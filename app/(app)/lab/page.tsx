@@ -30,6 +30,7 @@ import { RoleGuard } from "@/components/auth/RoleGuard";
 import { usePermissions } from "@/lib/hooks/usePermissions";
 import LabResultForm from "../../../components/lab/LabResultForm";
 import type { LabResultValue } from "@/types/lab";
+import { usePageTitle } from "@/lib/hooks/usePageTitle";
 
 interface LabOrder {
   id: number;
@@ -100,6 +101,7 @@ interface Service {
 }
 
 export default function LabPage() {
+  usePageTitle("Laboratory");
   const { token, user } = useAuth();
   const { subscribe } = useRealtime();
   const { can } = usePermissions();

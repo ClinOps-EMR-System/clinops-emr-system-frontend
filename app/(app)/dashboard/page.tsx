@@ -37,6 +37,7 @@ import {
   ClipboardCheck,
   User,
 } from "lucide-react";
+import { usePageTitle } from "@/lib/hooks/usePageTitle";
 
 interface DashboardData {
   patients?: {
@@ -75,6 +76,11 @@ interface DashboardData {
   };
 }
 
+interface DashboardPrescription {
+  id: number;
+  status: string;
+}
+
 interface FlowStage {
   key: string;
   label: string;
@@ -85,9 +91,11 @@ interface FlowStage {
 }
 
 export default function Dashboard() {
+  usePageTitle("Dashboard");
   const { user } = useAuth();
   const router = useRouter();
   const { data: dashboard, loading, error } = useFetch<DashboardData>("/dashboard");
+  const { data: prescriptionsRaw } = useFetch<DashboardPrescription[]>("/prescriptions");
 
   const staffName = user?.name?.split(" ")[0] || "Staff";
   const { isAdmin, can, roles, canAccessAdmin } = usePermissions();
@@ -101,6 +109,10 @@ export default function Dashboard() {
   }, [isDoctor, router]);
 
   if (isDoctor) return null;
+
+  const toPharmacy = Array.isArray(prescriptionsRaw)
+    ? prescriptionsRaw.filter((rx) => rx.status?.toLowerCase() === "prescribed").length
+    : 0;
 
   const stats = {
     totalPatients: dashboard?.patients?.total ?? 0,
@@ -140,7 +152,7 @@ export default function Dashboard() {
     {
       key: "pharmacy",
       label: "To Pharmacy",
-      count: 0,
+      count: toPharmacy,
       href: "/pharmacy",
       color: "text-emerald-600",
       icon: Pill,

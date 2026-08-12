@@ -28,7 +28,7 @@ function formatWait(minutes: number): string {
 
 function getWaitColor(minutes: number): string {
   if (minutes > 30) return "text-red-600 bg-red-50";
-  if (minutes > 10) return "text-amber-600 bg-amber-50";
+  if (minutes > 10) return "text-amber-700 bg-amber-50";
   return "text-emerald-600 bg-emerald-50";
 }
 

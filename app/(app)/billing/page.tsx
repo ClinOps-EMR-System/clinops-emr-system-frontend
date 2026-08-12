@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useAuth } from "@/store/RoleContext";
+import { usePageTitle } from "@/lib/hooks/usePageTitle";
 import { useRealtime } from "@/store/RealtimeContext";
 import { api } from "@/lib/api";
 import { adminApi } from "@/lib/services/admin";
@@ -112,6 +113,7 @@ const PAYCHANGU_POLL_INTERVAL_MS = 5000;
 const PAYCHANGU_POLL_LIMIT_MS = 2 * 60 * 1000;
 
 export default function BillingPage() {
+  usePageTitle("Billing");
   const { token } = useAuth();
   const { can } = usePermissions();
   const toast = useToast();
