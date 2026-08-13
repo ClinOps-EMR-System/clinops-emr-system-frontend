@@ -151,6 +151,7 @@ export default function StaffDetailPage() {
       router.push("/system/staff");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Delete failed");
+      setDeleteOpen(false);
     }
   };
 
@@ -410,8 +411,8 @@ export default function StaffDetailPage() {
         open={deleteOpen}
         onClose={() => setDeleteOpen(false)}
         onConfirm={() => void confirmDelete()}
-        title="Delete user?"
-        message={`This will permanently delete ${user?.name ?? "this user"}. This action cannot be undone.`}
+        title={`Delete ${user.name}?`}
+        message="This user account will be permanently removed and cannot be undone."
         variant="danger"
         confirmLabel="Delete user"
       />

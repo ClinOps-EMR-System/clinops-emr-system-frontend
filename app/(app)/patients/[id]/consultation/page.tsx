@@ -7,6 +7,7 @@ import { RoleGuard } from "@/components/auth/RoleGuard";
 import { useRealtime } from "@/store/RealtimeContext";
 import { useLabResultBus } from "@/store/LabResultBus";
 import { usePermissions } from "@/lib/hooks/usePermissions";
+import { usePageTitle } from "@/lib/hooks/usePageTitle";
 import { useToast } from "@/components/ui/Toast";
 import { api } from "@/lib/api";
 import type { Patient, Allergy } from "@/types/patient";
@@ -227,6 +228,7 @@ export default function ClinicianSOAPConsultation() {
   const [activeSubTab, setActiveSubTab] = useState<SubTab>("subjective");
   const [patient, setPatient] = useState<Patient | null>(null);
   const [summary, setSummary] = useState<TriageSummary | null>(null);
+  usePageTitle(patient ? `Consultation · ${patient.first_name} ${patient.last_name}` : "Consultation");
   const [verification, setVerification] = useState<{ id: number; status: string; comments: string | null; submitted_at: string } | null>(null);
   const [diagnoses, setDiagnoses] = useState<Diagnosis[]>([]);
   const [loading, setLoading] = useState(true);

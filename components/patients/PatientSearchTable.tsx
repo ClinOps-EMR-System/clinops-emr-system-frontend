@@ -65,7 +65,7 @@ function getClinicalStatus(
       return { label: "Triaged", variant: "info" };
     case "In Consultation":
     case "in_consultation":
-      return { label: "In Consult", variant: "purple", pulse: true };
+      return { label: "In Consult", variant: "purple" };
     case "Completed":
     case "discharged":
       return { label: "Completed", variant: "success" };

@@ -4,10 +4,12 @@ import { useState } from "react";
 import Link from "next/link";
 import AuthShell from "../AuthShell";
 import { getApiBaseUrl } from "../../../lib/config";
+import { usePageTitle } from "@/lib/hooks/usePageTitle";
 
 const API_BASE = getApiBaseUrl();
 
 export default function ForgotPasswordPage() {
+  usePageTitle("Forgot password");
   const [email, setEmail] = useState("");
   const [submitLoading, setSubmitLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -51,7 +53,7 @@ export default function ForgotPasswordPage() {
     <AuthShell title="Forgot Password" subtitle="Enter the email used for your staff account to receive a reset link." >
       <form className="space-y-6" onSubmit={handleSubmit}>
         {message ? (
-          <div className={`rounded-md px-4 py-3 text-sm ${isSuccess ? "bg-emerald-500 text-white" : "bg-red-500 text-white"}`}>
+          <div role="alert" className={`rounded-md border px-4 py-3 text-sm ${isSuccess ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-red-200 bg-red-50 text-red-800"}`}>
             {message}
           </div>
         ) : null}
@@ -64,7 +66,7 @@ export default function ForgotPasswordPage() {
             id="email"
             name="email"
             type="email"
-            className="mt-1 block w-full px-3 py-3 border border-gray-300 rounded-md bg-white text-gray-900 shadow-sm placeholder-gray-400 focus:outline-none focus:border-[#00a651] focus:ring-[#00a651] sm:text-sm"
+            className="mt-1 block w-full px-3 py-3 border border-gray-300 rounded-md bg-white text-gray-900 shadow-sm placeholder-gray-400 focus:outline-none focus:border-clinical-primary focus:ring-clinical-primary sm:text-sm"
             placeholder="Enter your email"
             value={email}
             onChange={(event) => setEmail(event.target.value)}
@@ -76,14 +78,14 @@ export default function ForgotPasswordPage() {
         <button
           type="submit"
           disabled={submitLoading}
-          className="w-full rounded-md bg-[#00a651] px-4 py-3 text-sm font-bold text-white shadow-sm hover:bg-[#048f47] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#00a651] disabled:cursor-not-allowed disabled:opacity-70"
+          className="w-full rounded-md bg-clinical-primary px-4 py-3 text-sm font-bold text-white shadow-sm hover:bg-clinical-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-clinical-primary disabled:cursor-not-allowed disabled:opacity-70"
         >
           {submitLoading ? "Sending reset link..." : "Reset password"}
         </button>
 
         <div className="text-center text-sm text-gray-500">
           Remembered your credentials?{' '}
-          <Link href="/" className="font-medium text-[#0ea5e9] hover:text-[#0288c4]">
+          <Link href="/" className="font-medium text-clinical-primary hover:text-clinical-primary-hover">
             Sign in
           </Link>
         </div>

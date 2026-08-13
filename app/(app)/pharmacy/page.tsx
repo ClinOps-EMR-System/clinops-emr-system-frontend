@@ -21,6 +21,7 @@ import {
   Pill, Clock, CheckCircle, AlertTriangle, Package, ArrowRight, TrendingDown,
 } from "lucide-react";
 import { RoleGuard } from "@/components/auth/RoleGuard";
+import { usePageTitle } from "@/lib/hooks/usePageTitle";
 
 interface PharmacyWorklistItem {
   prescription_id: number;
@@ -52,6 +53,7 @@ const tabs: { key: TabKey; label: string; apiStatus: string; icon: React.ReactNo
 ];
 
 export default function PharmacyOverviewPage() {
+  usePageTitle("Pharmacy");
   const { token } = useAuth();
   const { subscribe } = useRealtime();
   const { can } = usePermissions();

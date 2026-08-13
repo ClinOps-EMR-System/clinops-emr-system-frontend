@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { api } from "@/lib/api";
 import { useAuth } from "@/store/RoleContext";
+import { usePageTitle } from "@/lib/hooks/usePageTitle";
 import { BillPicker } from "@/components/payments/BillPicker";
 import { BillPreview } from "@/components/payments/BillPreview";
 import { PaymentForm, type RecordedPayment } from "@/components/payments/PaymentForm";
@@ -20,6 +21,7 @@ interface Patient {
 }
 
 export default function PaymentsPage() {
+  usePageTitle("Payments");
   const { token } = useAuth();
   const [patientQuery, setPatientQuery] = useState("");
   const [patientResults, setPatientResults] = useState<Patient[]>([]);

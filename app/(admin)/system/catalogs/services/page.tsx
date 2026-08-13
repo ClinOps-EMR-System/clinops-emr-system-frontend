@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/table";
 import { loincToServiceFields, resolveAutoBilled, formatBillingUnit } from "@/lib/billing/catalog";
 import type { AutoBilledRow } from "@/lib/billing/catalog";
+import { usePageTitle } from "@/lib/hooks/usePageTitle";
 
 const BILLING_UNITS = [
   "per_registration",
@@ -44,6 +45,7 @@ const BILLING_UNITS = [
 ];
 
 export default function ServicesCatalogPage() {
+  usePageTitle("Billable Services");
   const { token } = useAuth();
   const { can } = usePermissions();
   const canManage = can("catalog.manage");
@@ -555,8 +557,8 @@ export default function ServicesCatalogPage() {
         open={deleteConfirmOpen}
         onClose={() => { setDeleteConfirmOpen(false); setPendingService(null); }}
         onConfirm={confirmDelete}
-        title="Delete Service"
-        message={pendingService ? `Delete service ${pendingService.name}?` : ""}
+        title={`Delete service ${pendingService?.name ?? ""}?`}
+        message="This billable service will be permanently removed from the catalog."
         confirmLabel="Delete service"
         variant="danger"
       />

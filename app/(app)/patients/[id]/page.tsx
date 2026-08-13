@@ -33,6 +33,7 @@ import { cn } from "@/lib/utils";
 import { useToast } from "@/components/ui/Toast";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import ClinicalTimeline from "@/components/audit/ClinicalTimeline";
+import { usePageTitle } from "@/lib/hooks/usePageTitle";
 
 interface TriageSummary {
   encounter: {
@@ -115,17 +116,19 @@ export default function PatientProfilePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-const [checkingIn, setCheckingIn] = useState(false);
-const [admissions, setAdmissions] = useState<Admission[]>([]);
-const [dupMatches, setDupMatches] = useState<DuplicatePatient[]>([]);
-const [dupChecking, setDupChecking] = useState(false);
-const [dupLoading, setDupLoading] = useState(false);
-const [dupError, setDupError] = useState<string | null>(null);
-const [mergeTarget, setMergeTarget] = useState<DuplicatePatient | null>(null);
-const [clinicalActivity, setClinicalActivity] = useState<AuditLogEntry[]>([]);
-const [clinicalActivityLoading, setClinicalActivityLoading] = useState(false);
-const [tabOverride, setTabOverride] = useState<string | null>(null);
-const [showCardModal, setShowCardModal] = useState(false);
+  const [checkingIn, setCheckingIn] = useState(false);
+  const [admissions, setAdmissions] = useState<Admission[]>([]);
+  const [dupMatches, setDupMatches] = useState<DuplicatePatient[]>([]);
+  const [dupChecking, setDupChecking] = useState(false);
+  const [dupLoading, setDupLoading] = useState(false);
+  const [dupError, setDupError] = useState<string | null>(null);
+  const [mergeTarget, setMergeTarget] = useState<DuplicatePatient | null>(null);
+  const [clinicalActivity, setClinicalActivity] = useState<AuditLogEntry[]>([]);
+  const [clinicalActivityLoading, setClinicalActivityLoading] = useState(false);
+  const [tabOverride, setTabOverride] = useState<string | null>(null);
+  const [showCardModal, setShowCardModal] = useState(false);
+
+  usePageTitle(patient ? `${patient.first_name} ${patient.last_name}` : "Patient Profile");
 
   const activeTab = tabOverride ?? (isClinical ? "vitals" : "consents");
 

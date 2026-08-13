@@ -9,6 +9,7 @@ import EmptyState from "../../../components/ui/EmptyState";
 import { Skeleton } from "@/components/ui/skeleton";
 import Modal from "../../../components/ui/Modal";
 import { Stethoscope, Search, Plus, ArrowRight } from "lucide-react";
+import { usePageTitle } from "@/lib/hooks/usePageTitle";
 
 interface Referral {
   id: number;
@@ -33,6 +34,7 @@ interface Referral {
 }
 
 export default function ReferralsPage() {
+  usePageTitle("Referrals");
   const { token } = useAuth();
   const [referrals, setReferrals] = useState<Referral[]>([]);
   const [loading, setLoading] = useState(true);
@@ -224,7 +226,7 @@ export default function ReferralsPage() {
                     <td className="px-6 py-4">
                       <span className={`text-xs font-bold uppercase ${
                         ref.urgency === "emergency" ? "text-red-600" :
-                        ref.urgency === "urgent" ? "text-amber-600" : "text-gray-500"
+                        ref.urgency === "urgent" ? "text-amber-700" : "text-gray-500"
                       }`}>{ref.urgency}</span>
                     </td>
                     <td className="px-6 py-4"><ReferralStatusBadge status={ref.status} /></td>

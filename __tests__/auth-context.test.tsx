@@ -194,9 +194,13 @@ describe("AuthContext Session Store", () => {
     expect(mockFetch).toHaveBeenCalledWith(
       expect.stringContaining("/user"),
       expect.objectContaining({
-        headers: expect.objectContaining({ Authorization: "Bearer saved-token" }),
+        headers: expect.any(Headers),
       })
     );
+    const userCall = mockFetch.mock.calls.find(
+      ([url]) => typeof url === "string" && url.includes("/user")
+    );
+    expect(userCall?.[1]?.headers?.get("Authorization")).toBe("Bearer saved-token");
   });
 
   it("should preserve the stored session when the /user refresh fails", async () => {

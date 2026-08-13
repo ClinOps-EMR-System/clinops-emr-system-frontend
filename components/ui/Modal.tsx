@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef, useCallback } from "react";
+import React, { useEffect, useRef, useId, useCallback } from "react";
 import { X } from "lucide-react";
 import clsx from "clsx";
 
@@ -12,6 +12,7 @@ interface ModalProps {
   children: React.ReactNode;
   size?: "sm" | "md" | "lg" | "xl";
   footer?: React.ReactNode;
+  labelledById?: string;
 }
 
 const sizeStyles = {
@@ -24,9 +25,10 @@ const sizeStyles = {
 const FOCUSABLE_SELECTOR =
   'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
-export default function Modal({ open, onClose, title, subtitle, children, size = "md", footer }: ModalProps) {
+export default function Modal({ open, onClose, title, subtitle, children, size = "md", footer, labelledById }: ModalProps) {
   const overlayRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
+  const titleId = useId();
   const onCloseRef = useRef(onClose);
   useEffect(() => {
     onCloseRef.current = onClose;
@@ -39,7 +41,6 @@ export default function Modal({ open, onClose, title, subtitle, children, size =
     return Array.from(panelRef.current.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR));
   }, []);
 
-  // Handle focus lock and initial autofocus only when 'open' changes
   useEffect(() => {
     if (!open) return;
 
@@ -71,11 +72,9 @@ export default function Modal({ open, onClose, title, subtitle, children, size =
             e.preventDefault();
             last.focus();
           }
-        } else {
-          if (document.activeElement === last) {
-            e.preventDefault();
-            first.focus();
-          }
+        } else if (document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
         }
       }
     };
@@ -94,35 +93,38 @@ export default function Modal({ open, onClose, title, subtitle, children, size =
 
   if (!open) return null;
 
+  const headingId = labelledById ?? (title ? titleId : undefined);
   const descriptionId = subtitle ? `modal-desc-${title.replace(/\s+/g, "-").toLowerCase()}` : undefined;
 
   return (
     <div
       ref={overlayRef}
-      role="dialog"
-      aria-modal="true"
-      aria-label={title}
-      {...(descriptionId ? { "aria-describedby": descriptionId } : {})}
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      onClick={(e) => { if (e.target === overlayRef.current) onClose(); }}
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
       <div className="fixed inset-0 bg-black/40 backdrop-blur-sm" aria-hidden="true" />
       <div
         ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={headingId}
+        {...(descriptionId ? { "aria-describedby": descriptionId } : {})}
         tabIndex={-1}
         className={clsx("relative bg-white rounded-lg shadow-2xl border border-gray-200 w-full animate-in fade-in zoom-in-95 duration-200 outline-none", sizeStyles[size])}
       >
         <div className="flex items-start justify-between px-6 pt-5 pb-4 border-b border-gray-100">
           <div>
-            <h3 className="text-lg font-bold text-gray-900">{title}</h3>
+            {title ? (
+              <h3 id={titleId} className="text-lg font-bold text-gray-900">{title}</h3>
+            ) : null}
             {subtitle && <p id={descriptionId} className="text-sm text-gray-500 mt-0.5">{subtitle}</p>}
           </div>
           <button
             type="button"
             data-modal-close
             onClick={onClose}
-            className="p-1 rounded-md text-gray-500 hover:text-gray-600 hover:bg-gray-100 transition-colors"
-            aria-label="Close"
+            aria-label="Close dialog"
+            className="p-1 rounded-md text-gray-500 hover:text-gray-700 hover:bg-gray-100 transition-colors"
           >
             <X className="h-5 w-5" />
           </button>

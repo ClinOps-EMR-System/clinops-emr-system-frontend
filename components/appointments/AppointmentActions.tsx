@@ -42,7 +42,7 @@ export function AppointmentActions({ appointment, onAction }: AppointmentActions
     }
   }, [appointment.id, token, onAction]);
 
-  const handleCancel = useCallback(async () => {
+  const handleCancel = useCallback(() => {
     setConfirmOpen(true);
   }, []);
 
@@ -82,8 +82,8 @@ export function AppointmentActions({ appointment, onAction }: AppointmentActions
         open={confirmOpen}
         onClose={() => setConfirmOpen(false)}
         onConfirm={confirmCancel}
-        title="Cancel Appointment"
-        message="Cancel this appointment?"
+        title="Cancel this appointment?"
+        message="The appointment will be marked as cancelled and the slot released."
         confirmLabel="Cancel appointment"
         variant="warning"
       />

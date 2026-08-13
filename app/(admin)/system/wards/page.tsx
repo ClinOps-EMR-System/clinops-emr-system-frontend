@@ -20,6 +20,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { usePageTitle } from "@/lib/hooks/usePageTitle";
 
 const WARD_TYPES = [
   "General",
@@ -35,6 +36,7 @@ const WARD_TYPES = [
 ];
 
 export default function WardsPage() {
+  usePageTitle("Wards & Beds");
   const { token } = useAuth();
   const { can } = usePermissions();
   const canEdit = can("ward.edit");
@@ -120,9 +122,13 @@ export default function WardsPage() {
     if (!pendingDelete) return;
     try {
       await adminApi.deleteWard(token, pendingDelete.id);
+      setDeleteOpen(false);
+      setPendingDelete(null);
       await load();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Delete failed");
+      setDeleteOpen(false);
+      setPendingDelete(null);
     }
   };
 
@@ -201,7 +207,7 @@ export default function WardsPage() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => void remove(w)}
+                          onClick={() => setPendingDelete(w)}
                         >
                           Delete
                         </Button>
@@ -292,10 +298,10 @@ export default function WardsPage() {
         open={deleteOpen}
         onClose={() => { setDeleteOpen(false); setPendingDelete(null); }}
         onConfirm={() => void confirmDelete()}
-        title="Delete ward?"
-        message={`This will permanently delete ${pendingDelete?.name ?? "this ward"}. This action cannot be undone.`}
-        variant="danger"
+        title={`Delete ward ${pendingDelete?.name ?? ""}?`}
+        message="Admissions linked to this ward will need a new ward assignment."
         confirmLabel="Delete ward"
+        variant="danger"
       />
     </div>
   );
