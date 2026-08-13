@@ -14,15 +14,20 @@ function isProductionEnvironment() {
 export function getApiBaseUrl() {
   const configuredBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL?.trim();
 
-  if (configuredBaseUrl) {
-    return configuredBaseUrl;
-  }
+  const resolved = configuredBaseUrl
+    ? configuredBaseUrl
+    : isProductionEnvironment()
+    ? DEFAULT_PRODUCTION_API_BASE_URL
+    : DEFAULT_LOCAL_API_BASE_URL;
 
-  if (isProductionEnvironment()) {
-    return DEFAULT_PRODUCTION_API_BASE_URL;
-  }
+  console.log(
+    "[ClinOps] API Base URL:", resolved,
+    "| NEXT_PUBLIC_API_BASE_URL:", process.env.NEXT_PUBLIC_API_BASE_URL,
+    "| NEXT_PUBLIC_APP_ENV:", process.env.NEXT_PUBLIC_APP_ENV,
+    "| NODE_ENV:", process.env.NODE_ENV,
+  );
 
-  return DEFAULT_LOCAL_API_BASE_URL;
+  return resolved;
 }
 
 export function getWsUrl() {
