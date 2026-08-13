@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import Logo from "@/assets/logo/logo";
 
 type AuthShellProps = {
   title: string;
@@ -12,11 +13,8 @@ export default function AuthShell({ title, subtitle, children }: AuthShellProps)
       <main className="flex min-h-screen w-full">
         <aside className="hidden lg:flex flex-col w-[40%] bg-[#1a1d1c] text-white p-12 justify-between relative overflow-hidden">
           <div className="z-10">
-            <div className="flex items-center space-x-3 mb-24">
-              <div className="w-10 h-10 bg-clinical-primary rounded-md flex items-center justify-center font-bold text-xl">
-                C
-              </div>
-              <span className="text-xl font-semibold tracking-wide">ClinOps EMR</span>
+            <div className="flex items-center mb-24">
+              <Logo variant="auth" />
             </div>
             <div className="space-y-6 max-w-md">
               <p className="text-brand-green text-sm font-bold tracking-widest uppercase">Must Teaching Hospital</p>
